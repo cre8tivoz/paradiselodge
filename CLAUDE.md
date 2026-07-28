@@ -41,15 +41,11 @@ Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Cloudflare Pages is
 | 6. Room 1A, geometry, fixed 3pm sun | Done. Kit furniture, sash, sun across the bed |
 | 7. Crystal + examine set | Done. Kit Crystal. Twelve room 1A clips. Six evidence IDs file here; diary and hammer wait for parlour and yard |
 | 8. Dialogue system | Done. Node graph, runner, DOM panel. Proven on the hall door with Rosie's reception lines |
-| 9. Rosie | **Blocked, part built.** Her mesh exists. She is not placed, because the rooms she belongs in do not |
+| Rosie's mesh | Built and exported. Not placed, and not wired. See below |
 
-### Step 9 is blocked, and the build order is why
+**Next: step 9, the approach and the ground floor.** The build order was reordered after Rosie: spaces now come before the people who stand in them. The old order had her at step 9 and the rooms she belongs in at step 11, so step 9 depended on step 11.
 
-Step 9 is "Rosie at reception, then relocated to the parlour". Step 11 builds reception and the parlour. **Step 9 depends on step 11.** That is a fault in the order, not a thing to work around, and working around it once already produced a landing outside 1A that contradicts BRIEF.md and had to be reverted.
-
-What exists: `rosie.glb`, modelled and exported, with every joint the runtime needs. What does not: any placement, any runtime module, any wiring. She gets placed when reception exists.
-
-Do not stand her anywhere else in the meantime.
+`rosie.glb` is modelled with every joint the runtime needs. There is no placement, no runtime module and no wiring, because BRIEF.md puts her at reception and in the parlour and neither exists yet. Working around that once already produced a landing outside the murder room that contradicts the brief and had to be reverted. **Do not stand her anywhere else in the meantime.**
 
 ### Room 1A light, settled
 
@@ -75,6 +71,7 @@ Room 1A, Crystal, and every prop are **primitives** (boxes, capsules, cylinders,
 | Thing | Goes at |
 |---|---|
 | Kit room / Crystal / prop primitives | When modelled assets land for each piece. Not a single cutover |
+| Hall door talk stub (`1a.door` → Rosie reception graph) | Step 11, when Rosie is actually at reception |
 | The pointer lock prompt and its CSS | When the real HUD lands |
 | Hall door talk stub (`1a.door` → Rosie reception graph) | Step 9, when Rosie is rooted |
 | `window.__lodge` dev handle | Stays. It is `import.meta.env.DEV` only, and the capture tooling wants it |
@@ -90,7 +87,7 @@ Settled. Do not re-litigate these without a reason.
 - Everything solid lives under a `world` group. The camera is a sibling of it and Miller's hands are children of the camera. That split is what keeps his own hands out of the look raycast. Do not raycast the whole scene, and do not solve it with render layers: a light in three only illuminates objects sharing its layer, so a layer split silently unlights the hands. That is the reference repo's viewmodel bug, reproduced
 - Wrist roll goes through a wrist pivot, never the hand root. Rolling the root swings the forearm across the camera
 - No new events were added. A run is told from a walk by the `speed` already carried in `player:footstep`
-- **`BoxCollisionSolver` resolves in XZ and ignores height.** Anything in `solids` is a full-height wall wherever it actually sits. Right now the door lintel is a solid, which is the only reason 1A is sealed. That is an accident, not a design: when step 11 opens the doorway, take the lintel out of `solids` or the doorway stays bricked up at floor level. Same for any beam, rail or hanging light
+- **`BoxCollisionSolver` resolves in XZ and ignores height.** Anything in `solids` is a full-height wall wherever it actually sits. Right now the door lintel is a solid, which is the only reason 1A is sealed. That is an accident, not a design: when step 9 opens the doorway, take the lintel out of `solids` or the doorway stays bricked up at floor level. Same for any beam, rail or hanging light
 - **A ceiling has to cast shadow.** A lid built without `castShadow` lets the 3pm sun straight through it and lights the wall below from above, in a hard slab that reads as a render fault. Found on a hall ceiling, will recur on every room built from here
 - `LOOP.maxDelta` is 0.05 and is a collision guard, not just a tab-out guard. Collision is a pushout, not a swept test. Raise it, or raise `runSpeed`, and check the arithmetic in the comment or Miller goes through a wall on a stalled frame
 
@@ -100,7 +97,7 @@ Assumptions, flagged, cheap to change:
 - **`sun-shadow`.** ASSETS.md lists `#6E6croll`, which is not a colour. The note in that table says `#6E6255`. That is what the palette uses
 - **The date is settled.** BRIEF.md still carries it as the one open decision, but ASSETS.md and both title cards say 26 February 1994. That section of BRIEF.md can go
 - **Look sensitivity** is 0.0022 rad/px, picked blind, shared between pointer lock and drag. Untuned
-- **`ROOM_1A.daylight`.** What you see through the sash. Not in ASSETS.md, same class of assumption as the glove colour. It goes when the verandah is built at step 11
+- **`ROOM_1A.daylight`.** What you see through the sash. Not in ASSETS.md, same class of assumption as the glove colour. It goes when the verandah is built at step 10
 - **Overlays own their own hiding.** The look line hides itself on `casefile:open` and `dialogue:start`. The pointer lock prompt asks `dialogue.isActive`, not `dialoguePanel.isOpen`, because the runner sets its state *before* it emits and the panel opens on the callback *after*, so a panel check runs one step too early
 
 ---
@@ -294,6 +291,10 @@ Right:
 
 Do not scaffold five scenes. Scene 1 is roughly 80% of the engine and everything after it is content in the same systems.
 
+**Spaces before the people who stand in them.** The original order had Rosie and Moretti before the lodge they inhabit, which is not buildable: Rosie belongs at reception and in the parlour, Moretti follows Miller through the whole house, and neither room existed. Building the rooms first also unblocks the diary and the hammer, which are the last two evidence IDs and are waiting on the parlour and the yard.
+
+### Engine — done
+
 1. Player controller. Walk, crouch, lean. First person, no body — **done**
 2. Look raycast and the one-line description — **done**
 3. Hand rig and gloves. One contextual examine animation, proven on a single object — **done**
@@ -302,12 +303,24 @@ Do not scaffold five scenes. Scene 1 is roughly 80% of the engine and everything
 6. Room 1A. Geometry, fixed 3pm sun — **done**
 7. Crystal as a prop. Twelve room 1A clips. Six evidence IDs file here; diary and hammer wait — **done**
 8. Dialogue system — **done**
-9. Rosie at reception, then relocated to the parlour — **next**
-10. Moretti. Navmesh follow, tag and bag
-11. Rest of the lodge. Street, entry, hallway, stairs, verandah, yard
-12. Objective gates, scene exit
-13. Scene manager, save on scene boundary
-14. Cold open sequence, last
+
+### Spaces
+
+9. **The approach and the ground floor.** Street, entry, marble steps, neon sign, reception, hallway, central staircase, parlour. This is the route in and the route back down — **next**
+10. **Verandah and back yard.** Iron lace off 1A, external stairs down, overgrown yard, Hills hoist, shed. Gate 4 lives here, and it is deliberately before the hammer
+
+The navmesh belongs with these two steps. `BoxCollisionSolver` is provisional and marked as such, and it is what Moretti has to follow on, so it wants replacing before he arrives and not after.
+
+### People
+
+11. **Rosie.** At reception on the way in, relocated to the parlour on the way back down. Her mesh is already built and exported, waiting on step 9
+12. **Moretti.** Navmesh follow, tag and bag. Diary and hammer file through him
+
+### Sequencing
+
+13. Objective gates, scene exit
+14. Scene manager, save on scene boundary
+15. Cold open sequence, last
 
 Verify in the browser between each step. Do not stack three steps in one prompt.
 
