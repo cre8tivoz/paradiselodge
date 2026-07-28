@@ -73,6 +73,16 @@ export const RENDER = {
   maxPixelRatio: 2,
 } as const
 
+export const HAND = {
+  /**
+   * How far in front of the camera an examine reaches. The clip anchors to the
+   * object, clamped into this band, so Miller reaches the thing that is really
+   * there without his arm stretching across the room.
+   */
+  reachMin: 0.32,
+  reachMax: 0.52,
+} as const
+
 export const INTERACT = {
   /**
    * How far Miller can look at something. Arm's reach and a bit. Short enough

@@ -72,6 +72,20 @@ export function buildGreybox(): Greybox {
   // A one metre cube, for judging scale and eye height against.
   const cube = addSolidBox(group, solids, propMat, 1, 1, 1, -1.5, 0.5, 2.5)
 
+  /*
+   * A small flat object lying on the waist-high block, roughly the size of a
+   * standing photo frame. The turn-over examine animation is authored for this
+   * shape on this kind of surface, so there has to be one to prove it against.
+   * Not added to `solids`: it is a prop to be handled, not something to walk
+   * into.
+   */
+  const frame = new Mesh(new BoxGeometry(0.17, 0.022, 0.125), propMat)
+  frame.position.set(-3, 0.911, -1.5)
+  frame.rotation.y = 0.22
+  frame.castShadow = true
+  frame.receiveShadow = true
+  group.add(frame)
+
   // Doorway-width slot: two stubs 0.85 apart.
   const jambLeft = addSolidBox(group, solids, propAltMat, 0.4, WALL_HEIGHT, 2, 4.5, WALL_HEIGHT / 2, 2)
   addSolidBox(group, solids, propAltMat, 0.4, WALL_HEIGHT, 2, 4.5 + 0.4 + 0.85, WALL_HEIGHT / 2, 2)
@@ -95,7 +109,7 @@ export function buildGreybox(): Greybox {
     group,
     solids,
     spawn: new Vector3(0, 0, 3),
-    props: { pillar, block, cube, jambLeft },
+    props: { pillar, block, cube, jambLeft, frame },
   }
 }
 

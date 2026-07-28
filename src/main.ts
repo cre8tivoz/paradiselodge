@@ -1,6 +1,7 @@
 import './style.css'
-import { Scene } from 'three'
+import { Group, Scene, Vector3 } from 'three'
 import * as events from './core/events.ts'
+import { emit } from './core/events.ts'
 import { Input } from './core/input.ts'
 import { Loop } from './core/loop.ts'
 import { createViewport } from './render/renderer.ts'
@@ -10,6 +11,8 @@ import { PlayerController } from './player/controller.ts'
 import { LookRegistry } from './interact/lookable.ts'
 import type { Lookable } from './interact/lookable.ts'
 import { LookRaycaster } from './interact/look.ts'
+import { Hands } from './player/hands/hands.ts'
+import { TURN_OVER } from './player/hands/clips.ts'
 import { Hud } from './ui/hud.ts'
 
 const canvas = document.querySelector<HTMLCanvasElement>('#game')
@@ -22,8 +25,26 @@ if (canvas === null || hudRoot === null) {
 const { renderer, camera } = createViewport(canvas)
 
 const scene = new Scene()
+
+/*
+ * Everything solid lives under `world`. Miller's hands are children of the
+ * camera, which is a sibling of it.
+ *
+ * That split is what keeps his own hands out of the look raycast. They sit
+ * inches from the lens, so a ray cast against the whole scene stops on a glove
+ * every time, and three raycasts objects whose `visible` is false, so hiding
+ * them is not enough. Excluding them by render layer would work for the ray
+ * and then quietly unlight them, since a light in three only illuminates
+ * objects that share its layer. That is the viewmodel bug SETUP.md warns about
+ * in the reference repo. Separate roots, one light rig, no drift.
+ */
+const world = new Group()
 const greybox = buildGreybox()
-scene.add(greybox.group)
+world.add(greybox.group)
+scene.add(world)
+
+// The camera has to be in the scene graph or its children never get traversed.
+scene.add(camera)
 
 const input = new Input(canvas)
 const solver = new BoxCollisionSolver(greybox.solids)
@@ -52,6 +73,11 @@ const lookables: Lookable[] = [
     object: greybox.props.cube,
   },
   {
+    id: 'greybox.frame',
+    description: 'Something flat lying face down on the block.',
+    object: greybox.props.frame,
+  },
+  {
     id: 'greybox.jamb',
     description: "Stub wall. There's a gap beside it wide enough to walk through.",
     object: greybox.props.jambLeft,
@@ -63,7 +89,33 @@ for (const lookable of lookables) {
   registry.add(lookable)
 }
 
-const look = new LookRaycaster(camera, registry, scene)
+const look = new LookRaycaster(camera, registry, world)
+
+const hands = new Hands(camera)
+
+/*
+ * TEMPORARY TRIGGER. Press F while looking at something to play the examine
+ * animation. Build order step 4 is the real mechanic, held input and the tier
+ * two text, and it replaces this. Step 3 only has to prove the rig and one
+ * bespoke animation on one object.
+ */
+const targetWorld = new Vector3()
+function tryExamine(): void {
+  if (hands.isPlaying) {
+    return
+  }
+  const target = look.target
+  if (target === undefined) {
+    return
+  }
+  target.object.getWorldPosition(targetWorld)
+  emit('examine:start', { objectId: target.id })
+  hands.play(TURN_OVER, target.id, targetWorld)
+}
+
+hands.onComplete = (objectId) => {
+  emit('examine:complete', { objectId })
+}
 
 const descriptions = new Map(lookables.map((entry) => [entry.id, entry.description]))
 
@@ -112,6 +164,10 @@ const hud = new Hud(hudRoot, (id) => descriptions.get(id))
 const loop = new Loop((delta) => {
   player.update(delta)
   look.update()
+  if (input.wasPressed('examine')) {
+    tryExamine()
+  }
+  hands.update(delta)
   renderer.render(scene, camera)
   input.endFrame()
 })
@@ -122,6 +178,7 @@ if (import.meta.env.DEV) {
   // Dev only, stripped from the production bundle. The screenshot and profiler
   // tooling will want a handle like this too.
   Reflect.set(window, '__lodge', {
-    player, camera, scene, renderer, input, loop, events, look, registry, hud,
+    player, camera, scene, world, renderer, input, loop, events, look, registry, hud,
+    hands, clips: { TURN_OVER }, Vector3,
   })
 }

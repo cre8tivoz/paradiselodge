@@ -34,6 +34,24 @@ export const ROOM_1A = {
 } as const
 
 /**
+ * Miller's hands. The only part of him the player sees until the last shot.
+ *
+ * ASSETS.md gives no glove colour and the palette has no token for one, so
+ * `glove` is an assumption: pale cream latex, which is what a 1994 Victorian
+ * crime scene would actually have. Change this one value if that is wrong.
+ *
+ * `cuff` is not an assumption. IMAGE-PROMPTS.md puts Miller in a white
+ * business shirt with the sleeves buttoned at the wrist, and CLAUDE.md's
+ * ageing table has scene 1 cuffs clean and buttoned.
+ */
+export const HANDS = {
+  glove: 0xd9d2be,
+  gloveSeam: 0xc7bfa8,
+  cuff: 0xf2f0ea,
+  cuffShadow: 0xd8d4c8,
+} as const
+
+/**
  * Test room only. Never ships. Deliberately outside the locked palette so a
  * grey box is never mistaken for authored geometry.
  */
