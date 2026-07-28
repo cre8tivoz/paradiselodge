@@ -40,9 +40,16 @@ Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Cloudflare Pages is
 | 5. Case file, evidence IDs, notebook UI | Done. N opens. Examine files. Idempotent |
 | 6. Room 1A, geometry, fixed 3pm sun | Done. Kit furniture, sash, sun across the bed |
 | 7. Crystal + examine set | Done. Kit Crystal. Twelve room 1A clips. Six evidence IDs file here; diary and hammer wait for parlour and yard |
-| 8. Dialogue system | Done. Node graph, runner, DOM panel. Proven on the hall door with Rosie's reception lines (stub until step 9) |
+| 8. Dialogue system | Done. Node graph, runner, DOM panel. Proven on the hall door with Rosie's reception lines |
+| 9. Rosie | **Blocked, part built.** Her mesh exists. She is not placed, because the rooms she belongs in do not |
 
-Everything from step 9 on is untouched. **Next: Rosie**, rooted NPC, using `images/characters/rosie-sheet.png`.
+### Step 9 is blocked, and the build order is why
+
+Step 9 is "Rosie at reception, then relocated to the parlour". Step 11 builds reception and the parlour. **Step 9 depends on step 11.** That is a fault in the order, not a thing to work around, and working around it once already produced a landing outside 1A that contradicts BRIEF.md and had to be reverted.
+
+What exists: `rosie.glb`, modelled and exported, with every joint the runtime needs. What does not: any placement, any runtime module, any wiring. She gets placed when reception exists.
+
+Do not stand her anywhere else in the meantime.
 
 ### Room 1A light, settled
 
@@ -83,6 +90,8 @@ Settled. Do not re-litigate these without a reason.
 - Everything solid lives under a `world` group. The camera is a sibling of it and Miller's hands are children of the camera. That split is what keeps his own hands out of the look raycast. Do not raycast the whole scene, and do not solve it with render layers: a light in three only illuminates objects sharing its layer, so a layer split silently unlights the hands. That is the reference repo's viewmodel bug, reproduced
 - Wrist roll goes through a wrist pivot, never the hand root. Rolling the root swings the forearm across the camera
 - No new events were added. A run is told from a walk by the `speed` already carried in `player:footstep`
+- **`BoxCollisionSolver` resolves in XZ and ignores height.** Anything in `solids` is a full-height wall wherever it actually sits. Right now the door lintel is a solid, which is the only reason 1A is sealed. That is an accident, not a design: when step 11 opens the doorway, take the lintel out of `solids` or the doorway stays bricked up at floor level. Same for any beam, rail or hanging light
+- **A ceiling has to cast shadow.** A lid built without `castShadow` lets the 3pm sun straight through it and lights the wall below from above, in a hard slab that reads as a render fault. Found on a hall ceiling, will recur on every room built from here
 - `LOOP.maxDelta` is 0.05 and is a collision guard, not just a tab-out guard. Collision is a pushout, not a swept test. Raise it, or raise `runSpeed`, and check the arithmetic in the comment or Miller goes through a wall on a stalled frame
 
 Assumptions, flagged, cheap to change:
@@ -113,6 +122,25 @@ Done. Segmented gloved right hand authored in Blender, exported as glTF. Both fi
 - Curl closes into the palm on **negative** `rotation.x`
 - Rebuild: with Blender MCP on TCP `localhost:9876`, execute the build script. It writes the `.blend` and re-exports the `.glb`
 - Blender autosaves (`*.blend1`) are gitignored. Keep the `.blend`
+
+---
+
+## Rosie mesh
+
+Modelled in Blender and exported as glTF, same workflow as the hand. Not placed. See the status note above.
+
+| Role | Path |
+|---|---|
+| **Original Blender file** | `assets/blender/rosie.blend` |
+| Build script | `tools/blender/build_rosie.py` |
+| Shipped runtime mesh | `public/models/rosie.glb` |
+| Modelling reference | `images/characters/rosie-sheet.png` |
+
+- **Lathed profiles, not stacked capsules.** A capsule figure reads as a snowman, and the player stands close enough to talk to her. The silhouette is the whole job
+- Built facing Blender **+Y**, which is Three **-Z** after the Yup export, so she arrives on three.js default forward. Her right hand is +X in both, which is where the cigarette is
+- Joints for the runtime: `rosie_root`, `hips`, `chest`, `head`, `arm_l_0` / `arm_l_1` / `hand_l`, `arm_r_0` / `arm_r_1` / `hand_r`, `cig`, `cig_ember`. Underscores, because the exporter strips dots
+- The cardigan is an open **arc**, not a tube. A revolve closes over the front and there is no cardigan left. Same trap on hair: a full revolve is a helmet that closes over the face, so the length is an arc open at the front and only the crown is a full cap
+- Rebuild: Blender MCP on TCP `localhost:9876`, `exec(open('tools/blender/build_rosie.py').read())`. Writes the `.blend` and re-exports the `.glb`
 
 ---
 
