@@ -34,6 +34,7 @@ export class PlayerController {
   private lean = 0
 
   private stridePhase = 0
+  private running = false
   private surface: Surface = 'floorboard'
 
   private readonly scratchMove = new Vector3()
@@ -67,6 +68,10 @@ export class PlayerController {
 
   get speed(): number {
     return Math.hypot(this.velocity.x, this.velocity.z)
+  }
+
+  get isRunning(): boolean {
+    return this.running
   }
 
   update(delta: number): void {
@@ -130,7 +135,18 @@ export class PlayerController {
       strafe /= magnitude
     }
 
-    const maxSpeed = this.stance === 'crouch' ? PLAYER.crouchSpeed : PLAYER.walkSpeed
+    // Run is forward only and standing only. Sprinting backwards or sideways
+    // reads as a bug, and a crouched sprint is a different game.
+    this.running =
+      this.input.isHeld('run') && forward > 0 && this.stance === 'stand'
+
+    let maxSpeed: number = PLAYER.walkSpeed
+    if (this.stance === 'crouch') {
+      maxSpeed = PLAYER.crouchSpeed
+    } else if (this.running) {
+      maxSpeed = PLAYER.runSpeed
+    }
+
     const sin = Math.sin(this.yaw)
     const cos = Math.cos(this.yaw)
 
@@ -163,8 +179,9 @@ export class PlayerController {
     if (travelled <= 0) {
       return
     }
+    const stride = this.running ? PLAYER.runStrideLength : PLAYER.strideLength
     const before = this.stridePhase
-    this.stridePhase += travelled / PLAYER.strideLength
+    this.stridePhase += travelled / stride
 
     if (Math.floor(this.stridePhase) > Math.floor(before)) {
       emit('player:footstep', {
@@ -205,7 +222,9 @@ export class PlayerController {
 
     let bob = 0
     if (PLAYER.headBobEnabled) {
-      bob = Math.sin(this.stridePhase * Math.PI * 2) * PLAYER.headBobAmplitude
+      // Scale with gait so a run has weight and standing still is dead flat.
+      const gait = Math.min(this.speed / PLAYER.walkSpeed, 1.6)
+      bob = Math.sin(this.stridePhase * Math.PI * 2) * PLAYER.headBobAmplitude * gait
     }
 
     this.scratchCameraPos

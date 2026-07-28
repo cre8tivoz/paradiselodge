@@ -5,7 +5,15 @@
  * still sits under the left hand on AZERTY.
  */
 
-export type Action = 'forward' | 'back' | 'left' | 'right' | 'crouch' | 'leanLeft' | 'leanRight'
+export type Action =
+  | 'forward'
+  | 'back'
+  | 'left'
+  | 'right'
+  | 'run'
+  | 'crouch'
+  | 'leanLeft'
+  | 'leanRight'
 
 const BINDINGS: ReadonlyMap<string, Action> = new Map([
   ['KeyW', 'forward'],
@@ -16,6 +24,8 @@ const BINDINGS: ReadonlyMap<string, Action> = new Map([
   ['ArrowLeft', 'left'],
   ['KeyD', 'right'],
   ['ArrowRight', 'right'],
+  ['ShiftLeft', 'run'],
+  ['ShiftRight', 'run'],
   ['KeyC', 'crouch'],
   ['ControlLeft', 'crouch'],
   ['KeyQ', 'leanLeft'],
@@ -77,8 +87,17 @@ export class Input {
   }
 
   private readonly requestLock = (): void => {
-    if (!this.locked) {
-      void this.canvas.requestPointerLock()
+    if (this.locked) {
+      return
+    }
+    // Browsers reject this when the document is not focused, and embedded
+    // frames need allow="pointer-lock". Swallowing it silently makes mouse
+    // look look broken for no stated reason, so say why.
+    const request: unknown = this.canvas.requestPointerLock()
+    if (request instanceof Promise) {
+      request.catch((error: unknown) => {
+        console.warn('Pointer lock refused by the browser.', error)
+      })
     }
   }
 

@@ -11,6 +11,12 @@ export const PLAYER = {
   /** Purposeful walk. Miller is working, not strolling and not jogging. */
   walkSpeed: 2.2,
   crouchSpeed: 1.1,
+  /**
+   * Run. Only forward, only standing. There is no stamina and no fail state,
+   * so this is a speed change and nothing else. Scene 3's chase is scripted
+   * and designed to be lost, so run never has to be balanced against AI.
+   */
+  runSpeed: 4.6,
 
   /** Exponential approach rate toward target velocity. Higher is snappier. */
   groundResponse: 14,
@@ -29,6 +35,8 @@ export const PLAYER = {
 
   /** Distance walked between footstep events. */
   strideLength: 0.78,
+  /** A runner covers more ground per step, so footsteps must not machine-gun. */
+  runStrideLength: 1.15,
   /** Vertical head travel across a stride. Deliberately small. */
   headBobAmplitude: 0.018,
   headBobEnabled: true,
@@ -47,8 +55,18 @@ export const CAMERA = {
 } as const
 
 export const LOOP = {
-  /** Delta is clamped to this so a tabbed-out frame cannot teleport Miller. */
-  maxDelta: 0.1,
+  /**
+   * Delta is clamped to this so a tabbed-out frame cannot teleport Miller.
+   *
+   * It is also the tunnelling guard. Collision is a pushout, not a swept test,
+   * so a single frame must never carry Miller past the midplane of a wall.
+   * That budget is `radius` + half the wall thickness, or 0.32 + 0.15 = 0.47.
+   * At runSpeed 4.6 this clamp allows 4.6 * 0.05 = 0.23, which is half of it.
+   *
+   * Raise runSpeed or this number and check that sum again, or Miller will go
+   * through a wall on a stalled frame.
+   */
+  maxDelta: 0.05,
 } as const
 
 export const RENDER = {

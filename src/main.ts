@@ -39,7 +39,7 @@ const prompt = document.createElement('div')
 prompt.className = 'prompt'
 prompt.innerHTML =
   '<strong>Click to look around</strong>' +
-  '<span>WASD move &middot; C or Ctrl crouch &middot; Q and E lean &middot; Esc release</span>'
+  '<span>WASD move &middot; Shift run &middot; C or Ctrl crouch &middot; Q and E lean &middot; Esc release</span>'
 hud.appendChild(prompt)
 
 const updatePrompt = (): void => {
