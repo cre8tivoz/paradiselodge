@@ -23,14 +23,18 @@ Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Cloudflare Pages is
 | 1. Player controller | Done. Walk, crouch, lean, mouse look, pointer lock |
 | 2. Look raycast, one-line description | Done |
 | 3. Hand rig, gloves, one examine animation | Done |
-| 3b. Hand mesh | Done. Blender segmented glTF at `public/models/miller-hand.glb` |
-| 4. Examine tier two, held input | Done. Confirmed in browser. Hold F; release cancels |
+| 3b. Hand mesh | Done. Blender source + shipped glTF. See Hand mesh below |
+| 4. Examine tier two, held input | Done. Hold F; release cancels |
 | 5. Case file, evidence IDs, notebook UI | Done. N opens. Examine files. Idempotent |
 | 6. Room 1A, geometry, fixed 3pm sun | Done. Kit furniture, sash, sun across the bed |
-| 7. Crystal + examine set | Done. Kit Crystal on the bed. Twelve room 1A clips. Six evidence IDs file here; diary and hammer wait for parlour and yard |
+| 7. Crystal + examine set | Done. Kit Crystal. Twelve room 1A clips. Six evidence IDs file here; diary and hammer wait for parlour and yard |
 | 8. Dialogue system | Done. Node graph, runner, DOM panel. Proven on the hall door with Rosie's reception lines (stub until step 9) |
 
-Everything from step 9 on is untouched.
+Everything from step 9 on is untouched. **Next: Rosie**, rooted NPC, using `images/characters/rosie-sheet.png`.
+
+### What is kit vs modelled
+
+Room 1A, Crystal, and every prop are **primitives** (boxes, capsules, cylinders, spheres) against the locked palette. That is deliberate scaffolding. Only Miller's hand is a real mesh.
 
 ### Added outside the build order
 
@@ -41,7 +45,7 @@ Everything from step 9 on is untouched.
 
 | Thing | Goes at |
 |---|---|
-| `src/world/greybox.ts` | Gone. Replaced by room 1A at step 6 |
+| Kit room / Crystal / prop primitives | When modelled assets land for each piece. Not a single cutover |
 | The pointer lock prompt and its CSS | When the real HUD lands |
 | Hall door talk stub (`1a.door` → Rosie reception graph) | Step 9, when Rosie is rooted |
 | `window.__lodge` dev handle | Stays. It is `import.meta.env.DEV` only, and the capture tooling wants it |
@@ -70,15 +74,21 @@ Assumptions, flagged, cheap to change:
 
 ## Hand mesh
 
-Done. Segmented gloved right hand authored in Blender, exported as glTF.
+Done. Segmented gloved right hand authored in Blender, exported as glTF. Both files are in the repo.
 
-- Source: `tools/blender/build_miller_hand.py` → `assets/blender/miller-hand.blend`
-- Ship: `public/models/miller-hand.glb`
+| Role | Path |
+|---|---|
+| **Original Blender file** | `assets/blender/miller-hand.blend` |
+| Build script | `tools/blender/build_miller_hand.py` |
+| Shipped runtime mesh | `public/models/miller-hand.glb` |
+| Modelling reference | `images/characters/miller-hands.png` |
+
 - Runtime: `rig.ts` loads the glTF and drives named joints (`index_j0` … `thumb_j1`). `clip.ts`, `clips.ts`, and `hands.ts` stay mesh-agnostic
 - Left hand is the same mesh with `scale.x = -1` and double-sided materials
-- Rebuild: with Blender MCP on port 9876, run the build script via `execute_code`
-
-Reference remains `images/characters/miller-hands.png`.
+- Joint names use underscores. The glTF exporter strips dots
+- Curl closes into the palm on **negative** `rotation.x`
+- Rebuild: with Blender MCP on TCP `localhost:9876`, execute the build script. It writes the `.blend` and re-exports the `.glb`
+- Blender autosaves (`*.blend1`) are gitignored. Keep the `.blend`
 
 ---
 
@@ -141,7 +151,12 @@ images/
   characters/   generated reference sheets. Modelling reference only, never shipped
   assets/       generated textures. Processed copies go to public/textures/
   mood/         palette and location reference
+assets/
+  blender/      original .blend sources. Keep these; export into public/
+tools/
+  blender/      scripts that build or export those .blend files
 public/
+  models/       shipped glTF (miller-hand.glb)
   textures/
   audio/
 ```

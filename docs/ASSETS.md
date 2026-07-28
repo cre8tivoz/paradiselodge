@@ -76,6 +76,8 @@ Wide Victorian staircase, carpet runner worn through on the treads, brass stair 
 ### 4. Room 1A
 Bed, dresser, chair, wardrobe, side table, sash window onto the verandah.
 
+**Current build state (28 July 2026):** kit primitives only for the room, Crystal, and props. Hand examines and evidence filing work against that kit. Real meshes replace pieces as they land; the hand is already a modelled glTF.
+
 **Examinable objects — twelve hand animations, budget one each:**
 
 | Object | Interaction |
@@ -117,10 +119,10 @@ Cell door, corridor, and the only third-person camera in the game.
 
 | Character | Fidelity | Notes |
 |---|---|---|
-| **Miller** | Hands only, until the last shot | Gloves in scene 1. Cuff state per scene. Face matters once |
+| **Miller** | Hands only, until the last shot | Gloves in scene 1. Cuff state per scene. Face matters once. **Hand mesh done:** source `assets/blender/miller-hand.blend`, shipped `public/models/miller-hand.glb`, ref `images/characters/miller-hands.png` |
 | **Moretti** | Full, mid distance | Uniform constable. Never closer than two metres |
-| **Rosie** | Full, close | Mid 50s, shoulder-length red and grey, ugly cardigan, cigarette always lit |
-| **Crystal** | Full, very close | 28, blonde, petite, well dressed. Twelve hours dead. Lividity and rigor visible |
+| **Rosie** | Full, close | Mid 50s, shoulder-length red and grey, ugly cardigan, cigarette always lit. Sheet ready. Next build step |
+| **Crystal** | Full, very close | 28, blonde, petite, well dressed. Twelve hours dead. Lividity and rigor visible. **Currently kit primitives** on the bed in room 1A |
 | **Mark** | Full, mid | Bouncer build, black shirt, ponytail. Matches the photo exactly |
 | **Victor** | Full, distance and interview | Seen running, then across a table |
 | **Sterling** | Full, close | Publican. Smug. Needs a face worth grabbing |

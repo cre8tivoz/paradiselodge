@@ -43,8 +43,13 @@ paradise-lodge/
 │   ├── ASSETS.md
 │   ├── IMAGE-PROMPTS.md
 │   └── SETUP.md
-├── images/              ← generated character and texture assets
+├── images/              ← generated character and texture assets (reference only)
+├── assets/
+│   └── blender/         ← original .blend sources (committed). miller-hand.blend lives here
+├── tools/
+│   └── blender/         ← build/export scripts for those .blend files
 ├── public/
+│   ├── models/          ← shipped glTF (miller-hand.glb)
 │   ├── textures/
 │   └── audio/
 ├── src/
@@ -53,6 +58,7 @@ paradise-lodge/
 
 `CLAUDE.md` goes in the **root**, not in docs. Everything else lives in `docs/`.
 
+**Blender sources stay in `assets/blender/`.** The runtime mesh is the exported glTF under `public/models/`. Do not delete the `.blend` after export. Autosaves (`*.blend1`) are gitignored.
 ---
 
 ## Step 3 — The images folder
