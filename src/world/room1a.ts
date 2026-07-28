@@ -31,8 +31,6 @@ export interface Room1A {
   readonly spawn: Vector3
   /** Initial yaw so Miller faces into the room toward the window. */
   readonly spawnYaw: number
-  /** World z of the outer face of the north wall, where the hall starts. */
-  readonly northWallZ: number
   readonly crystal: CrystalProp
   readonly props: {
     readonly bed: Object3D
@@ -48,7 +46,7 @@ export interface Room1A {
     readonly map: Object3D
     readonly note: Object3D
     readonly lighter: Object3D
-    /** Hall door leaf, hinged and standing open. */
+    /** Hall door leaf. Temporary talk stub until Rosie exists. */
     readonly door: Object3D
   }
 }
@@ -106,37 +104,23 @@ export function buildRoom1A(): Room1A {
     HEIGHT / 2,
     -halfD,
   )
-  /*
-   * Lintel above the door. Geometry only, never a solid.
-   *
-   * BoxCollisionSolver resolves in XZ and ignores height entirely, so anything
-   * added to `solids` is a full height wall no matter where it actually sits.
-   * Give it the lintel and the doorway is bricked up at floor level. The same
-   * goes for any future overhead piece: a beam, a rail, a hanging light.
-   */
-  const lintel = box(DOOR_WIDTH, HEIGHT - DOOR_HEIGHT, WALL, wallpaper)
-  lintel.position.set(0, DOOR_HEIGHT + (HEIGHT - DOOR_HEIGHT) / 2, -halfD)
-  group.add(lintel)
+  // Lintel above the door.
+  addSolid(
+    group,
+    solids,
+    box(DOOR_WIDTH, HEIGHT - DOOR_HEIGHT, WALL, wallpaper),
+    0,
+    DOOR_HEIGHT + (HEIGHT - DOOR_HEIGHT) / 2,
+    -halfD,
+  )
 
-  /*
-   * Hinged and standing open, into the room.
-   *
-   * The leaf hangs off a pivot at its hinge stile rather than sitting in the
-   * opening, because a door that cannot open is a wall with a handle drawn on
-   * it, and Rosie has to be visible through this one.
-   */
-  const doorPivot = new Group()
-  doorPivot.name = 'door.pivot'
-  doorPivot.position.set(-doorHalf + 0.02, 0, -halfD + 0.03)
-  doorPivot.rotation.y = -1.15
-  group.add(doorPivot)
-
+  // Door leaf in the opening. Talkable stub for the dialogue system until Rosie.
   const door = box(DOOR_WIDTH - 0.04, DOOR_HEIGHT - 0.04, 0.04, timber)
   door.name = 'door'
-  door.position.set((DOOR_WIDTH - 0.04) / 2, DOOR_HEIGHT / 2, 0)
+  door.position.set(0, DOOR_HEIGHT / 2, -halfD + 0.03)
   door.castShadow = true
   door.receiveShadow = true
-  doorPivot.add(door)
+  group.add(door)
 
   // South (+Z): wall with sash opening.
   const winHalf = WINDOW_WIDTH / 2
@@ -410,7 +394,6 @@ export function buildRoom1A(): Room1A {
     spawn: new Vector3(0, 0, -halfD + 0.55),
     // Yaw 0 looks down -Z (out the door). π faces the verandah sash.
     spawnYaw: Math.PI,
-    northWallZ: -halfD - WALL / 2,
     crystal,
     props: {
       bed,

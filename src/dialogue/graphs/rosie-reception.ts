@@ -1,10 +1,8 @@
 import type { DialogueGraph } from '../graph.ts'
 
 /**
- * Rosie at reception. The BRIEF.md cold-open beat.
- *
- * She is rooted on the landing outside 1A for now, standing in for reception
- * until step 11 builds the real one downstairs. These lines move with her.
+ * Rosie at reception. BRIEF.md cold-open beat, used here to prove the runner
+ * until she exists as a rooted NPC (step 9). Wired to the hall door stub in 1A.
  */
 export const ROSIE_RECEPTION: DialogueGraph = {
   id: 'rosie.reception',
