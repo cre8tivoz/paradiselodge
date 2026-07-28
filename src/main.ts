@@ -5,6 +5,8 @@ import { emit } from './core/events.ts'
 import { Input } from './core/input.ts'
 import { Loop } from './core/loop.ts'
 import { createViewport } from './render/renderer.ts'
+import { buildSceneLighting } from './render/lighting.ts'
+import { buildLodge } from './world/lodge.ts'
 import { buildRoom1A } from './world/room1a.ts'
 import { BoxCollisionSolver } from './world/collision.ts'
 import { PlayerController } from './player/controller.ts'
@@ -51,17 +53,39 @@ async function main(): Promise<void> {
    * in the reference repo. Separate roots, one light rig, no drift.
    */
   const world = new Group()
-  const room = buildRoom1A()
+
+  const lodge = buildLodge()
+  world.add(lodge.group)
+
+  /*
+   * Room 1A, placed into the building rather than sitting at the origin.
+   *
+   * Rotated a quarter turn, so the room's local -Z door opens onto the
+   * first-floor hall at x = 1.7 and its local +Z sash looks out at x = 6.3,
+   * which is the side the verandah wraps onto and where the 3pm sun comes from.
+   * Front and side corner, per BRIEF.md.
+   */
+  const room = buildRoom1A({
+    position: new Vector3(4.0, 3.45, 2.6),
+    rotationY: Math.PI / 2,
+  })
   world.add(room.group)
+
   scene.add(world)
+
+  const lighting = buildSceneLighting()
+  scene.add(lighting.group)
+  scene.background = lighting.sky
 
   // The camera has to be in the scene graph or its children never get traversed.
   scene.add(camera)
 
   const input = new Input(canvas)
-  const solver = new BoxCollisionSolver(room.solids)
-  const player = new PlayerController(camera, input, solver, room.spawn, room.spawnYaw)
-  player.setSurface('floorboard')
+  const solver = new BoxCollisionSolver(
+    [...lodge.solids, ...room.solids],
+    [...lodge.floors, ...room.floors],
+  )
+  const player = new PlayerController(camera, input, solver, lodge.spawn, lodge.spawnYaw)
 
   /*
    * Look and examine copy for room 1A. Writing rules apply. Register Crystal's
@@ -203,10 +227,88 @@ async function main(): Promise<void> {
     },
     {
       id: '1a.door',
-      description: 'Door to the hall.',
-      // Stub until Rosie is rooted. Her reception lines prove the runner.
-      dialogueId: ROSIE_RECEPTION.id,
+      description: 'Door to the hall. Standing open.',
       object: room.props.door,
+    },
+
+    /*
+     * The lodge. Tier one only: none of this is evidence, and per BRIEF.md the
+     * parlour table only starts mattering on the way back down.
+     *
+     * The reception talk stub that used to hang off 1A's door is gone. Rosie
+     * belongs at this desk and she arrives at step 11; until then nothing in
+     * the building talks, which is better than her voice coming out of a door
+     * upstairs.
+     */
+    {
+      id: 'lodge.tape',
+      description: 'Police tape across the footpath. Lifted in the middle.',
+      object: lodge.props.tape,
+    },
+    {
+      id: 'lodge.neon',
+      description: 'Neon over the entrance. Two lines. One tube is crook.',
+      object: lodge.props.neon,
+    },
+    {
+      id: 'lodge.steps',
+      description: 'Marble steps. Hollowed out in the middle.',
+      object: lodge.props.steps,
+    },
+    {
+      id: 'lodge.frontDoor',
+      description: 'Front door, standing open.',
+      object: lodge.props.frontDoor,
+    },
+    {
+      id: 'lodge.desk',
+      description: 'Reception desk. Nobody behind it.',
+      object: lodge.props.desk,
+    },
+    {
+      id: 'lodge.keyRack',
+      description: 'Pigeonholes. Most of them still have a key in them.',
+      object: lodge.props.keyRack,
+    },
+    {
+      id: 'lodge.ledger',
+      description: 'Guest ledger, open on the desk.',
+      object: lodge.props.ledger,
+    },
+    {
+      id: 'lodge.phone',
+      description: 'Bakelite phone. The cord is twisted right up.',
+      object: lodge.props.phone,
+    },
+    {
+      id: 'lodge.ashtray',
+      description: 'Ashtray on the desk. Full.',
+      object: lodge.props.ashtray,
+    },
+    {
+      id: 'lodge.stairs',
+      description: 'The staircase. Runner worn through on the treads.',
+      object: lodge.props.stairs,
+    },
+    {
+      id: 'lodge.armchair',
+      description: 'Armchairs round a low table.',
+      object: lodge.props.armchair,
+    },
+    {
+      id: 'lodge.parlourTable',
+      description: 'Low table in the middle of the parlour.',
+      object: lodge.props.parlourTable,
+    },
+    {
+      id: 'lodge.television',
+      description: 'Television in the corner. Off.',
+      object: lodge.props.television,
+    },
+    {
+      id: 'lodge.standardLamp',
+      description: 'Standard lamp. Shade gone yellow.',
+      object: lodge.props.standardLamp,
     },
   ]
 
@@ -357,7 +459,12 @@ async function main(): Promise<void> {
   }
   window.addEventListener('keydown', onEscape)
 
+  let elapsed = 0
+
   const loop = new Loop((delta) => {
+    elapsed += delta
+    lodge.update(elapsed)
+
     if (input.wasPressed('notebook')) {
       if (dialogue.isActive) {
         // Notebook waits. Finish or leave the conversation first.
@@ -431,6 +538,10 @@ async function main(): Promise<void> {
       dialogue,
       dialoguePanel,
       graphs,
+      lodge,
+      room,
+      solver,
+      lighting,
       clips: CLIPS,
       Vector3,
     })

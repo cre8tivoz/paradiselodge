@@ -28,6 +28,29 @@ export const PLAYER = {
 
   /** Collision radius of the vertical cylinder Miller occupies. */
   radius: 0.32,
+  /**
+   * Collision height of that cylinder. Head clearance, not eye height. Anything
+   * whose underside is above this is something Miller walks under, which is how
+   * a door lintel stops being a wall.
+   */
+  height: 1.84,
+  /**
+   * How high a step Miller takes without thinking about it. Shorter than this
+   * and it is walked over rather than walked into, which is the whole reason a
+   * stair tread is a floor and a threshold is not a wall.
+   *
+   * A Victorian stair rises about 0.18 a tread, so this clears one comfortably
+   * and refuses two.
+   */
+  stepUp: 0.28,
+  /**
+   * The same allowance downward. Beyond it there is no floor and the move is
+   * refused, so the edge of a landing stops Miller instead of dropping him.
+   * There is no gravity in this game and nothing ever falls.
+   */
+  stepDown: 0.34,
+  /** Exponential rate the view catches up after a step. Higher is stiffer. */
+  stepResponse: 15,
 
   leanAngle: 14 * DEG,
   leanOffset: 0.42,

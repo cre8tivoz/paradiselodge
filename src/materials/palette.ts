@@ -11,6 +11,19 @@ export const EXTERIOR = {
   neonPink: 0xff3e8a,
   neonCyan: 0x3ee8ff,
   tapeBlue: 0x1b3a6b,
+  /**
+   * Not in ASSETS.md, same class of assumption as the glove colour.
+   *
+   * `bitumen` is Fitzroy Street, which ASSETS.md asks to read wet even though
+   * it has not rained. `sky` is 3pm February and is deliberately pale and hot
+   * rather than a postcard blue, for the same reason `ROOM_1A.daylight` is
+   * blown: it is the exposure reference for every exterior shot.
+   *
+   * `signBoard` is the dark backing the neon is mounted on.
+   */
+  bitumen: 0x2b2b2e,
+  sky: 0xdfe6ea,
+  signBoard: 0x241f1c,
 } as const
 
 export const INTERIOR = {

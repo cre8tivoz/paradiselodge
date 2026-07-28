@@ -1,8 +1,6 @@
 import {
-  AmbientLight,
   Box3,
   BoxGeometry,
-  DirectionalLight,
   Group,
   Mesh,
   MeshBasicMaterial,
@@ -14,6 +12,7 @@ import {
 import { INTERIOR, ROOM_1A } from '../materials/palette.ts'
 import { buildCrystalProp } from './crystal.ts'
 import type { CrystalProp } from './crystal.ts'
+import type { WalkableRegion } from './collision.ts'
 
 /**
  * Room 1A. Corner room, upstairs. Fixed 3pm sun through the sash.
@@ -23,11 +22,23 @@ import type { CrystalProp } from './crystal.ts'
  *
  * Furniture is kit geometry against the locked palette. Crystal and the
  * examinable set live here.
+ *
+ * Built at the origin and placed into the lodge by the caller. Local -Z is the
+ * hall door and local +Z is the sash, so the placement rotation decides which
+ * way the room faces; collision boxes are baked after the transform is applied,
+ * which is why the placement is an argument and not something you set later.
  */
+
+/** Where the room sits in the lodge. */
+export interface Room1APlacement {
+  readonly position: Vector3
+  readonly rotationY: number
+}
 
 export interface Room1A {
   readonly group: Group
   readonly solids: Box3[]
+  readonly floors: WalkableRegion[]
   readonly spawn: Vector3
   /** Initial yaw so Miller faces into the room toward the window. */
   readonly spawnYaw: number
@@ -41,12 +52,13 @@ export interface Room1A {
     readonly sideTable: Object3D
     readonly sash: Object3D
     readonly sill: Object3D
+    readonly daylight: Object3D
     readonly frame: Object3D
     readonly magazines: Object3D
     readonly map: Object3D
     readonly note: Object3D
     readonly lighter: Object3D
-    /** Hall door leaf. Temporary talk stub until Rosie exists. */
+    /** Hall door leaf, standing open against the wall. */
     readonly door: Object3D
   }
 }
@@ -61,9 +73,17 @@ const WINDOW_WIDTH = 1.35
 const WINDOW_HEIGHT = 1.45
 const WINDOW_SILL = 0.95
 
-export function buildRoom1A(): Room1A {
+export function buildRoom1A(placement: Room1APlacement): Room1A {
   const group = new Group()
   const solids: Box3[] = []
+  const floors: WalkableRegion[] = []
+
+  // Placed first. Box3.setFromObject walks the matrix chain, so every solid
+  // baked below is already in world space.
+  group.name = 'room1a'
+  group.position.copy(placement.position)
+  group.rotation.y = placement.rotationY
+  group.updateMatrixWorld(true)
 
   const wallpaper = mat(ROOM_1A.wallpaperFloral, 0.92)
   const timber = mat(INTERIOR.timberDark, 0.78)
@@ -114,12 +134,21 @@ export function buildRoom1A(): Room1A {
     -halfD,
   )
 
-  // Door leaf in the opening. Talkable stub for the dialogue system until Rosie.
-  const door = box(DOOR_WIDTH - 0.04, DOOR_HEIGHT - 0.04, 0.04, timber)
+  /*
+   * Door leaf, standing open into the room.
+   *
+   * Hinged on a pivot at the jamb rather than rotated on its own centre, or the
+   * leaf swings through the wall it is hung on. It is not in `solids`: the
+   * doorway is the route in and out of 1A, and a leaf you can walk through is
+   * better than a room you cannot leave.
+   */
+  const door = new Group()
   door.name = 'door'
-  door.position.set(0, DOOR_HEIGHT / 2, -halfD + 0.03)
-  door.castShadow = true
-  door.receiveShadow = true
+  door.position.set(-doorHalf, 0, -halfD + 0.06)
+  door.rotation.y = -1.75
+  const leaf = box(DOOR_WIDTH - 0.04, DOOR_HEIGHT - 0.04, 0.04, timber)
+  leaf.position.set((DOOR_WIDTH - 0.04) / 2, DOOR_HEIGHT / 2, 0)
+  door.add(leaf)
   group.add(door)
 
   // South (+Z): wall with sash opening.
@@ -336,61 +365,39 @@ export function buildRoom1A(): Room1A {
    *
    * Unlit on purpose. MeshBasicMaterial ignores lights, so this is a blown
    * highlight rather than a surface, which is what a window is in a photograph
-   * exposed for the interior. The verandah proper arrives at step 11.
+   * exposed for the interior.
+   *
+   * Sized to the opening and pulled in close, because it is now outside a real
+   * building and a sixteen metre panel was visible from the street. It is still
+   * a cheat and it still goes at step 10, when the verandah stands where it is
+   * and the sky is the sky.
    */
   const daylight = new Mesh(
-    new PlaneGeometry(16, 12),
+    new PlaneGeometry(3.4, 3.0),
     new MeshBasicMaterial({ color: ROOM_1A.daylight }),
   )
   daylight.name = 'daylight'
-  daylight.position.set(0, 1.6, halfD + 2.6)
+  daylight.position.set(0, 1.5, halfD + 0.65)
   daylight.rotation.y = Math.PI
   daylight.castShadow = false
   daylight.receiveShadow = false
   group.add(daylight)
 
-  // --- Fixed 3pm sun ---
-  // Low and warm, through the verandah sash (+Z), crossing the bed.
-  /*
-   * Strong. The sash only lets a small patch in, and everything it does not
-   * touch is carried by fill, so the beam has to sit well clear of the fill or
-   * there is no beam, only a warm room.
-   */
-  const sun = new DirectionalLight(ROOM_1A.sunWarm, 8.0)
-  sun.position.set(2.2, 3.6, 7.2)
-  sun.target.position.set(-1.2, 0.5, 0.0)
-  sun.castShadow = true
-  sun.shadow.mapSize.set(2048, 2048)
-  sun.shadow.camera.left = -7
-  sun.shadow.camera.right = 7
-  sun.shadow.camera.top = 7
-  sun.shadow.camera.bottom = -7
-  sun.shadow.camera.near = 2
-  sun.shadow.camera.far = 24
-  sun.shadow.bias = -0.0005
-  sun.shadow.normalBias = 0.025
-  // Not quite full, so shade keeps a little shape instead of going flat.
-  sun.shadow.intensity = 0.85
-  group.add(sun)
-  group.add(sun.target)
+  // The sun and the fill used to live here. They are the whole scene's now, in
+  // render/lighting.ts, because a DirectionalLight was never room-scoped.
 
-  /*
-   * Baked-feel fill, standing in for the bounce we do not compute. Nicotine
-   * keeps the walls alive in shade, a little sun-warm on top so the room stays
-   * afternoon rather than dusk.
-   *
-   * Left high on purpose. Cutting fill to make the beam stand out is the wrong
-   * instinct and was tried: it buys contrast and spends the whole room, and a
-   * real sunlit interior is bright everywhere because light bounces. Raise the
-   * sun to separate the beam, do not lower this.
-   */
-  group.add(new AmbientLight(INTERIOR.nicotine, 0.72))
-  group.add(new AmbientLight(ROOM_1A.sunWarm, 0.28))
+  // Walkable floor, inside the skirtings. Baked in world space like the solids.
+  floors.push({
+    box: new Box3().setFromObject(floor),
+    surface: 'floorboard',
+  })
 
   return {
     group,
     solids,
-    // Just inside the door, facing the sash and the bed.
+    floors,
+    // Just inside the door, facing the sash and the bed. Local; the caller
+    // transforms it if it wants to drop Miller straight into the room.
     spawn: new Vector3(0, 0, -halfD + 0.55),
     // Yaw 0 looks down -Z (out the door). π faces the verandah sash.
     spawnYaw: Math.PI,
@@ -404,6 +411,7 @@ export function buildRoom1A(): Room1A {
       sideTable,
       sash,
       sill,
+      daylight,
       frame,
       magazines,
       map,

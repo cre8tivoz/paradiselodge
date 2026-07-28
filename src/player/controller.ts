@@ -9,8 +9,9 @@ import type { CollisionSolver } from '../world/collision.ts'
 /**
  * First person player controller. Walk, crouch, lean, mouse look.
  *
- * No body, no hands. There is no gravity and no jump: Miller walks on flat
- * authored floors and the design never asks him to leave one.
+ * No body, no hands. There is no gravity and no jump. Miller walks on authored
+ * floors and the solver hands him their height, so a staircase is a run of
+ * floors a step apart rather than anything falling.
  */
 export class PlayerController {
   /** Feet. The floor Miller is standing on is y = position.y. */
@@ -37,6 +38,13 @@ export class PlayerController {
   private running = false
   private surface: Surface = 'floorboard'
 
+  /**
+   * How far the view is still lagging behind the feet after a step. The feet
+   * land on the exact floor height so collision stays honest; the eye catches
+   * up over a few frames, or every stair tread is a jolt.
+   */
+  private stepOffset = 0
+
   private readonly scratchMove = new Vector3()
   private readonly scratchTarget = new Vector3()
   private readonly scratchCameraPos = new Vector3()
@@ -56,10 +64,21 @@ export class PlayerController {
     this.position.copy(spawn)
     this.yaw = spawnYaw
     this.eyeHeight = PLAYER.eyeHeightStand
+
+    // Start on the floor that is actually there, not the one the caller guessed.
+    const ground = this.solver.groundAt(spawn.x, spawn.z, spawn.y)
+    if (ground !== undefined) {
+      this.position.y = ground.y
+      this.surface = ground.surface
+    }
+
     this.syncCamera(0)
   }
 
-  /** The world tells the controller what it is walking on. */
+  /**
+   * Fallback surface, for anywhere the walkable set does not name one. A region
+   * that does name one wins, every frame.
+   */
   setSurface(surface: Surface): void {
     this.surface = surface
   }
@@ -166,7 +185,18 @@ export class PlayerController {
 
     const resolved = this.solver.resolve(this.position, this.scratchMove, PLAYER.radius)
     const travelled = Math.hypot(resolved.x - this.position.x, resolved.z - this.position.z)
+    const rise = resolved.y - this.position.y
     this.position.copy(resolved)
+
+    // Feet snap, eye trails. Clamped so a long run of treads cannot accumulate
+    // into the camera sitting in the floor.
+    this.stepOffset = clamp(this.stepOffset - rise, -0.45, 0.45)
+    this.stepOffset = approach(this.stepOffset, 0, PLAYER.stepResponse, delta)
+
+    const ground = this.solver.groundAt(resolved.x, resolved.z, resolved.y)
+    if (ground !== undefined) {
+      this.surface = ground.surface
+    }
 
     // Bleed off velocity that collision ate, so Miller does not keep building
     // speed into a wall and then shoot sideways the moment it ends.
@@ -232,10 +262,14 @@ export class PlayerController {
     this.scratchCameraPos
       .copy(this.position)
       .addScaledVector(this.scratchRight, this.lean * PLAYER.leanOffset)
-    this.scratchCameraPos.y = this.position.y + this.eyeHeight + bob
+    this.scratchCameraPos.y = this.position.y + this.eyeHeight + bob + this.stepOffset
 
     this.camera.position.copy(this.scratchCameraPos)
     this.euler.set(this.pitch, this.yaw, -this.lean * PLAYER.leanAngle)
     this.camera.quaternion.setFromEuler(this.euler)
   }
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max)
 }
