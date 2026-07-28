@@ -28,8 +28,9 @@ Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Cloudflare Pages is
 | 5. Case file, evidence IDs, notebook UI | Done. N opens. Examine files. Idempotent |
 | 6. Room 1A, geometry, fixed 3pm sun | Done. Kit furniture, sash, sun across the bed |
 | 7. Crystal + examine set | Done. Kit Crystal on the bed. Twelve room 1A clips. Six evidence IDs file here; diary and hammer wait for parlour and yard |
+| 8. Dialogue system | Done. Node graph, runner, DOM panel. Proven on the hall door with Rosie's reception lines (stub until step 9) |
 
-Everything from step 8 on is untouched.
+Everything from step 9 on is untouched.
 
 ### Added outside the build order
 
@@ -42,6 +43,7 @@ Everything from step 8 on is untouched.
 |---|---|
 | `src/world/greybox.ts` | Gone. Replaced by room 1A at step 6 |
 | The pointer lock prompt and its CSS | When the real HUD lands |
+| Hall door talk stub (`1a.door` → Rosie reception graph) | Step 9, when Rosie is rooted |
 | `window.__lodge` dev handle | Stays. It is `import.meta.env.DEV` only, and the capture tooling wants it |
 
 ---
@@ -232,8 +234,8 @@ Do not scaffold five scenes. Scene 1 is roughly 80% of the engine and everything
 5. Case file. Evidence IDs, notebook UI — **done**
 6. Room 1A. Geometry, fixed 3pm sun — **done**
 7. Crystal as a prop. Twelve room 1A clips. Six evidence IDs file here; diary and hammer wait — **done**
-8. Dialogue system — **next**
-9. Rosie at reception, then relocated to the parlour
+8. Dialogue system — **done**
+9. Rosie at reception, then relocated to the parlour — **next**
 10. Moretti. Navmesh follow, tag and bag
 11. Rest of the lodge. Street, entry, hallway, stairs, verandah, yard
 12. Objective gates, scene exit

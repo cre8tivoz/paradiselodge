@@ -18,6 +18,10 @@ import { Hud } from './ui/hud.ts'
 import { CaseFile } from './case/casefile.ts'
 import { Notebook } from './case/notebook.ts'
 import { getEvidence } from './case/evidence.ts'
+import { DialogueRunner } from './dialogue/runner.ts'
+import { DialoguePanel } from './dialogue/panel.ts'
+import { ROSIE_RECEPTION } from './dialogue/graphs/rosie-reception.ts'
+import type { DialogueGraph } from './dialogue/graph.ts'
 
 const canvasEl = document.querySelector<HTMLCanvasElement>('#game')
 const hudRootEl = document.querySelector<HTMLDivElement>('#hud')
@@ -197,7 +201,16 @@ async function main(): Promise<void> {
       evidenceId: lighter.id,
       object: room.props.lighter,
     },
+    {
+      id: '1a.door',
+      description: 'Door to the hall.',
+      // Stub until Rosie is rooted. Her reception lines prove the runner.
+      dialogueId: ROSIE_RECEPTION.id,
+      object: room.props.door,
+    },
   ]
+
+  const graphs = new Map<string, DialogueGraph>([[ROSIE_RECEPTION.id, ROSIE_RECEPTION]])
 
   const registry = new LookRegistry()
   for (const lookable of lookables) {
@@ -208,6 +221,8 @@ async function main(): Promise<void> {
   const hands = await Hands.create(camera)
   const caseFile = new CaseFile()
   const notebook = new Notebook(hudRoot, caseFile)
+  const dialogue = new DialogueRunner()
+  const dialoguePanel = new DialoguePanel(hudRoot, dialogue)
 
   const descriptions = new Map(lookables.map((entry) => [entry.id, entry.description]))
 
@@ -218,8 +233,25 @@ async function main(): Promise<void> {
   const targetWorld = new Vector3()
   let examiningId: string | undefined = undefined
 
+  function tryTalk(): boolean {
+    if (hands.isPlaying || notebook.isOpen || dialogue.isActive) {
+      return false
+    }
+    const target = look.target
+    if (target === undefined || target.dialogueId === undefined) {
+      return false
+    }
+    const graph = graphs.get(target.dialogueId)
+    if (graph === undefined) {
+      console.warn(`No dialogue graph "${target.dialogueId}"`)
+      return false
+    }
+    dialogue.start(graph)
+    return true
+  }
+
   function tryExamine(): void {
-    if (hands.isPlaying || notebook.isOpen) {
+    if (hands.isPlaying || notebook.isOpen || dialogue.isActive) {
       return
     }
     const target = look.target
@@ -263,16 +295,22 @@ async function main(): Promise<void> {
   events.on('evidence:filed', ({ evidenceId }) => {
     console.debug('filed', evidenceId)
   })
+  events.on('dialogue:start', ({ nodeId, speaker }) => {
+    console.debug('dialogue', speaker, nodeId)
+  })
+  events.on('dialogue:end', ({ nodeId }) => {
+    console.debug('dialogue end', nodeId)
+  })
 
   const prompt = document.createElement('div')
   prompt.className = 'prompt'
   hudRoot.appendChild(prompt)
 
   const CONTROLS =
-    'WASD move &middot; Shift run &middot; C or Ctrl crouch &middot; Q and E lean &middot; Hold F examine &middot; N case file'
+    'WASD move &middot; Shift run &middot; C or Ctrl crouch &middot; Q and E lean &middot; Hold F examine &middot; F talk &middot; N case file'
 
   const updatePrompt = (): void => {
-    if (input.isLocked || notebook.isOpen) {
+    if (input.isLocked || notebook.isOpen || dialoguePanel.isOpen) {
       prompt.style.display = 'none'
       return
     }
@@ -303,11 +341,13 @@ async function main(): Promise<void> {
 
   events.on('casefile:open', updatePrompt)
   events.on('casefile:close', updatePrompt)
+  events.on('dialogue:start', updatePrompt)
+  events.on('dialogue:end', updatePrompt)
 
   // Esc closes the notebook without going through Input, so we do not
-  // preventDefault on Escape and trap pointer lock.
+  // preventDefault on Escape and trap pointer lock. Dialogue handles its own Esc.
   const onEscape = (event: KeyboardEvent): void => {
-    if (event.code !== 'Escape' || !notebook.isOpen) {
+    if (event.code !== 'Escape' || dialoguePanel.isOpen || !notebook.isOpen) {
       return
     }
     notebook.close()
@@ -316,6 +356,12 @@ async function main(): Promise<void> {
 
   const loop = new Loop((delta) => {
     if (input.wasPressed('notebook')) {
+      if (dialogue.isActive) {
+        // Notebook waits. Finish or leave the conversation first.
+        input.endFrame()
+        renderer.render(scene, camera)
+        return
+      }
       if (hands.isPlaying) {
         hands.cancel()
         examiningId = undefined
@@ -323,13 +369,15 @@ async function main(): Promise<void> {
       notebook.toggle()
     }
 
-    if (notebook.isOpen) {
-      if (input.wasPressed('forward')) {
-        notebook.moveSelection(-1)
-      } else if (input.wasPressed('back')) {
-        notebook.moveSelection(1)
+    if (notebook.isOpen || dialogue.isActive) {
+      if (notebook.isOpen) {
+        if (input.wasPressed('forward')) {
+          notebook.moveSelection(-1)
+        } else if (input.wasPressed('back')) {
+          notebook.moveSelection(1)
+        }
       }
-      // Still render. Do not move, look, or examine under the book.
+      // Still render. Do not move, look, or examine under the book or talk.
       hands.update(delta)
       renderer.render(scene, camera)
       input.endFrame()
@@ -340,13 +388,16 @@ async function main(): Promise<void> {
     look.update()
 
     // Hold to examine. Press starts it; release before the clip ends cancels.
+    // Talkables take the same key as a press, not a hold.
     if (hands.isPlaying) {
       if (!input.isHeld('examine')) {
         hands.cancel()
         examiningId = undefined
       }
     } else if (input.wasPressed('examine')) {
-      tryExamine()
+      if (!tryTalk()) {
+        tryExamine()
+      }
     }
 
     hands.update(delta)
@@ -374,6 +425,9 @@ async function main(): Promise<void> {
       hands,
       caseFile,
       notebook,
+      dialogue,
+      dialoguePanel,
+      graphs,
       clips: CLIPS,
       Vector3,
     })

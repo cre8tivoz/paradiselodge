@@ -10,6 +10,9 @@ import type { Object3D } from 'three'
  * `examine`, when present, is tier two. Holding the examine input on this
  * object plays the hand animation and writes that line.
  *
+ * `dialogueId`, when present, means F talks instead of examining. The id names
+ * a graph registered with the dialogue runner.
+ *
  * `clipId`, when present with `examine`, names a clip from `player/hands/clips`.
  * Resolved at play time so this module stays free of the hands internals.
  *
@@ -20,6 +23,7 @@ export interface Lookable {
   readonly id: string
   readonly description: string
   readonly examine?: string
+  readonly dialogueId?: string
   readonly clipId?: string
   readonly evidenceId?: string
   readonly object: Object3D

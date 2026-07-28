@@ -44,6 +44,8 @@ export interface Room1A {
     readonly map: Object3D
     readonly note: Object3D
     readonly lighter: Object3D
+    /** Hall door leaf. Temporary talk stub until Rosie exists. */
+    readonly door: Object3D
   }
 }
 
@@ -109,6 +111,14 @@ export function buildRoom1A(): Room1A {
     DOOR_HEIGHT + (HEIGHT - DOOR_HEIGHT) / 2,
     -halfD,
   )
+
+  // Door leaf in the opening. Talkable stub for the dialogue system until Rosie.
+  const door = box(DOOR_WIDTH - 0.04, DOOR_HEIGHT - 0.04, 0.04, timber)
+  door.name = 'door'
+  door.position.set(0, DOOR_HEIGHT / 2, -halfD + 0.03)
+  door.castShadow = true
+  door.receiveShadow = true
+  group.add(door)
 
   // South (+Z): wall with sash opening.
   const winHalf = WINDOW_WIDTH / 2
@@ -329,6 +339,7 @@ export function buildRoom1A(): Room1A {
       map,
       note,
       lighter,
+      door,
     },
   }
 }

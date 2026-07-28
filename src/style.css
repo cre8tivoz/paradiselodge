@@ -159,6 +159,75 @@ body {
   line-height: 1.55;
 }
 
+/*
+ * Dialogue. Bottom of the frame, over the canvas. First person stays underneath.
+ * Same nicotine / timber ink as the notebook. No cards, no glow.
+ */
+.dialogue {
+  position: absolute;
+  left: 50%;
+  bottom: 6%;
+  transform: translateX(-50%);
+  width: min(42rem, 88vw);
+  display: none;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 1rem 1.25rem 0.85rem;
+  background: rgb(196 179 147 / 94%);
+  color: #3b2a1e;
+  border: 1px solid #3b2a1e;
+  pointer-events: auto;
+}
+
+.dialogue.is-open {
+  display: flex;
+}
+
+.dialogue-speaker {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.dialogue-line {
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.dialogue-choices {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
+}
+
+.dialogue-choices button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid rgb(59 42 30 / 35%);
+  background: rgb(255 255 255 / 25%);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.dialogue-choices button:hover,
+.dialogue-choices button:focus-visible {
+  background: rgb(59 42 30 / 12%);
+  outline: none;
+}
+
+.dialogue-hint {
+  font-size: 0.7rem;
+  opacity: 0.6;
+  margin-top: 0.15rem;
+}
+
 /* Scaffold only. Goes when the real HUD lands. */
 .prompt {
   position: absolute;
