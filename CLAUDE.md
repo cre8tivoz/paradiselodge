@@ -24,9 +24,10 @@ Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Cloudflare Pages is
 | 2. Look raycast, one-line description | Done |
 | 3. Hand rig, gloves, one examine animation | Done |
 | 3b. Hand mesh | Done. Blender segmented glTF at `public/models/miller-hand.glb` |
-| 4. Examine tier two, held input | Done. Hold F on an examinable; release cancels |
+| 4. Examine tier two, held input | Done. Confirmed in browser. Hold F; release cancels |
+| 5. Case file, evidence IDs, notebook UI | Done. N opens. Examine files. Idempotent |
 
-Everything from step 5 on is untouched.
+Everything from step 6 on is untouched.
 
 ### Added outside the build order
 
@@ -227,8 +228,8 @@ Do not scaffold five scenes. Scene 1 is roughly 80% of the engine and everything
 2. Look raycast and the one-line description — **done**
 3. Hand rig and gloves. One contextual examine animation, proven on a single object — **done**
 4. Examine tier two, held input — **done**
-5. Case file. Evidence IDs, notebook UI — **next**
-6. Room 1A. Geometry, fixed 3pm sun
+5. Case file. Evidence IDs, notebook UI — **done**
+6. Room 1A. Geometry, fixed 3pm sun — **next**
 7. Crystal as a prop. All eight examine objects, all animations
 8. Dialogue system
 9. Rosie at reception, then relocated to the parlour

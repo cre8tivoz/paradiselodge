@@ -14,6 +14,8 @@ import { LookRaycaster } from './interact/look.ts'
 import { Hands } from './player/hands/hands.ts'
 import { TURN_OVER } from './player/hands/clips.ts'
 import { Hud } from './ui/hud.ts'
+import { CaseFile } from './case/casefile.ts'
+import { Notebook } from './case/notebook.ts'
 
 const canvasEl = document.querySelector<HTMLCanvasElement>('#game')
 const hudRootEl = document.querySelector<HTMLDivElement>('#hud')
@@ -57,7 +59,8 @@ async function main(): Promise<void> {
   /*
    * Tier one and tier two on the test props. Flat and factual, per the writing
    * rules. These are grey boxes, so they describe grey boxes. They go when
-   * room 1A lands at step 6.
+   * room 1A lands at step 6. The frame already files real evidence id `frame`
+   * so the notebook can be proven before the real prop exists.
    */
   const lookables: Lookable[] = [
     {
@@ -80,6 +83,7 @@ async function main(): Promise<void> {
       description: 'Something flat lying face down on the block.',
       examine:
         "Dust on the block around it. It sat face up for a long time before someone turned it over.",
+      evidenceId: 'frame',
       object: greybox.props.frame,
     },
     {
@@ -96,6 +100,8 @@ async function main(): Promise<void> {
 
   const look = new LookRaycaster(camera, registry, world)
   const hands = await Hands.create(camera)
+  const caseFile = new CaseFile()
+  const notebook = new Notebook(hudRoot, caseFile)
 
   const descriptions = new Map(lookables.map((entry) => [entry.id, entry.description]))
 
@@ -107,7 +113,7 @@ async function main(): Promise<void> {
   let examiningId: string | undefined = undefined
 
   function tryExamine(): void {
-    if (hands.isPlaying) {
+    if (hands.isPlaying || notebook.isOpen) {
       return
     }
     const target = look.target
@@ -127,6 +133,9 @@ async function main(): Promise<void> {
     if (lookable?.examine !== undefined) {
       hud.showExamine(objectId, lookable.examine)
     }
+    if (lookable?.evidenceId !== undefined) {
+      caseFile.file(lookable.evidenceId, objectId)
+    }
     examiningId = undefined
   }
 
@@ -138,16 +147,19 @@ async function main(): Promise<void> {
   events.on('player:state', ({ stance }) => {
     console.debug('stance', stance)
   })
+  events.on('evidence:filed', ({ evidenceId }) => {
+    console.debug('filed', evidenceId)
+  })
 
   const prompt = document.createElement('div')
   prompt.className = 'prompt'
   hudRoot.appendChild(prompt)
 
   const CONTROLS =
-    'WASD move &middot; Shift run &middot; C or Ctrl crouch &middot; Q and E lean &middot; Hold F examine'
+    'WASD move &middot; Shift run &middot; C or Ctrl crouch &middot; Q and E lean &middot; Hold F examine &middot; N case file'
 
   const updatePrompt = (): void => {
-    if (input.isLocked) {
+    if (input.isLocked || notebook.isOpen) {
       prompt.style.display = 'none'
       return
     }
@@ -176,7 +188,41 @@ async function main(): Promise<void> {
     hud.clearExamine()
   })
 
+  events.on('casefile:open', updatePrompt)
+  events.on('casefile:close', updatePrompt)
+
+  // Esc closes the notebook without going through Input, so we do not
+  // preventDefault on Escape and trap pointer lock.
+  const onEscape = (event: KeyboardEvent): void => {
+    if (event.code !== 'Escape' || !notebook.isOpen) {
+      return
+    }
+    notebook.close()
+  }
+  window.addEventListener('keydown', onEscape)
+
   const loop = new Loop((delta) => {
+    if (input.wasPressed('notebook')) {
+      if (hands.isPlaying) {
+        hands.cancel()
+        examiningId = undefined
+      }
+      notebook.toggle()
+    }
+
+    if (notebook.isOpen) {
+      if (input.wasPressed('forward')) {
+        notebook.moveSelection(-1)
+      } else if (input.wasPressed('back')) {
+        notebook.moveSelection(1)
+      }
+      // Still render. Do not move, look, or examine under the book.
+      hands.update(delta)
+      renderer.render(scene, camera)
+      input.endFrame()
+      return
+    }
+
     player.update(delta)
     look.update()
 
@@ -213,6 +259,8 @@ async function main(): Promise<void> {
       registry,
       hud,
       hands,
+      caseFile,
+      notebook,
       clips: { TURN_OVER },
       Vector3,
     })

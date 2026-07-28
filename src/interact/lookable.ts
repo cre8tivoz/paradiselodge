@@ -8,13 +8,16 @@ import type { Object3D } from 'three'
  * player that a thing matters.
  *
  * `examine`, when present, is tier two. Holding the examine input on this
- * object plays the hand animation and writes that line. Only tier two will
- * create evidence, once the case file lands at step 5.
+ * object plays the hand animation and writes that line.
+ *
+ * `evidenceId`, when present, is the case-file ID filed on a completed examine.
+ * Only tier two creates evidence.
  */
 export interface Lookable {
   readonly id: string
   readonly description: string
   readonly examine?: string
+  readonly evidenceId?: string
   readonly object: Object3D
 }
 

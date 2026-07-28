@@ -15,6 +15,7 @@ export type Action =
   | 'leanLeft'
   | 'leanRight'
   | 'examine'
+  | 'notebook'
 
 const BINDINGS: ReadonlyMap<string, Action> = new Map([
   ['KeyW', 'forward'],
@@ -32,6 +33,7 @@ const BINDINGS: ReadonlyMap<string, Action> = new Map([
   ['KeyQ', 'leanLeft'],
   ['KeyE', 'leanRight'],
   ['KeyF', 'examine'],
+  ['KeyN', 'notebook'],
 ])
 
 export class Input {

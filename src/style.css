@@ -57,6 +57,108 @@ body {
   bottom: 11%;
 }
 
+/*
+ * Case notebook. Paper over the canvas. Palette tokens as CSS hex: nicotine
+ * page, timber ink. No cards, no glow, no purple.
+ */
+.notebook {
+  position: absolute;
+  inset: 8% 12%;
+  display: none;
+  flex-direction: column;
+  background: #c4b393;
+  color: #3b2a1e;
+  border: 1px solid #3b2a1e;
+  box-shadow: 0 12px 40px rgb(0 0 0 / 55%);
+  pointer-events: auto;
+}
+
+.notebook.is-open {
+  display: flex;
+}
+
+.notebook-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem 0.75rem;
+  border-bottom: 1px solid rgb(59 42 30 / 35%);
+}
+
+.notebook-header h1 {
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.notebook-header p {
+  font-size: 0.7rem;
+  opacity: 0.65;
+}
+
+.notebook-body {
+  display: grid;
+  grid-template-columns: minmax(10rem, 34%) 1fr;
+  min-height: 0;
+  flex: 1;
+}
+
+.notebook-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.75rem 0;
+  border-right: 1px solid rgb(59 42 30 / 25%);
+  overflow: auto;
+}
+
+.notebook-item {
+  padding: 0.55rem 1.25rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.notebook-item:hover,
+.notebook-item:focus-visible {
+  background: rgb(59 42 30 / 8%);
+  outline: none;
+}
+
+.notebook-item.is-selected {
+  background: rgb(59 42 30 / 14%);
+  font-weight: 600;
+}
+
+.notebook-empty {
+  padding: 0.75rem 1.25rem;
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+.notebook-detail {
+  padding: 1rem 1.35rem 1.25rem;
+  overflow: auto;
+}
+
+.notebook-detail h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.85rem;
+}
+
+.notebook-look {
+  font-size: 0.85rem;
+  opacity: 0.75;
+  margin-bottom: 0.85rem;
+  line-height: 1.45;
+}
+
+.notebook-examine {
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
 /* Scaffold only. Goes when the real HUD lands. */
 .prompt {
   position: absolute;
