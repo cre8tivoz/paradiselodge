@@ -72,3 +72,22 @@ body {
   letter-spacing: 0.06em;
   text-transform: none;
 }
+
+/*
+ * Pointer lock was refused, so this has to stay up while the player drags to
+ * look. No scrim, out of the way, top of frame so it is clear of the look line.
+ */
+.prompt.is-hint {
+  inset: 0 0 auto 0;
+  padding: 0.9rem 1rem;
+  gap: 0.35rem;
+  background: none;
+  font-size: 0.7rem;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 90%);
+  opacity: 0.75;
+}
+
+.prompt-note {
+  font-size: 0.65rem;
+  opacity: 0.45;
+}

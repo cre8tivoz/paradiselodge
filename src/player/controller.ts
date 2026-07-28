@@ -83,7 +83,7 @@ export class PlayerController {
   }
 
   private updateLook(_delta: number): void {
-    if (!this.input.isLocked) {
+    if (!this.input.isLooking) {
       return
     }
     const look = this.input.lookDelta

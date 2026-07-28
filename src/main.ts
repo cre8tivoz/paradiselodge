@@ -78,14 +78,30 @@ events.on('player:state', ({ stance }) => {
 
 const prompt = document.createElement('div')
 prompt.className = 'prompt'
-prompt.innerHTML =
-  '<strong>Click to look around</strong>' +
-  '<span>WASD move &middot; Shift run &middot; C or Ctrl crouch &middot; Q and E lean &middot; Esc release</span>'
 hudRoot.appendChild(prompt)
 
+const CONTROLS =
+  'WASD move &middot; Shift run &middot; C or Ctrl crouch &middot; Q and E lean'
+
 const updatePrompt = (): void => {
-  prompt.style.display = input.isLocked ? 'none' : 'flex'
+  if (input.isLocked) {
+    prompt.style.display = 'none'
+    return
+  }
+  prompt.style.display = 'flex'
+  // Some documents refuse pointer lock outright. Say so and name the fallback
+  // rather than leaving the player clicking a canvas that will never lock.
+  // Once refused it becomes a quiet bar instead of a full screen scrim, since
+  // it has to stay up the whole time the player is dragging to look.
+  prompt.classList.toggle('is-hint', input.isLockRefused)
+  prompt.innerHTML = input.isLockRefused
+    ? '<strong>Drag to look around</strong>' +
+      `<span>${CONTROLS}</span>` +
+      '<span class="prompt-note">This browser refused pointer lock, so hold the left button to turn.</span>'
+    : `<strong>Click to look around</strong><span>${CONTROLS} &middot; Esc release</span>`
 }
+
+input.onLockRefused = updatePrompt
 document.addEventListener('pointerlockchange', updatePrompt)
 updatePrompt()
 
