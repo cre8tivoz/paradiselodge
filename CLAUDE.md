@@ -27,8 +27,9 @@ Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Cloudflare Pages is
 | 4. Examine tier two, held input | Done. Confirmed in browser. Hold F; release cancels |
 | 5. Case file, evidence IDs, notebook UI | Done. N opens. Examine files. Idempotent |
 | 6. Room 1A, geometry, fixed 3pm sun | Done. Kit furniture, sash, sun across the bed |
+| 7. Crystal + examine set | Done. Kit Crystal on the bed. Twelve room 1A clips. Six evidence IDs file here; diary and hammer wait for parlour and yard |
 
-Everything from step 7 on is untouched.
+Everything from step 8 on is untouched.
 
 ### Added outside the build order
 
@@ -230,8 +231,8 @@ Do not scaffold five scenes. Scene 1 is roughly 80% of the engine and everything
 4. Examine tier two, held input — **done**
 5. Case file. Evidence IDs, notebook UI — **done**
 6. Room 1A. Geometry, fixed 3pm sun — **done**
-7. Crystal as a prop. All eight examine objects, all animations — **next**
-8. Dialogue system
+7. Crystal as a prop. Twelve room 1A clips. Six evidence IDs file here; diary and hammer wait — **done**
+8. Dialogue system — **next**
 9. Rosie at reception, then relocated to the parlour
 10. Moretti. Navmesh follow, tag and bag
 11. Rest of the lodge. Street, entry, hallway, stairs, verandah, yard

@@ -10,6 +10,8 @@ import {
   Vector3,
 } from 'three'
 import { INTERIOR, ROOM_1A } from '../materials/palette.ts'
+import { buildCrystalProp } from './crystal.ts'
+import type { CrystalProp } from './crystal.ts'
 
 /**
  * Room 1A. Corner room, upstairs. Fixed 3pm sun through the sash.
@@ -17,9 +19,8 @@ import { INTERIOR, ROOM_1A } from '../materials/palette.ts'
  * BRIEF.md: the light is the point. Everything in here happened at 2am in the
  * dark. Whoever arranged it never saw it like this.
  *
- * Furniture is kit geometry against the locked palette. Crystal and the full
- * examine set land at step 7. The photo frame is already examinable so the
- * case file keeps working in this room.
+ * Furniture is kit geometry against the locked palette. Crystal and the
+ * examinable set live here.
  */
 
 export interface Room1A {
@@ -28,9 +29,11 @@ export interface Room1A {
   readonly spawn: Vector3
   /** Initial yaw so Miller faces into the room toward the window. */
   readonly spawnYaw: number
+  readonly crystal: CrystalProp
   readonly props: {
     readonly bed: Object3D
     readonly dresser: Object3D
+    readonly drawer: Object3D
     readonly wardrobe: Object3D
     readonly chair: Object3D
     readonly sideTable: Object3D
@@ -38,7 +41,9 @@ export interface Room1A {
     readonly sill: Object3D
     readonly frame: Object3D
     readonly magazines: Object3D
+    readonly map: Object3D
     readonly note: Object3D
+    readonly lighter: Object3D
   }
 }
 
@@ -172,6 +177,12 @@ export function buildRoom1A(): Room1A {
   bed.position.set(-1.45, 0, 0.15)
   addGroupSolid(group, solids, bed)
 
+  // Crystal on the bed. Head to the headboard, face turned toward the sash.
+  const crystal = buildCrystalProp()
+  crystal.root.position.set(-1.45, 0.58, 0.05)
+  crystal.root.rotation.y = Math.PI
+  group.add(crystal.root)
+
   // Dresser opposite the bed, under the picture rail on the east wall.
   const dresser = new Group()
   dresser.name = 'dresser'
@@ -179,7 +190,14 @@ export function buildRoom1A(): Room1A {
   dresser.position.set(1.7, 0, -0.85)
   addGroupSolid(group, solids, dresser)
 
-  // Frame on the dresser — face down for the examine we already have.
+  // Top drawer face — examinable on its own.
+  const drawer = box(1.05, 0.18, 0.02, timber)
+  drawer.name = 'drawer'
+  drawer.position.set(1.7, 0.62, -0.85 - 0.24)
+  drawer.castShadow = true
+  group.add(drawer)
+
+  // Frame on the dresser — face down.
   const frame = box(0.17, 0.022, 0.125, timber)
   frame.name = 'frame'
   frame.position.set(1.55, 0.862, -0.85)
@@ -188,7 +206,7 @@ export function buildRoom1A(): Room1A {
   frame.receiveShadow = true
   group.add(frame)
 
-  // Travel pile: magazines and the note. Lookable only until step 7.
+  // Travel pile: magazines, map with pins, note.
   const magazines = box(0.28, 0.04, 0.36, mat(ROOM_1A.crystalDress, 0.7))
   magazines.name = 'magazines'
   magazines.position.set(1.85, 0.875, -0.72)
@@ -196,11 +214,22 @@ export function buildRoom1A(): Room1A {
   magazines.castShadow = true
   group.add(magazines)
 
+  const map = box(0.34, 0.005, 0.28, mat(0xd2c4a8, 0.85))
+  map.name = 'map'
+  map.position.set(1.95, 0.855, -1.0)
+  map.rotation.y = 0.15
+  map.castShadow = true
+  group.add(map)
+
   const note = box(0.12, 0.002, 0.16, mat(ROOM_1A.crystalDress, 0.85))
   note.name = 'note'
   note.position.set(1.72, 0.855, -0.98)
   note.rotation.y = 0.4
   group.add(note)
+
+  // Lighter on the side table.
+  const lighter = box(0.025, 0.06, 0.018, mat(0xc0a060, 0.4))
+  lighter.name = 'lighter'
 
   // Wardrobe in the far corner.
   const wardrobe = new Group()
@@ -223,6 +252,11 @@ export function buildRoom1A(): Room1A {
   sideTable.add(placed(box(0.42, 0.55, 0.42, timber), 0, 0.275, 0))
   sideTable.position.set(-0.55, 0, -1.35)
   addGroupSolid(group, solids, sideTable)
+
+  lighter.position.set(-0.55, 0.58, -1.35)
+  lighter.rotation.z = 0.2
+  lighter.castShadow = true
+  group.add(lighter)
 
   // Sash: two sliding panes, open a hand's width. Sill is the lookable ledge.
   const sash = new Group()
@@ -280,9 +314,11 @@ export function buildRoom1A(): Room1A {
     spawn: new Vector3(0, 0, -halfD + 0.55),
     // Yaw 0 looks down -Z (out the door). π faces the verandah sash.
     spawnYaw: Math.PI,
+    crystal,
     props: {
       bed,
       dresser,
+      drawer,
       wardrobe,
       chair,
       sideTable,
@@ -290,7 +326,9 @@ export function buildRoom1A(): Room1A {
       sill,
       frame,
       magazines,
+      map,
       note,
+      lighter,
     },
   }
 }

@@ -12,10 +12,12 @@ import { LookRegistry } from './interact/lookable.ts'
 import type { Lookable } from './interact/lookable.ts'
 import { LookRaycaster } from './interact/look.ts'
 import { Hands } from './player/hands/hands.ts'
-import { TURN_OVER } from './player/hands/clips.ts'
+import { CLIPS, getClip } from './player/hands/clips.ts'
+import type { ClipId } from './player/hands/clips.ts'
 import { Hud } from './ui/hud.ts'
 import { CaseFile } from './case/casefile.ts'
 import { Notebook } from './case/notebook.ts'
+import { getEvidence } from './case/evidence.ts'
 
 const canvasEl = document.querySelector<HTMLCanvasElement>('#game')
 const hudRootEl = document.querySelector<HTMLDivElement>('#hud')
@@ -58,10 +60,27 @@ async function main(): Promise<void> {
   player.setSurface('floorboard')
 
   /*
-   * Look and examine copy for room 1A props. Writing rules apply. Crystal and
-   * the rest of the examine set land at step 7; the frame already files so the
-   * case notebook stays proveable.
+   * Look and examine copy for room 1A. Writing rules apply. Register Crystal's
+   * body first, then head / needle / sling so their meshes win the raycast map.
+   * Diary and hammer wait for the parlour and the yard.
    */
+  const needle = getEvidence('needle')
+  const temple = getEvidence('temple')
+  const sling = getEvidence('sling')
+  const frame = getEvidence('frame')
+  const sill = getEvidence('sill')
+  const lighter = getEvidence('lighter')
+  if (
+    needle === undefined ||
+    temple === undefined ||
+    sling === undefined ||
+    frame === undefined ||
+    sill === undefined ||
+    lighter === undefined
+  ) {
+    throw new Error('Scene 1 evidence catalogue is missing a room 1A entry')
+  }
+
   const lookables: Lookable[] = [
     {
       id: '1a.bed',
@@ -69,13 +88,51 @@ async function main(): Promise<void> {
       object: room.props.bed,
     },
     {
+      id: '1a.crystal',
+      description: 'A woman on the bed. Cream dress.',
+      object: room.crystal.root,
+    },
+    {
+      id: '1a.temple',
+      description: temple.look,
+      examine: temple.examine,
+      clipId: 'turnHead',
+      evidenceId: temple.id,
+      object: room.crystal.head,
+    },
+    {
+      id: '1a.needle',
+      description: needle.look,
+      examine: needle.examine,
+      clipId: 'leanIn',
+      evidenceId: needle.id,
+      object: room.crystal.needle,
+    },
+    {
+      id: '1a.sling',
+      description: sling.look,
+      examine: sling.examine,
+      clipId: 'liftDrop',
+      evidenceId: sling.id,
+      object: room.crystal.sling,
+    },
+    {
       id: '1a.dresser',
       description: 'Timber dresser. Things on top of it.',
       object: room.props.dresser,
     },
     {
+      id: '1a.drawer',
+      description: 'Top drawer. Shut.',
+      examine: 'Socks. A spare toothbrush. Nothing with a name on it.',
+      clipId: 'openLookClose',
+      object: room.props.drawer,
+    },
+    {
       id: '1a.wardrobe',
       description: 'Tall wardrobe. Doors shut.',
+      examine: 'Three dresses. One empty hanger. A pair of sandals on the floor.',
+      clipId: 'openLookClose',
       object: room.props.wardrobe,
     },
     {
@@ -91,30 +148,54 @@ async function main(): Promise<void> {
     {
       id: '1a.sash',
       description: "Sash window, open a hand's width.",
+      examine: 'It gives another inch. Stops. Paint on the runners is old.',
+      clipId: 'pushSash',
       object: room.props.sash,
     },
     {
       id: '1a.sill',
       description: 'Windowsill. Timber, worn.',
+      examine: sill.examine,
+      clipId: 'sightSill',
+      evidenceId: sill.id,
       object: room.props.sill,
     },
     {
       id: '1a.frame',
       description: 'Photo frame lying face down on the dresser.',
-      examine:
-        'Crystal and a man, black shirt, ponytail. Dust ring shows it lay face down for weeks.',
-      evidenceId: 'frame',
+      examine: frame.examine,
+      clipId: 'turnOver',
+      evidenceId: frame.id,
       object: room.props.frame,
     },
     {
       id: '1a.magazines',
       description: 'Travel magazines. Covers faded.',
+      examine: 'Airlines. Beaches. Someone has dog-eared half of them.',
+      clipId: 'fanMagazines',
       object: room.props.magazines,
+    },
+    {
+      id: '1a.map',
+      description: 'A map. Pins in it.',
+      examine: 'Pins in cities. None of them labelled. Do not move them.',
+      clipId: 'leanMap',
+      object: room.props.map,
     },
     {
       id: '1a.note',
       description: 'A note, her handwriting.',
+      examine: "fly out April 6th! Can't wait!",
+      clipId: 'liftNote',
       object: room.props.note,
+    },
+    {
+      id: '1a.lighter',
+      description: lighter.look,
+      examine: lighter.examine,
+      clipId: 'turnLighter',
+      evidenceId: lighter.id,
+      object: room.props.lighter,
     },
   ]
 
@@ -145,11 +226,18 @@ async function main(): Promise<void> {
     if (target === undefined || target.examine === undefined) {
       return
     }
+    if (target.clipId === undefined || !isClipId(target.clipId)) {
+      return
+    }
     examiningId = target.id
     hud.clearExamine()
     target.object.getWorldPosition(targetWorld)
     emit('examine:start', { objectId: target.id })
-    hands.play(TURN_OVER, target.id, targetWorld)
+    hands.play(getClip(target.clipId), target.id, targetWorld)
+  }
+
+  function isClipId(id: string): id is ClipId {
+    return Object.prototype.hasOwnProperty.call(CLIPS, id)
   }
 
   hands.onComplete = (objectId) => {
@@ -286,7 +374,7 @@ async function main(): Promise<void> {
       hands,
       caseFile,
       notebook,
-      clips: { TURN_OVER },
+      clips: CLIPS,
       Vector3,
     })
   }

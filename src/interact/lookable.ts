@@ -10,6 +10,9 @@ import type { Object3D } from 'three'
  * `examine`, when present, is tier two. Holding the examine input on this
  * object plays the hand animation and writes that line.
  *
+ * `clipId`, when present with `examine`, names a clip from `player/hands/clips`.
+ * Resolved at play time so this module stays free of the hands internals.
+ *
  * `evidenceId`, when present, is the case-file ID filed on a completed examine.
  * Only tier two creates evidence.
  */
@@ -17,6 +20,7 @@ export interface Lookable {
   readonly id: string
   readonly description: string
   readonly examine?: string
+  readonly clipId?: string
   readonly evidenceId?: string
   readonly object: Object3D
 }
