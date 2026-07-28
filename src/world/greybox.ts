@@ -22,6 +22,11 @@ export interface Greybox {
   readonly group: Group
   readonly solids: Box3[]
   readonly spawn: Vector3
+  /**
+   * Named so something can be registered as lookable without world/ having to
+   * know that interact/ exists. main.ts wires the two together.
+   */
+  readonly props: Record<string, Mesh>
 }
 
 const ROOM_WIDTH = 12
@@ -57,16 +62,18 @@ export function buildGreybox(): Greybox {
   addSolidBox(group, solids, wallMat, t, WALL_HEIGHT, ROOM_DEPTH, halfW, WALL_HEIGHT / 2, 0)
 
   // Pillar with a 0.9 gap to the north wall. Tests sliding and lean-around.
-  addSolidBox(group, solids, propMat, 0.8, WALL_HEIGHT, 0.8, 2.5, WALL_HEIGHT / 2, -halfD + 0.3 + 0.9 + 0.4)
+  const pillar = addSolidBox(
+    group, solids, propMat, 0.8, WALL_HEIGHT, 0.8, 2.5, WALL_HEIGHT / 2, -halfD + 0.3 + 0.9 + 0.4,
+  )
 
   // Waist-high block. Crouch behind it, lean over it.
-  addSolidBox(group, solids, propAltMat, 2.4, 0.9, 0.6, -3, 0.45, -1.5)
+  const block = addSolidBox(group, solids, propAltMat, 2.4, 0.9, 0.6, -3, 0.45, -1.5)
 
   // A one metre cube, for judging scale and eye height against.
-  addSolidBox(group, solids, propMat, 1, 1, 1, -1.5, 0.5, 2.5)
+  const cube = addSolidBox(group, solids, propMat, 1, 1, 1, -1.5, 0.5, 2.5)
 
   // Doorway-width slot: two stubs 0.85 apart.
-  addSolidBox(group, solids, propAltMat, 0.4, WALL_HEIGHT, 2, 4.5, WALL_HEIGHT / 2, 2)
+  const jambLeft = addSolidBox(group, solids, propAltMat, 0.4, WALL_HEIGHT, 2, 4.5, WALL_HEIGHT / 2, 2)
   addSolidBox(group, solids, propAltMat, 0.4, WALL_HEIGHT, 2, 4.5 + 0.4 + 0.85, WALL_HEIGHT / 2, 2)
 
   // One directional light and a flat ambient. Per CLAUDE.md that is the whole
@@ -84,7 +91,12 @@ export function buildGreybox(): Greybox {
   group.add(sun)
   group.add(new AmbientLight(0xffffff, 1.1))
 
-  return { group, solids, spawn: new Vector3(0, 0, 3) }
+  return {
+    group,
+    solids,
+    spawn: new Vector3(0, 0, 3),
+    props: { pillar, block, cube, jambLeft },
+  }
 }
 
 function addSolidBox(
@@ -97,11 +109,12 @@ function addSolidBox(
   x: number,
   y: number,
   z: number,
-): void {
+): Mesh {
   const mesh = new Mesh(new BoxGeometry(width, height, depth), material)
   mesh.position.set(x, y, z)
   mesh.castShadow = true
   mesh.receiveShadow = true
   group.add(mesh)
   solids.push(new Box3().setFromObject(mesh))
+  return mesh
 }

@@ -72,3 +72,13 @@ export const LOOP = {
 export const RENDER = {
   maxPixelRatio: 2,
 } as const
+
+export const INTERACT = {
+  /**
+   * How far Miller can look at something. Arm's reach and a bit. Short enough
+   * that he has to walk up to a thing, which is most of the pacing.
+   */
+  lookRange: 3,
+  /** Seconds for the description line to fade in and out. */
+  descriptionFade: 0.18,
+} as const

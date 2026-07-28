@@ -30,6 +30,28 @@ body {
   pointer-events: none;
 }
 
+/*
+ * The look description. Bottom centre, quiet, no box and no icon. It reads the
+ * same for every object in the game, because look never signals importance.
+ */
+.look-line {
+  position: absolute;
+  left: 50%;
+  bottom: 12%;
+  transform: translateX(-50%);
+  max-width: min(46ch, 80vw);
+  text-align: center;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 80%);
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+.look-line.is-visible {
+  opacity: 0.92;
+}
+
 /* Scaffold only. Goes when the real HUD lands. */
 .prompt {
   position: absolute;

@@ -1,18 +1,21 @@
 import './style.css'
 import { Scene } from 'three'
+import * as events from './core/events.ts'
 import { Input } from './core/input.ts'
 import { Loop } from './core/loop.ts'
-import * as events from './core/events.ts'
-const { on } = events
 import { createViewport } from './render/renderer.ts'
 import { buildGreybox } from './world/greybox.ts'
 import { BoxCollisionSolver } from './world/collision.ts'
 import { PlayerController } from './player/controller.ts'
+import { LookRegistry } from './interact/lookable.ts'
+import type { Lookable } from './interact/lookable.ts'
+import { LookRaycaster } from './interact/look.ts'
+import { Hud } from './ui/hud.ts'
 
 const canvas = document.querySelector<HTMLCanvasElement>('#game')
-const hud = document.querySelector<HTMLDivElement>('#hud')
+const hudRoot = document.querySelector<HTMLDivElement>('#hud')
 
-if (canvas === null || hud === null) {
+if (canvas === null || hudRoot === null) {
   throw new Error('index.html is missing #game or #hud')
 }
 
@@ -26,12 +29,50 @@ const input = new Input(canvas)
 const solver = new BoxCollisionSolver(greybox.solids)
 const player = new PlayerController(camera, input, solver, greybox.spawn)
 
-// Nothing listens for these yet. The audio mixer is build order step 1 of a
-// later session. Wired now so the controller is not the thing that changes.
-on('player:footstep', ({ surface, speed }) => {
+/*
+ * Tier one text on the test props. Flat and factual, per the writing rules:
+ * Australian English, contractions, no editorialising, and nothing that tells
+ * the player a thing matters. These are grey boxes, so they describe grey
+ * boxes. They go when room 1A lands at step 6.
+ */
+const lookables: Lookable[] = [
+  {
+    id: 'greybox.pillar',
+    description: 'Square column. Taller than you are.',
+    object: greybox.props.pillar,
+  },
+  {
+    id: 'greybox.block',
+    description: "Waist-high block. There's nothing on top of it.",
+    object: greybox.props.block,
+  },
+  {
+    id: 'greybox.cube',
+    description: 'A cube, about a metre each way.',
+    object: greybox.props.cube,
+  },
+  {
+    id: 'greybox.jamb',
+    description: "Stub wall. There's a gap beside it wide enough to walk through.",
+    object: greybox.props.jambLeft,
+  },
+]
+
+const registry = new LookRegistry()
+for (const lookable of lookables) {
+  registry.add(lookable)
+}
+
+const look = new LookRaycaster(camera, registry, scene)
+
+const descriptions = new Map(lookables.map((entry) => [entry.id, entry.description]))
+
+// Nothing listens for these yet. The audio mixer comes later. Wired now so the
+// controller is not the thing that has to change when it does.
+events.on('player:footstep', ({ surface, speed }) => {
   console.debug('footstep', surface, speed.toFixed(2))
 })
-on('player:state', ({ stance }) => {
+events.on('player:state', ({ stance }) => {
   console.debug('stance', stance)
 })
 
@@ -40,7 +81,7 @@ prompt.className = 'prompt'
 prompt.innerHTML =
   '<strong>Click to look around</strong>' +
   '<span>WASD move &middot; Shift run &middot; C or Ctrl crouch &middot; Q and E lean &middot; Esc release</span>'
-hud.appendChild(prompt)
+hudRoot.appendChild(prompt)
 
 const updatePrompt = (): void => {
   prompt.style.display = input.isLocked ? 'none' : 'flex'
@@ -48,8 +89,13 @@ const updatePrompt = (): void => {
 document.addEventListener('pointerlockchange', updatePrompt)
 updatePrompt()
 
+// Built after the prompt so the prompt's scrim sits behind the description
+// line rather than dimming it. The prompt is scaffold and goes with it.
+const hud = new Hud(hudRoot, (id) => descriptions.get(id))
+
 const loop = new Loop((delta) => {
   player.update(delta)
+  look.update()
   renderer.render(scene, camera)
   input.endFrame()
 })
@@ -59,5 +105,7 @@ loop.start()
 if (import.meta.env.DEV) {
   // Dev only, stripped from the production bundle. The screenshot and profiler
   // tooling will want a handle like this too.
-  Reflect.set(window, '__lodge', { player, camera, scene, renderer, input, loop, events })
+  Reflect.set(window, '__lodge', {
+    player, camera, scene, renderer, input, loop, events, look, registry, hud,
+  })
 }
