@@ -40,9 +40,12 @@ Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Cloudflare Pages is
 | 5. Case file, evidence IDs, notebook UI | Done. N opens. Examine files. Idempotent |
 | 6. Room 1A, geometry, fixed 3pm sun | Done. Kit furniture, sash, sun across the bed |
 | 7. Crystal + examine set | Done. Kit Crystal. Twelve room 1A clips. Six evidence IDs file here; diary and hammer wait for parlour and yard |
-| 8. Dialogue system | Done. Node graph, runner, DOM panel. Proven on the hall door with Rosie's reception lines (stub until step 9) |
+| 8. Dialogue system | Done. Node graph, runner, DOM panel |
+| 9. Rosie | Done. Rooted, idling, talkable. 1A's door is hinged open and she stands on the landing outside it |
 
-Everything from step 9 on is untouched. **Next: Rosie**, rooted NPC, using `images/characters/rosie-sheet.png`.
+Everything from step 10 on is untouched. **Next: Moretti**, navmesh follow and tag-and-bag.
+
+Rosie stands on a **hall stub** (`src/world/hall-stub.ts`), a few metres of landing that exists only so she has somewhere to be and the doorway has something behind it. BRIEF.md puts her at reception on the way in and in the parlour on the way back down; neither room exists until step 11, so the landing stands in for reception and her reception lines play there. Delete the file whole at step 11.
 
 ### Room 1A light, settled
 
@@ -69,7 +72,7 @@ Room 1A, Crystal, and every prop are **primitives** (boxes, capsules, cylinders,
 |---|---|
 | Kit room / Crystal / prop primitives | When modelled assets land for each piece. Not a single cutover |
 | The pointer lock prompt and its CSS | When the real HUD lands |
-| Hall door talk stub (`1a.door` → Rosie reception graph) | Step 9, when Rosie is rooted |
+| `src/world/hall-stub.ts`, the landing outside 1A | Step 11, when the real hallway and stairs land |
 | `window.__lodge` dev handle | Stays. It is `import.meta.env.DEV` only, and the capture tooling wants it |
 
 ---
@@ -83,6 +86,8 @@ Settled. Do not re-litigate these without a reason.
 - Everything solid lives under a `world` group. The camera is a sibling of it and Miller's hands are children of the camera. That split is what keeps his own hands out of the look raycast. Do not raycast the whole scene, and do not solve it with render layers: a light in three only illuminates objects sharing its layer, so a layer split silently unlights the hands. That is the reference repo's viewmodel bug, reproduced
 - Wrist roll goes through a wrist pivot, never the hand root. Rolling the root swings the forearm across the camera
 - No new events were added. A run is told from a walk by the `speed` already carried in `player:footstep`
+- **`BoxCollisionSolver` resolves in XZ and ignores height.** Anything in `solids` is a full-height wall wherever it actually sits. The door lintel was in there and bricked the doorway up at floor level. Overhead geometry, beams, rails, hanging lights: geometry only, never a solid
+- **A ceiling has to cast shadow.** The hall stub's did not, so the 3pm sun came straight through it and lit the back wall from above in a hard bright slab. Any lid over a lit space needs `castShadow`
 - `LOOP.maxDelta` is 0.05 and is a collision guard, not just a tab-out guard. Collision is a pushout, not a swept test. Raise it, or raise `runSpeed`, and check the arithmetic in the comment or Miller goes through a wall on a stalled frame
 
 Assumptions, flagged, cheap to change:
@@ -91,6 +96,7 @@ Assumptions, flagged, cheap to change:
 - **`sun-shadow`.** ASSETS.md lists `#6E6croll`, which is not a colour. The note in that table says `#6E6255`. That is what the palette uses
 - **The date is settled.** BRIEF.md still carries it as the one open decision, but ASSETS.md and both title cards say 26 February 1994. That section of BRIEF.md can go
 - **Look sensitivity** is 0.0022 rad/px, picked blind, shared between pointer lock and drag. Untuned
+- **`ROSIE.*`.** Read off `rosie-sheet.png`, not ASSETS.md, which gives no character colours. The cardigan is meant to clash
 - **`ROOM_1A.daylight`.** What you see through the sash. Not in ASSETS.md, same class of assumption as the glove colour. It goes when the verandah is built at step 11
 - **Overlays own their own hiding.** The look line hides itself on `casefile:open` and `dialogue:start`. The pointer lock prompt asks `dialogue.isActive`, not `dialoguePanel.isOpen`, because the runner sets its state *before* it emits and the panel opens on the callback *after*, so a panel check runs one step too early
 

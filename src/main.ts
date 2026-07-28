@@ -6,6 +6,8 @@ import { Input } from './core/input.ts'
 import { Loop } from './core/loop.ts'
 import { createViewport } from './render/renderer.ts'
 import { buildRoom1A } from './world/room1a.ts'
+import { buildHallStub, hallStandPoint } from './world/hall-stub.ts'
+import { buildRosie } from './npc/rosie.ts'
 import { BoxCollisionSolver } from './world/collision.ts'
 import { PlayerController } from './player/controller.ts'
 import { LookRegistry } from './interact/lookable.ts'
@@ -53,13 +55,31 @@ async function main(): Promise<void> {
   const world = new Group()
   const room = buildRoom1A()
   world.add(room.group)
+
+  /*
+   * Hall stub and Rosie. She is rooted just outside 1A's open door, which is
+   * where a manager who has just found a body and walked a detective upstairs
+   * would actually be: near it, not in it.
+   *
+   * BRIEF.md puts her at reception on the way in and in the parlour on the way
+   * back down. Neither room exists until step 11, so this landing stands in for
+   * reception and her reception lines play here.
+   */
+  const hall = buildHallStub(room.northWallZ)
+  world.add(hall.group)
+
+  const rosie = buildRosie()
+  rosie.root.position.copy(hallStandPoint(room.northWallZ))
+  rosie.solid.translate(rosie.root.position)
+  world.add(rosie.root)
+
   scene.add(world)
 
   // The camera has to be in the scene graph or its children never get traversed.
   scene.add(camera)
 
   const input = new Input(canvas)
-  const solver = new BoxCollisionSolver(room.solids)
+  const solver = new BoxCollisionSolver([...room.solids, ...hall.solids, rosie.solid])
   const player = new PlayerController(camera, input, solver, room.spawn, room.spawnYaw)
   player.setSurface('floorboard')
 
@@ -203,10 +223,14 @@ async function main(): Promise<void> {
     },
     {
       id: '1a.door',
-      description: 'Door to the hall.',
-      // Stub until Rosie is rooted. Her reception lines prove the runner.
-      dialogueId: ROSIE_RECEPTION.id,
+      description: 'Door to the hall. Standing open.',
       object: room.props.door,
+    },
+    {
+      id: 'rosie',
+      description: 'The manager. Cardigan, cigarette.',
+      dialogueId: ROSIE_RECEPTION.id,
+      object: rosie.body,
     },
   ]
 
@@ -357,7 +381,9 @@ async function main(): Promise<void> {
   }
   window.addEventListener('keydown', onEscape)
 
-  const loop = new Loop((delta) => {
+  const loop = new Loop((delta, elapsed) => {
+    rosie.update(elapsed)
+
     if (input.wasPressed('notebook')) {
       if (dialogue.isActive) {
         // Notebook waits. Finish or leave the conversation first.
@@ -431,6 +457,7 @@ async function main(): Promise<void> {
       dialogue,
       dialoguePanel,
       graphs,
+      rosie,
       clips: CLIPS,
       Vector3,
     })

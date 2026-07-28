@@ -62,6 +62,28 @@ export const HANDS = {
 } as const
 
 /**
+ * Rosie. Read off images/characters/rosie-sheet.png rather than ASSETS.md,
+ * which gives no character colours. The cardigan is meant to clash: it is
+ * described as genuinely ugly and hand-knitted, and four fighting colours is
+ * the point of it.
+ */
+export const ROSIE = {
+  skin: 0xd0ab90,
+  hairRed: 0xa8542a,
+  hairGrey: 0x9c948a,
+  cardiganTan: 0x9a7846,
+  cardiganMustard: 0xc0964a,
+  cardiganBurgundy: 0x7a3038,
+  cardiganBrown: 0x5c4630,
+  shirt: 0x7d6a68,
+  skirt: 0x23252e,
+  shoe: 0x4a3a2e,
+  glasses: 0x2b2b2b,
+  cigarette: 0xe8e4dc,
+  ember: 0xff5a22,
+} as const
+
+/**
  * Test room only. Never ships. Deliberately outside the locked palette so a
  * grey box is never mistaken for authored geometry.
  */
