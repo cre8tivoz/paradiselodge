@@ -48,11 +48,14 @@ Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Cloudflare Pages is
 | 7. Crystal + examine set | Done. Kit Crystal. Twelve room 1A clips. Six evidence IDs file here; diary and hammer wait for parlour and yard |
 | 8. Dialogue system | Done. Node graph, runner, DOM panel. No talkable is wired now the 1A door stub is gone; Rosie is its first real user at step 11 |
 | 9. Approach and ground floor | Done. Street, steps, neon, facade, hall, reception, parlour, staircase, first-floor hall. 1A is placed in it. See below |
+| 10. Verandah and back yard | Done. Iron lace off 1A, external stairs, yard, Hills hoist, shed, hammer. See below |
 | Rosie's mesh | Built and exported. Not placed, and not wired. See below |
 
-**Next: step 10, the verandah and the back yard.**
+**Next: step 11, Rosie.** Both her rooms exist now.
 
-`rosie.glb` is modelled with every joint the runtime needs. There is no placement, no runtime module and no wiring. Reception now exists, so step 11 is unblocked, but she waits her turn behind the verandah.
+Seven of the eight scene 1 evidence IDs file. Only `diary` is left, and it waits for Moretti at step 12 because it is tagged, not examined.
+
+`rosie.glb` is modelled with every joint the runtime needs. There is no placement, no runtime module and no wiring yet.
 
 ### The lodge, and what step 9 left out
 
@@ -75,6 +78,21 @@ It is cut through two walls: `FRONT_WINDOW_*` in `room1a.ts` is the hole in the 
 The front elevation is built by scanline over the opening rectangles, not as piers, because openings there stack as well as sit side by side: 1A's window is directly over the head of the reception window. Three bays and a centred entrance, upstairs lined up over downstairs.
 
 **Room 1A is placed, not moved.** `buildRoom1A` takes a position and a rotation and applies them before it bakes any collision box, because `Box3.setFromObject` reads the matrix chain. It sits at (4.0, 3.45, 2.6) turned a quarter turn, which puts its local -Z door onto the first-floor hall and its local +Z sash out at x = 6.3. Front and side corner room, per BRIEF.md. **Do not set `room.group.position` after the fact.** The solids are already world space and will not follow.
+
+### The verandah is a light budget
+
+The verandah stands between the 3pm sun and 1A's sash. That is not a side effect, it is the whole geometry: the sun comes from +X, the sash faces +X, and the verandah is in between.
+
+**Depth and eave height are lighting numbers, not taste.** Every metre of depth costs 0.43 off the height the sun can still reach on 1A's wall. A generous 2.3 metre verandah with a low eave was measured on the bedspread at 98 against 172 for open sun, which is most of the beam gone. It is now 1.7 deep with the eave at 6.4 and almost no fall, and the bed is back at 172.
+
+Two more things are set out against the sun and not by eye:
+
+- **The posts.** A post throws its shadow about 0.8 further along the wall than it stands, and the sash spans z 1.93 to 3.28, so no post may sit in z 1.05 to 2.6. They are at -2.1, 0.2, 2.7, 5.0, 7.05, and the beam comes through the gap between the second and third
+- **The balustrade** tops out at 4.47, below the sill at 4.40 plus the rake, so its shadow lands on the wall under the window. Raise it and it starts cutting the beam
+
+Move any of it and check the room, not the arithmetic.
+
+**Room 1A has a verandah door.** BRIEF.md says a verandah runs off 1A, and something has to run off it: the sash opens a hand's width, `pushSash` gives another inch and stops, and the toe print on the sill is what the `sill` evidence is. A detective climbing out of the murder scene's window would also be wrong. It changes nothing about how Sterling got in. He came through the sash; this is the door he did not use.
 
 ### Where the floor is
 
@@ -110,7 +128,7 @@ A window has to have something bright behind it or the eye reads the black recta
 
 The lodge, room 1A, Crystal, and every prop are **primitives** (boxes, capsules, cylinders, spheres) against the locked palette. That is deliberate scaffolding. Only Miller's hand is a real mesh.
 
-`lodge.ts` builds boxes from **extents**, not centre and size. A building is a list of edges and converting each one by hand is where the mistakes live.
+`world/kit.ts` builds boxes from **extents**, not centre and size. A building is a list of edges and converting each one by hand is where the mistakes live. `slab`, `wall`, `walk`, `elevation` and `raked` live there; the lodge, the verandah and the yard all use them.
 
 ### Added outside the build order
 
@@ -123,8 +141,8 @@ The lodge, room 1A, Crystal, and every prop are **primitives** (boxes, capsules,
 |---|---|
 | Kit lodge / room / Crystal / prop primitives | When modelled assets land for each piece. Not a single cutover |
 | The pointer lock prompt and its CSS | When the real HUD lands |
-| `ROOM_1A.daylight` card outside the sash | Step 10, when the verandah stands where it is |
 | Neon as two tubes rather than letterforms | When the sign texture lands |
+| Iron lace as boxes, and the yard's tufts | When cast-lace and grass assets land |
 | `window.__lodge` dev handle | Stays. It is `import.meta.env.DEV` only, and the capture tooling wants it |
 
 Gone: the `1a.door` talk stub that pointed at Rosie's reception graph. Reception exists now, so her voice coming out of a door upstairs is no longer a stub, it is a bug. Nothing is talkable until step 11.
@@ -151,8 +169,7 @@ Assumptions, flagged, cheap to change:
 - **The date is settled.** BRIEF.md still carries it as the one open decision, but ASSETS.md and both title cards say 26 February 1994. That section of BRIEF.md can go
 - **Look sensitivity** is 0.0022 rad/px, picked blind, shared between pointer lock and drag. Untuned
 - **`ROOM_1A.daylight`.** What you see through the sash. Not in ASSETS.md, same class of assumption as the glove colour. It goes when the verandah is built at step 10. It is now a card sized to the opening rather than a sixteen metre panel, because it sits outside a real building and the old one was visible from the street. It still peeks past the front corner from the far right of the footpath
-- **`EXTERIOR.bitumen`, `EXTERIOR.sky`, `EXTERIOR.signBoard`.** Same class again. `sky` is pale and hot rather than postcard blue, for the same reason the sash is blown: it is the exposure reference for every exterior shot
-- **The wardrobe stands with its long side into the room**, about 250mm off the east wall, and reads as floating. Same fault the dresser had before it was turned under the front window. Not fixed, because nothing has asked it to yet
+- **`EXTERIOR.bitumen`, `sky`, `signBoard`, `grassDry`, `weed`, `paling`, `corrugate`, `rust`.** Same class again, none of them in ASSETS.md. `sky` is near white rather than postcard blue, and it went brighter still once the `daylight` card came out of 1A: it is what you see through the sash now, and a window in a room exposed for its interior blows. `grassDry` is khaki because it is the end of February
 - **The stair is 18 risers at 0.19.** Steepish for a grand staircase, and it is what fits a 3.45 floor-to-floor in a hall this deep. `RISE` is fenced by `stepUp` and `stepDown` at both ends
 - **Overlays own their own hiding.** The look line hides itself on `casefile:open` and `dialogue:start`. The pointer lock prompt asks `dialogue.isActive`, not `dialoguePanel.isOpen`, because the runner sets its state *before* it emits and the panel opens on the callback *after*, so a panel check runs one step too early
 
@@ -363,13 +380,13 @@ Do not scaffold five scenes. Scene 1 is roughly 80% of the engine and everything
 ### Spaces
 
 9. **The approach and the ground floor.** Street, entry, marble steps, neon sign, reception, hallway, central staircase, parlour. This is the route in and the route back down — **done**
-10. **Verandah and back yard.** Iron lace off 1A, external stairs down, overgrown yard, Hills hoist, shed. Gate 4 lives here, and it is deliberately before the hammer — **next**
+10. **Verandah and back yard.** Iron lace off 1A, external stairs down, overgrown yard, Hills hoist, shed. Gate 4 lives here, and it is deliberately before the hammer — **done**
 
 The navmesh landed with step 9, as a set of walkable boxes rather than triangles. See *Where the floor is*. It is what Moretti has to follow on, so it wanted doing before he arrives and not after.
 
 ### People
 
-11. **Rosie.** At reception on the way in, relocated to the parlour on the way back down. Her mesh is built and exported and both rooms now exist, so she is unblocked
+11. **Rosie.** At reception on the way in, relocated to the parlour on the way back down. Her mesh is built and exported and both rooms now exist, so she is unblocked — **next**
 12. **Moretti.** Navmesh follow, tag and bag. Diary and hammer file through him
 
 ### Sequencing

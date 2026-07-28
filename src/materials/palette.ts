@@ -22,8 +22,20 @@ export const EXTERIOR = {
    * `signBoard` is the dark backing the neon is mounted on.
    */
   bitumen: 0x2b2b2e,
-  sky: 0xdfe6ea,
+  sky: 0xf1f4f3,
   signBoard: 0x241f1c,
+  /**
+   * The back yard. Same class of assumption again, all of it flagged in
+   * CLAUDE.md.
+   *
+   * `grassDry` is St Kilda at the end of February, so it is khaki and not
+   * green. `weed` is what is still alive in the shade of the fence.
+   */
+  grassDry: 0x8f8b5e,
+  weed: 0x5f6b3e,
+  paling: 0x6b5c47,
+  corrugate: 0x969a94,
+  rust: 0x7a4526,
 } as const
 
 export const INTERIOR = {

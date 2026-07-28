@@ -6,7 +6,6 @@ import {
   MeshBasicMaterial,
   MeshStandardMaterial,
   Object3D,
-  PlaneGeometry,
   Vector3,
 } from 'three'
 import { INTERIOR, ROOM_1A } from '../materials/palette.ts'
@@ -54,7 +53,6 @@ export interface Room1A {
     readonly sill: Object3D
     /** The second sash, in the street elevation. Shut. */
     readonly frontWindow: Object3D
-    readonly daylight: Object3D
     readonly frame: Object3D
     readonly magazines: Object3D
     readonly map: Object3D
@@ -62,6 +60,8 @@ export interface Room1A {
     readonly lighter: Object3D
     /** Hall door leaf, standing open against the wall. */
     readonly door: Object3D
+    /** The way out onto the verandah. Also standing open. */
+    readonly verandahDoor: Object3D
   }
 }
 
@@ -96,6 +96,22 @@ const FRONT_WINDOW_Z0 = -1.41
 const FRONT_WINDOW_Z1 = -0.39
 const FRONT_WINDOW_SILL = 0.95
 const FRONT_WINDOW_TOP = 2.55
+
+/*
+ * The verandah door, beside the sash in the same wall.
+ *
+ * BRIEF.md: "a verandah runs off 1A". Something has to run off it, and the sash
+ * is not it. It opens a hand's width, `pushSash` gives another inch and stops,
+ * and the toe print on the sill is the whole point of the `sill` evidence. A
+ * detective climbing out of the murder scene's window would also be wrong.
+ *
+ * So 1A has a verandah door, which is what a Victorian first-floor room with a
+ * verandah has. It changes nothing about how Sterling got in: he came through
+ * the sash, and this is the door he did not use.
+ */
+const VERANDAH_DOOR_X0 = 1.1
+const VERANDAH_DOOR_X1 = 2.0
+const VERANDAH_DOOR_HEIGHT = 2.15
 
 export function buildRoom1A(placement: Room1APlacement): Room1A {
   const group = new Group()
@@ -190,7 +206,7 @@ export function buildRoom1A(placement: Room1APlacement): Room1A {
   door.add(leaf)
   group.add(door)
 
-  // South (+Z): wall with sash opening.
+  // South (+Z): the verandah wall. Sash in the middle, verandah door beside it.
   const winHalf = WINDOW_WIDTH / 2
   const southSide = halfW - winHalf
   addSolid(
@@ -201,14 +217,47 @@ export function buildRoom1A(placement: Room1APlacement): Room1A {
     HEIGHT / 2,
     halfD,
   )
+  // Between the sash and the verandah door.
+  const southMid = VERANDAH_DOOR_X0 - winHalf
   addSolid(
     group,
     solids,
-    box(southSide, HEIGHT, WALL, wallpaper),
-    halfW - southSide / 2,
+    box(southMid, HEIGHT, WALL, wallpaper),
+    winHalf + southMid / 2,
     HEIGHT / 2,
     halfD,
   )
+  // Beyond the verandah door, to the corner.
+  const southEnd = halfW - VERANDAH_DOOR_X1
+  addSolid(
+    group,
+    solids,
+    box(southEnd, HEIGHT, WALL, wallpaper),
+    VERANDAH_DOOR_X1 + southEnd / 2,
+    HEIGHT / 2,
+    halfD,
+  )
+  // Over the verandah door.
+  const verandahDoorWidth = VERANDAH_DOOR_X1 - VERANDAH_DOOR_X0
+  addSolid(
+    group,
+    solids,
+    box(verandahDoorWidth, HEIGHT - VERANDAH_DOOR_HEIGHT, WALL, wallpaper),
+    (VERANDAH_DOOR_X0 + VERANDAH_DOOR_X1) / 2,
+    VERANDAH_DOOR_HEIGHT + (HEIGHT - VERANDAH_DOOR_HEIGHT) / 2,
+    halfD,
+  )
+
+  // Its leaf, hinged at the far jamb and standing open into the room.
+  const verandahDoor = new Group()
+  verandahDoor.name = 'verandahDoor'
+  verandahDoor.position.set(VERANDAH_DOOR_X1, 0, halfD - 0.06)
+  verandahDoor.rotation.y = 1.7
+  const verandahLeaf = box(verandahDoorWidth - 0.04, VERANDAH_DOOR_HEIGHT - 0.04, 0.04, timber)
+  verandahLeaf.position.set(-(verandahDoorWidth - 0.04) / 2, VERANDAH_DOOR_HEIGHT / 2, 0)
+  verandahDoor.add(verandahLeaf)
+  group.add(verandahDoor)
+
   // Below sill.
   addSolid(
     group,
@@ -387,11 +436,20 @@ export function buildRoom1A(placement: Room1APlacement): Room1A {
   const lighter = box(0.025, 0.06, 0.018, mat(0xc0a060, 0.4))
   lighter.name = 'lighter'
 
-  // Wardrobe in the far corner.
+  /*
+   * Wardrobe, in the corner by the hall door.
+   *
+   * It used to stand across the room on the verandah wall, where the verandah
+   * door now is: it blocked the doorway outright, and the solver only got
+   * Miller through it by ejecting him sideways. It was also standing with its
+   * long side into the room, the same fault the dresser had.
+   *
+   * Back to a wall, and out of the route between the two doors.
+   */
   const wardrobe = new Group()
   wardrobe.name = 'wardrobe'
   wardrobe.add(placed(box(1.05, 2.15, 0.55, timber), 0, 1.075, 0))
-  wardrobe.position.set(1.75, 0, 1.45)
+  wardrobe.position.set(-halfW + WALL / 2 + 0.53, 0, -halfD + WALL / 2 + 0.28)
   addGroupSolid(group, solids, wardrobe)
 
   // Chair near the sash.
@@ -464,25 +522,11 @@ export function buildRoom1A(placement: Room1APlacement): Room1A {
    * light inside fixes that: the eye reads the darkest area as the exposure
    * reference and calls the room dim.
    *
-   * Unlit on purpose. MeshBasicMaterial ignores lights, so this is a blown
-   * highlight rather than a surface, which is what a window is in a photograph
-   * exposed for the interior.
-   *
-   * Sized to the opening and pulled in close, because it is now outside a real
-   * building and a sixteen metre panel was visible from the street. It is still
-   * a cheat and it still goes at step 10, when the verandah stands where it is
-   * and the sky is the sky.
+   * Gone at step 10, as promised. The verandah stands where the card did, and a
+   * sunlit deck, a sunlit balustrade and the sky above them are a real bright
+   * thing to look at. Keeping the card would have hidden the thing it was
+   * standing in for.
    */
-  const daylight = new Mesh(
-    new PlaneGeometry(3.4, 3.0),
-    new MeshBasicMaterial({ color: ROOM_1A.daylight }),
-  )
-  daylight.name = 'daylight'
-  daylight.position.set(0, 1.5, halfD + 0.65)
-  daylight.rotation.y = Math.PI
-  daylight.castShadow = false
-  daylight.receiveShadow = false
-  group.add(daylight)
 
   // The sun and the fill used to live here. They are the whole scene's now, in
   // render/lighting.ts, because a DirectionalLight was never room-scoped.
@@ -513,13 +557,13 @@ export function buildRoom1A(placement: Room1APlacement): Room1A {
       sash,
       sill,
       frontWindow,
-      daylight,
       frame,
       magazines,
       map,
       note,
       lighter,
       door,
+      verandahDoor,
     },
   }
 }

@@ -1,16 +1,7 @@
-import {
-  Box3,
-  BoxGeometry,
-  Group,
-  Mesh,
-  MeshBasicMaterial,
-  MeshStandardMaterial,
-  Object3D,
-  Vector3,
-} from 'three'
+import { Box3, BoxGeometry, Group, Mesh, MeshBasicMaterial, Object3D, Vector3 } from 'three'
 import { EXTERIOR, INTERIOR } from '../materials/palette.ts'
-import type { Surface } from '../core/events.ts'
 import type { WalkableRegion } from './collision.ts'
+import { aabb, elevation, mat, raked, slab, unlit, walk, wall } from './kit.ts'
 
 /**
  * The Paradise Lodge: the approach and the ground floor, plus the staircase and
@@ -298,6 +289,27 @@ export function buildLodge(): Lodge {
   wall(group, solids, render, RIGHT, RIGHT + 0.25, CEIL_FIRST, PARAPET, frontZ0, STAIR_Z0)
   wall(group, solids, render, LEFT - 0.25, RIGHT + 0.25, PATH - 0.4, PARAPET, BACK, BACK + 0.25)
 
+  /*
+   * Rear elevation. Applied windows, not cut.
+   *
+   * The yard looks straight at this wall and a blank thirteen metre slab is the
+   * biggest thing in it. Nothing is opened, though: the only way into the yard
+   * is down the external stairs, and that is what makes clocking them at gate 4
+   * worth anything. A back door here would hand the player a shortcut and take
+   * the beat away.
+   */
+  for (const x0 of [-5.0, -1.6, 3.2]) {
+    const x1 = x0 + BAY_WIDTH
+    for (const [y0, y1] of [
+      [SILL, HEAD],
+      [FIRST_WINDOW.y0, FIRST_WINDOW.y1],
+    ] as const) {
+      slab(group, timber, x0 - 0.09, x1 + 0.09, y0 - 0.09, y1 + 0.1, BACK + 0.25, BACK + 0.33)
+      slab(group, mat(0x2a2620, 0.35, 0.1), x0, x1, y0, y1, BACK + 0.33, BACK + 0.35)
+      slab(group, marble, x0 - 0.14, x1 + 0.14, y0 - 0.18, y0 - 0.09, BACK + 0.25, BACK + 0.39)
+    }
+  }
+
   // Roof lid. Has to cast, or the sun comes straight through it and lights the
   // first-floor hall from above in a slab that reads as a render fault.
   slab(group, render, LEFT - 0.25, RIGHT + 0.25, PARAPET - 0.2, PARAPET, frontZ0, BACK + 0.25)
@@ -569,161 +581,3 @@ export function buildLodge(): Lodge {
   }
 }
 
-// --- Kit ---
-
-function mat(color: number, roughness: number, metalness = 0): MeshStandardMaterial {
-  return new MeshStandardMaterial({ color, roughness, metalness })
-}
-
-/**
- * A box given by its extents rather than its centre. A building is a list of
- * edges, and converting each one to a size and a midpoint by hand is where the
- * mistakes live.
- */
-function slab(
-  parent: Object3D,
-  material: MeshStandardMaterial,
-  x0: number,
-  x1: number,
-  y0: number,
-  y1: number,
-  z0: number,
-  z1: number,
-): Mesh {
-  const mesh = new Mesh(new BoxGeometry(x1 - x0, y1 - y0, z1 - z0), material)
-  mesh.position.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)
-  mesh.castShadow = true
-  mesh.receiveShadow = true
-  parent.add(mesh)
-  return mesh
-}
-
-/**
- * A box sized rather than placed, for the pieces that rake with the stairs.
- * Extents are no help once a thing is rotated.
- */
-function raked(
-  parent: Object3D,
-  material: MeshStandardMaterial,
-  width: number,
-  height: number,
-  length: number,
-): Mesh {
-  const mesh = new Mesh(new BoxGeometry(width, height, length), material)
-  mesh.castShadow = true
-  mesh.receiveShadow = true
-  parent.add(mesh)
-  return mesh
-}
-
-/** Same as `slab`, for something that is a light source, not a lit surface. */
-function unlit(
-  parent: Object3D,
-  material: MeshBasicMaterial,
-  x0: number,
-  x1: number,
-  y0: number,
-  y1: number,
-  z0: number,
-  z1: number,
-): Mesh {
-  const mesh = new Mesh(new BoxGeometry(x1 - x0, y1 - y0, z1 - z0), material)
-  mesh.position.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)
-  parent.add(mesh)
-  return mesh
-}
-
-function wall(
-  parent: Object3D,
-  solids: Box3[],
-  material: MeshStandardMaterial,
-  x0: number,
-  x1: number,
-  y0: number,
-  y1: number,
-  z0: number,
-  z1: number,
-): Mesh {
-  const mesh = slab(parent, material, x0, x1, y0, y1, z0, z1)
-  solids.push(aabb(x0, x1, y0, y1, z0, z1))
-  return mesh
-}
-
-interface Opening {
-  readonly x0: number
-  readonly x1: number
-  readonly y0: number
-  readonly y1: number
-}
-
-/**
- * A wall with holes in it. Scanline over the opening edges in x, then over
- * their y ranges within each column, emitting the solid between them.
- *
- * The pier-and-lintel version this replaced could only do openings that sat
- * side by side. The front elevation stacks them: room 1A's street window is
- * directly over the head of the reception window.
- */
-function elevation(
-  parent: Object3D,
-  solids: Box3[],
-  material: MeshStandardMaterial,
-  x0: number,
-  x1: number,
-  y0: number,
-  y1: number,
-  z0: number,
-  z1: number,
-  openings: readonly Opening[],
-): void {
-  const columns = [...new Set([x0, x1, ...openings.flatMap((o) => [o.x0, o.x1])])]
-    .filter((x) => x > x0 && x < x1)
-    .sort((a, b) => a - b)
-  columns.unshift(x0)
-  columns.push(x1)
-
-  for (let i = 0; i < columns.length - 1; i += 1) {
-    const left = columns[i]
-    const right = columns[i + 1]
-    if (left === undefined || right === undefined || right - left < 1e-6) {
-      continue
-    }
-    const mid = (left + right) / 2
-    const bands = openings
-      .filter((o) => o.x0 < mid && o.x1 > mid)
-      .map((o) => ({ y0: Math.max(o.y0, y0), y1: Math.min(o.y1, y1) }))
-      .filter((o) => o.y1 > o.y0)
-      .sort((a, b) => a.y0 - b.y0)
-
-    let cursor = y0
-    for (const band of bands) {
-      if (band.y0 > cursor) {
-        wall(parent, solids, material, left, right, cursor, band.y0, z0, z1)
-      }
-      cursor = Math.max(cursor, band.y1)
-    }
-    if (cursor < y1) {
-      wall(parent, solids, material, left, right, cursor, y1, z0, z1)
-    }
-  }
-}
-
-function aabb(x0: number, x1: number, y0: number, y1: number, z0: number, z1: number): Box3 {
-  return new Box3(new Vector3(x0, y0, z0), new Vector3(x1, y1, z1))
-}
-
-/**
- * A patch of floor. Only the top face matters, so the box is a thin lid: the
- * solver asks what is under a point and takes the highest lid within a step.
- */
-function walk(
-  floors: WalkableRegion[],
-  surface: Surface,
-  x0: number,
-  x1: number,
-  z0: number,
-  z1: number,
-  y: number,
-): void {
-  floors.push({ box: aabb(x0, x1, y - 0.2, y, z0, z1), surface })
-}

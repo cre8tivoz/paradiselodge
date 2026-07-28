@@ -7,6 +7,8 @@ import { Loop } from './core/loop.ts'
 import { createViewport } from './render/renderer.ts'
 import { buildSceneLighting } from './render/lighting.ts'
 import { buildLodge } from './world/lodge.ts'
+import { buildVerandah } from './world/verandah.ts'
+import { buildYard } from './world/yard.ts'
 import { buildRoom1A } from './world/room1a.ts'
 import { BoxCollisionSolver } from './world/collision.ts'
 import { PlayerController } from './player/controller.ts'
@@ -71,6 +73,12 @@ async function main(): Promise<void> {
   })
   world.add(room.group)
 
+  const verandah = buildVerandah()
+  world.add(verandah.group)
+
+  const yard = buildYard()
+  world.add(yard.group)
+
   scene.add(world)
 
   const lighting = buildSceneLighting()
@@ -82,8 +90,8 @@ async function main(): Promise<void> {
 
   const input = new Input(canvas)
   const solver = new BoxCollisionSolver(
-    [...lodge.solids, ...room.solids],
-    [...lodge.floors, ...room.floors],
+    [...lodge.solids, ...room.solids, ...verandah.solids, ...yard.solids],
+    [...lodge.floors, ...room.floors, ...verandah.floors, ...yard.floors],
   )
   const player = new PlayerController(camera, input, solver, lodge.spawn, lodge.spawnYaw)
 
@@ -98,15 +106,17 @@ async function main(): Promise<void> {
   const frame = getEvidence('frame')
   const sill = getEvidence('sill')
   const lighter = getEvidence('lighter')
+  const hammer = getEvidence('hammer')
   if (
     needle === undefined ||
     temple === undefined ||
     sling === undefined ||
     frame === undefined ||
     sill === undefined ||
-    lighter === undefined
+    lighter === undefined ||
+    hammer === undefined
   ) {
-    throw new Error('Scene 1 evidence catalogue is missing a room 1A entry')
+    throw new Error('Scene 1 evidence catalogue is missing an entry')
   }
 
   const lookables: Lookable[] = [
@@ -317,6 +327,52 @@ async function main(): Promise<void> {
       id: 'lodge.standardLamp',
       description: 'Standard lamp. Shade gone yellow.',
       object: lodge.props.standardLamp,
+    },
+
+    // The verandah and the yard.
+    {
+      id: '1a.verandahDoor',
+      description: 'Door out to the verandah.',
+      object: room.props.verandahDoor,
+    },
+    {
+      id: 'verandah.lace',
+      description: 'Iron lace along the verandah. Paint flaking off it.',
+      object: verandah.props.lace,
+    },
+    {
+      id: 'verandah.stairs',
+      // Gate 4. It only has to be seen; the gate logic lands at step 13.
+      description: 'Timber stairs off the end of the verandah, down to the yard.',
+      object: verandah.props.stairs,
+    },
+    {
+      id: 'yard.hoist',
+      description: 'Hills hoist. Nothing on the line.',
+      object: yard.props.hoist,
+    },
+    {
+      id: 'yard.shed',
+      description: 'Corrugated iron shed. Door shut.',
+      object: yard.props.shed,
+    },
+    {
+      id: 'yard.fence',
+      description: 'Paling fence. Gate to the street is shut.',
+      object: yard.props.fence,
+    },
+    {
+      id: 'yard.hammer',
+      description: hammer.look,
+      examine: hammer.examine,
+      /*
+       * `leanIn` is the needle's clip: get down close, hands off. It is the
+       * right shape for a bloodied hammer at a scene, and it saves a bespoke
+       * animation for an object Moretti will be bagging at step 12 anyway.
+       */
+      clipId: 'leanIn',
+      evidenceId: hammer.id,
+      object: yard.props.hammer,
     },
   ]
 
@@ -548,6 +604,8 @@ async function main(): Promise<void> {
       graphs,
       lodge,
       room,
+      verandah,
+      yard,
       solver,
       lighting,
       clips: CLIPS,
