@@ -22,9 +22,11 @@ Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Cloudflare Pages is
 |---|---|
 | 1. Player controller | Done. Walk, crouch, lean, mouse look, pointer lock |
 | 2. Look raycast, one-line description | Done |
-| 3. Hand rig, gloves, one examine animation | Done, with a caveat. See the hand mesh section |
+| 3. Hand rig, gloves, one examine animation | Done |
+| 3b. Hand mesh | Done. Blender segmented glTF at `public/models/miller-hand.glb` |
+| 4. Examine tier two, held input | Done. Hold F on an examinable; release cancels |
 
-Everything from step 4 on is untouched.
+Everything from step 5 on is untouched.
 
 ### Added outside the build order
 
@@ -36,7 +38,7 @@ Everything from step 4 on is untouched.
 | Thing | Goes at |
 |---|---|
 | `src/world/greybox.ts`, the whole test room | Step 6, room 1A |
-| The `F` examine trigger in `main.ts` | Step 4, held input |
+| The `F` examine trigger in `main.ts` | Gone. Step 4 replaced it with hold-to-examine |
 | The pointer lock prompt and its CSS | When the real HUD lands |
 | `window.__lodge` dev handle | Stays. It is `import.meta.env.DEV` only, and the capture tooling wants it |
 
@@ -62,21 +64,17 @@ Assumptions, flagged, cheap to change:
 
 ---
 
-## Do the hand mesh properly, now
+## Hand mesh
 
-This is the one recommendation carried out of step 3, and it is about time, not looks.
+Done. Segmented gloved right hand authored in Blender, exported as glTF.
 
-The hand is procedural geometry: box palm, capsule fingers, cylinder wrist. The approach and the grip read well. The full turn does not, because a box palm seen face on is a slab with the fingers hidden behind it. No pose fixes that. It is the mesh, not the animation.
+- Source: `tools/blender/build_miller_hand.py` → `assets/blender/miller-hand.blend`
+- Ship: `public/models/miller-hand.glb`
+- Runtime: `rig.ts` loads the glTF and drives named joints (`index_j0` … `thumb_j1`). `clip.ts`, `clips.ts`, and `hands.ts` stay mesh-agnostic
+- Left hand is the same mesh with `scale.x = -1` and double-sided materials
+- Rebuild: with Blender MCP on port 9876, run the build script via `execute_code`
 
-**Why it should happen before step 7.** Step 7 is all eight examine objects and all their animations, roughly a dozen bespoke clips. Every one is authored by eye against whatever hand is on screen at the time. Author them against the placeholder and each pose gets tuned to hide a slab palm, which is exactly the wrong instinct, and all twelve need re-tuning the day a real mesh lands. Author them once, against the real hand, and they are done once.
-
-The rig, clip format, anchoring and playback are all mesh-agnostic. Swapping the geometry does not touch `clip.ts`, `clips.ts` or `hands.ts`. Only `rig.ts` changes.
-
-`images/characters/miller-hands.png` is already the right reference. Four views, same hand: palm, back, half closed, and gripping a cylinder. That fourth view is the grip pose.
-
-**What properly means.** A modelled gloved right hand carrying the joints the rig already drives, exported as glTF. Segmented rather than skinned is fine and stays consistent with why gloves were chosen in the first place. It does not have to be a hero asset. It has to hold a silhouette when it rotates.
-
-If it stays procedural for now, then hold step 7 until the mesh exists. Do not author twelve clips twice.
+Reference remains `images/characters/miller-hands.png`.
 
 ---
 
@@ -228,10 +226,10 @@ Do not scaffold five scenes. Scene 1 is roughly 80% of the engine and everything
 1. Player controller. Walk, crouch, lean. First person, no body — **done**
 2. Look raycast and the one-line description — **done**
 3. Hand rig and gloves. One contextual examine animation, proven on a single object — **done**
-4. Examine tier two, held input — **next**
-5. Case file. Evidence IDs, notebook UI
+4. Examine tier two, held input — **done**
+5. Case file. Evidence IDs, notebook UI — **next**
 6. Room 1A. Geometry, fixed 3pm sun
-7. Crystal as a prop. All eight examine objects, all animations — **gated on the hand mesh, see above**
+7. Crystal as a prop. All eight examine objects, all animations
 8. Dialogue system
 9. Rosie at reception, then relocated to the parlour
 10. Moretti. Navmesh follow, tag and bag

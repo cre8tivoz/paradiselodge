@@ -5,11 +5,16 @@ import type { Object3D } from 'three'
  *
  * `description` is tier one only. It is the surface, nothing more. Per the
  * writing rules in CLAUDE.md it never editorialises and it never tells the
- * player that a thing matters. Only examine, at step 4, creates evidence.
+ * player that a thing matters.
+ *
+ * `examine`, when present, is tier two. Holding the examine input on this
+ * object plays the hand animation and writes that line. Only tier two will
+ * create evidence, once the case file lands at step 5.
  */
 export interface Lookable {
   readonly id: string
   readonly description: string
+  readonly examine?: string
   readonly object: Object3D
 }
 
@@ -38,6 +43,10 @@ export class LookRegistry {
     lookable.object.traverse((child) => {
       this.byObjectId.delete(child.id)
     })
+  }
+
+  get(id: string): Lookable | undefined {
+    return this.byId.get(id)
   }
 
   /** Which lookable, if any, does this hit object belong to? */

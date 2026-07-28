@@ -1,50 +1,28 @@
-import {
-  CapsuleGeometry,
-  BoxGeometry,
-  CylinderGeometry,
-  Group,
-  Mesh,
-  MeshStandardMaterial,
-  Object3D,
-} from 'three'
-import { HANDS } from '../../materials/palette.ts'
+import { DoubleSide, Group, Object3D } from 'three'
+import type { Mesh, MeshStandardMaterial } from 'three'
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 
 /**
- * One gloved hand, built as rigid segments in a joint hierarchy.
+ * One gloved hand. Geometry comes from public/models/miller-hand.glb, authored
+ * in Blender as rigid segments. The joint hierarchy is what the clips drive.
  *
- * Rigid segments rather than a skinned mesh, on purpose. ASSETS.md is explicit
- * that gloves are what make CG hands read as right, because a glove hides the
- * knuckle and fingernail detail that gives bare hands away. A glove also hides
- * the seam between rigid segments, so the cheap rig and the correct look are
- * the same decision.
+ * Segmented rather than skinned, on purpose. ASSETS.md is explicit that gloves
+ * hide the knuckle and fingernail detail that gives bare CG hands away, and a
+ * glove also hides the seam between rigid segments.
  *
- * Proportions are taken from images/characters/miller-hands.png: a large adult
- * male hand, thick fingers, broad palm. Miller is built like a front-rower and
- * the hands should read that way in frame.
+ * clip.ts, clips.ts and hands.ts stay mesh-agnostic. Only this file knows about
+ * the glTF.
  */
 
 /** Curl per digit, 0 straight and 1 fully closed. Thumb first. */
 export type FingerCurl = readonly [number, number, number, number, number]
 
-const PALM_WIDTH = 0.098
-const PALM_LENGTH = 0.104
-const PALM_THICKNESS = 0.034
-
-/** Proximal, intermediate, distal. Index, middle, ring, little. */
-const FINGER_SEGMENTS: ReadonlyArray<readonly [number, number, number]> = [
-  [0.048, 0.031, 0.023],
-  [0.052, 0.034, 0.024],
-  [0.048, 0.031, 0.023],
-  [0.038, 0.024, 0.020],
-]
-
-const FINGER_RADII: readonly number[] = [0.0125, 0.0130, 0.0122, 0.0107]
-
 /** Maximum bend per joint at full curl, radians. */
 const CURL_LIMITS: readonly [number, number, number] = [1.40, 1.65, 1.20]
+const THUMB_LIMITS: readonly [number, number] = [1.05, 0.95]
 
-const THUMB_SEGMENTS: readonly [number, number] = [0.042, 0.030]
-const THUMB_RADIUS = 0.0145
+const FINGER_NAMES = ['index', 'middle', 'ring', 'little'] as const
+const MODEL_URL = '/models/miller-hand.glb'
 
 export interface HandRig {
   readonly root: Group
@@ -66,18 +44,49 @@ interface Digit {
   readonly limits: readonly number[]
 }
 
+let templatePromise: Promise<Object3D> | undefined
+
+/** Load once. Both hands clone from the same template. */
+export function loadHandTemplate(): Promise<Object3D> {
+  if (templatePromise === undefined) {
+    templatePromise = new GLTFLoader().loadAsync(MODEL_URL).then((gltf) => {
+      const root = gltf.scene
+      root.updateMatrixWorld(true)
+      return root
+    })
+  }
+  return templatePromise
+}
+
 /**
- * @param mirrored Left hand. Built by negating X rather than scaling the root,
- *   so the matrix determinant stays positive and lighting is not flipped.
+ * @param mirrored Left hand. Mirrored by negating X on the root. Materials go
+ *   double-sided so the flipped winding still lights.
  */
-export function buildHand(mirrored: boolean): HandRig {
+export function buildHand(template: Object3D, mirrored: boolean): HandRig {
+  const source = template.clone(true)
   const side = mirrored ? -1 : 1
 
-  const gloveMat = new MeshStandardMaterial({ color: HANDS.glove, roughness: 0.55 })
-  const seamMat = new MeshStandardMaterial({ color: HANDS.gloveSeam, roughness: 0.6 })
-  const cuffMat = new MeshStandardMaterial({ color: HANDS.cuff, roughness: 0.92 })
-
   const root = new Group()
+  if (mirrored) {
+    root.scale.x = -1
+    source.traverse((obj) => {
+      const mesh = obj as Mesh
+      if (mesh.isMesh !== true) {
+        return
+      }
+      if (Array.isArray(mesh.material)) {
+        mesh.material = mesh.material.map((entry) => {
+          const cloned = entry.clone() as MeshStandardMaterial
+          cloned.side = DoubleSide
+          return cloned
+        })
+        return
+      }
+      const cloned = mesh.material.clone() as MeshStandardMaterial
+      cloned.side = DoubleSide
+      mesh.material = cloned
+    })
+  }
 
   /*
    * The forearm hangs off its own pivot rather than running straight back from
@@ -94,95 +103,43 @@ export function buildHand(mirrored: boolean): HandRig {
   forearmPivot.rotation.set(1.45, side * 0.40, 0)
   root.add(forearmPivot)
 
-  /*
-   * A stub, not a whole forearm. It is the nearest thing to the lens and the
-   * thickest, so at any real length it becomes the shot. Hand and a bit of
-   * sleeve is what a first person view actually shows. The rest of the arm is
-   * off screen, which is where arms live.
-   *
-   * Capped, not open ended: an open cylinder shows its own inside face the
-   * moment the camera catches the end of it.
-   */
-  const forearmGeo = new CylinderGeometry(0.038, 0.042, 0.07, 12)
-  forearmGeo.rotateX(Math.PI / 2)
-  const forearm = new Mesh(forearmGeo, cuffMat)
-  forearm.position.z = 0.072
-  forearmPivot.add(forearm)
-
-  // The shirt cuff. Scene 1 is clean and buttoned, per CLAUDE.md's ageing table.
-  const cuffGeo = new CylinderGeometry(0.048, 0.044, 0.034, 14)
-  cuffGeo.rotateX(Math.PI / 2)
-  const cuff = new Mesh(cuffGeo, cuffMat)
-  cuff.position.z = 0.046
-  forearmPivot.add(cuff)
-
-  const cuffEdgeGeo = new CylinderGeometry(0.0495, 0.0495, 0.007, 14)
-  cuffEdgeGeo.rotateX(Math.PI / 2)
-  const cuffEdge = new Mesh(cuffEdgeGeo, seamMat)
-  cuffEdge.position.z = 0.030
-  forearmPivot.add(cuffEdge)
-
-  // Everything from the wrist out. Rolls independently of the forearm.
   const handPivot = new Object3D()
   root.add(handPivot)
 
-  // Wrist, bridging the gap the pivot opens between cuff and palm.
-  const wristGeo = new CylinderGeometry(0.040, 0.042, 0.036, 12)
-  wristGeo.rotateX(Math.PI / 2)
-  const wrist = new Mesh(wristGeo, gloveMat)
-  wrist.position.z = 0.014
-  handPivot.add(wrist)
+  const sleeve = requireChild(source, 'sleeve')
+  const hand = requireChild(source, 'hand')
 
-  // Palm. Fingers run down -Z, palm faces -Y.
-  const palm = new Mesh(
-    new BoxGeometry(PALM_WIDTH, PALM_THICKNESS, PALM_LENGTH),
-    gloveMat,
-  )
-  palm.position.z = -PALM_LENGTH / 2
-  handPivot.add(palm)
+  // Adopt the authored groups under the runtime pivots. Keep their local bind.
+  forearmPivot.add(sleeve)
+  handPivot.add(hand)
 
   const digits: Digit[] = []
 
-  // Four fingers, spread across the knuckle line and splayed slightly outward.
-  const knuckleZ = -PALM_LENGTH
-  for (let i = 0; i < FINGER_SEGMENTS.length; i += 1) {
-    const spread = (i - 1.5) * (PALM_WIDTH / 4.1)
-    const knuckle = new Object3D()
-    knuckle.position.set(side * spread, 0, knuckleZ)
-    // A little splay and a little droop, so a flat hand is not a rake.
-    knuckle.rotation.y = side * (i - 1.5) * 0.045
-    handPivot.add(knuckle)
+  const thumbJoints = [
+    requireChild(hand, 'thumb_j0'),
+    requireChild(hand, 'thumb_j1'),
+  ]
+  digits.push({ joints: thumbJoints, limits: THUMB_LIMITS })
 
-    const segments = FINGER_SEGMENTS[i]
-    const radius = FINGER_RADII[i]
-    const joints = buildChain(knuckle, segments, radius, gloveMat)
+  for (const name of FINGER_NAMES) {
+    const joints = [
+      requireChild(hand, `${name}_j0`),
+      requireChild(hand, `${name}_j1`),
+      requireChild(hand, `${name}_j2`),
+    ]
     digits.push({ joints, limits: CURL_LIMITS })
   }
-
-  // Thumb. Sits off the side of the palm and rotates across it.
-  const thumbBase = new Object3D()
-  thumbBase.position.set(side * (PALM_WIDTH / 2 - 0.004), 0.002, -PALM_LENGTH * 0.34)
-  thumbBase.rotation.set(0.20, side * -0.95, side * -0.35)
-  handPivot.add(thumbBase)
-  const thumbJoints = buildChain(
-    thumbBase,
-    [THUMB_SEGMENTS[0], THUMB_SEGMENTS[1]],
-    THUMB_RADIUS,
-    gloveMat,
-  )
-  const thumb: Digit = { joints: thumbJoints, limits: [1.05, 0.95] }
-
-  // Thumb first, to match FingerCurl.
-  const ordered: Digit[] = [thumb, ...digits]
 
   return {
     root,
     setCurl(curl: FingerCurl): void {
-      for (let d = 0; d < ordered.length; d += 1) {
-        const digit = ordered[d]
+      for (let d = 0; d < digits.length; d += 1) {
+        const digit = digits[d]
         const amount = clamp01(curl[d])
         for (let j = 0; j < digit.joints.length; j += 1) {
-          digit.joints[j].rotation.x = amount * digit.limits[j]
+          // Fingers run -Z, palm faces -Y. Positive local X would curl toward
+          // the back of the hand; negate so curl closes into the palm.
+          digit.joints[j].rotation.x = -amount * digit.limits[j]
         }
       }
     },
@@ -198,40 +155,12 @@ export function buildHand(mirrored: boolean): HandRig {
   }
 }
 
-/**
- * Build a chain of segments running down -Z, each parented to the one before,
- * so rotating a joint carries everything past it. Returns the joints.
- */
-function buildChain(
-  parent: Object3D,
-  lengths: readonly number[],
-  radius: number,
-  material: MeshStandardMaterial,
-): Object3D[] {
-  const joints: Object3D[] = []
-  let attachTo = parent
-
-  for (let i = 0; i < lengths.length; i += 1) {
-    const length = lengths[i]
-    // Taper toward the tip, the way a finger does.
-    const segmentRadius = radius * (1 - i * 0.11)
-
-    const joint = new Object3D()
-    joint.position.z = i === 0 ? 0 : -lengths[i - 1]
-    attachTo.add(joint)
-
-    const geo = new CapsuleGeometry(segmentRadius, Math.max(length - segmentRadius, 0.001), 2, 8)
-    // Capsules are built along +Y. Lay it along -Z.
-    geo.rotateX(-Math.PI / 2)
-    const mesh = new Mesh(geo, material)
-    mesh.position.z = -length / 2
-    joint.add(mesh)
-
-    joints.push(joint)
-    attachTo = joint
+function requireChild(root: Object3D, name: string): Object3D {
+  const found = root.getObjectByName(name)
+  if (found === undefined) {
+    throw new Error(`Hand glTF is missing node "${name}"`)
   }
-
-  return joints
+  return found
 }
 
 function clamp01(value: number): number {

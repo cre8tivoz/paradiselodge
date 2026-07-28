@@ -1,7 +1,7 @@
 import { Vector3 } from 'three'
 import type { PerspectiveCamera } from 'three'
 import { HAND } from '../../core/config.ts'
-import { buildHand } from './rig.ts'
+import { buildHand, loadHandTemplate } from './rig.ts'
 import type { FingerCurl, HandRig } from './rig.ts'
 import { createSampledPose, sampleTrack } from './clip.ts'
 import type { HandClip, SampledPose } from './clip.ts'
@@ -36,17 +36,21 @@ export class Hands {
   /** Fired once when a clip runs to its end. Not fired when cancelled. */
   onComplete: ((objectId: string) => void) | undefined = undefined
 
-  constructor(camera: PerspectiveCamera) {
+  private constructor(camera: PerspectiveCamera, right: HandRig, left: HandRig) {
     this.camera = camera
-
-    this.right = buildHand(false)
-    this.left = buildHand(true)
+    this.right = right
+    this.left = left
 
     camera.add(this.right.root)
     camera.add(this.left.root)
 
     this.right.setVisible(false)
     this.left.setVisible(false)
+  }
+
+  static async create(camera: PerspectiveCamera): Promise<Hands> {
+    const template = await loadHandTemplate()
+    return new Hands(camera, buildHand(template, false), buildHand(template, true))
   }
 
   get isPlaying(): boolean {

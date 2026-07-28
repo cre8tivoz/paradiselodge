@@ -52,6 +52,11 @@ body {
   opacity: 0.92;
 }
 
+.look-line.is-examine {
+  max-width: min(52ch, 84vw);
+  bottom: 11%;
+}
+
 /* Scaffold only. Goes when the real HUD lands. */
 .prompt {
   position: absolute;

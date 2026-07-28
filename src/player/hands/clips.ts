@@ -70,11 +70,6 @@ export const TURN_OVER: HandClip = {
     /*
      * Turned over. This is the beat the whole animation exists for, so it is a
      * real turn, near enough to 180 degrees, and the wrist ends palm up.
-     *
-     * It is authored for the hand Miller will have, not the one he has now.
-     * The placeholder rig is a box palm and capsule fingers, and at this angle
-     * that silhouette gives up. Flattening the turn would read better today and
-     * would be wrong the moment a modelled mesh lands, so the turn stays.
      */
     {
       t: 2.35,
