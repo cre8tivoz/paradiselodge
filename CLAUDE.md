@@ -14,6 +14,12 @@ Standing rules. Read every session. `docs/BRIEF.md` is the design spec, `docs/AS
 - Speak up properly when it actually needs attention: a real bug, a design conflict, an assumption that could be wrong, or a choice only the author can make
 - Do not ask permission to continue an agreed step. Finish it
 
+## Output style
+
+Terse. No preamble, no summary, no "I'll now...", no recap of what you just did.
+Never explain code you just wrote unless asked.
+When a step is done, say one line: what changed and whether it runs.
+
 ---
 
 ## What this is
