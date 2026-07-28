@@ -5,7 +5,7 @@ import { emit } from './core/events.ts'
 import { Input } from './core/input.ts'
 import { Loop } from './core/loop.ts'
 import { createViewport } from './render/renderer.ts'
-import { buildGreybox } from './world/greybox.ts'
+import { buildRoom1A } from './world/room1a.ts'
 import { BoxCollisionSolver } from './world/collision.ts'
 import { PlayerController } from './player/controller.ts'
 import { LookRegistry } from './interact/lookable.ts'
@@ -45,51 +45,76 @@ async function main(): Promise<void> {
    * in the reference repo. Separate roots, one light rig, no drift.
    */
   const world = new Group()
-  const greybox = buildGreybox()
-  world.add(greybox.group)
+  const room = buildRoom1A()
+  world.add(room.group)
   scene.add(world)
 
   // The camera has to be in the scene graph or its children never get traversed.
   scene.add(camera)
 
   const input = new Input(canvas)
-  const solver = new BoxCollisionSolver(greybox.solids)
-  const player = new PlayerController(camera, input, solver, greybox.spawn)
+  const solver = new BoxCollisionSolver(room.solids)
+  const player = new PlayerController(camera, input, solver, room.spawn, room.spawnYaw)
+  player.setSurface('floorboard')
 
   /*
-   * Tier one and tier two on the test props. Flat and factual, per the writing
-   * rules. These are grey boxes, so they describe grey boxes. They go when
-   * room 1A lands at step 6. The frame already files real evidence id `frame`
-   * so the notebook can be proven before the real prop exists.
+   * Look and examine copy for room 1A props. Writing rules apply. Crystal and
+   * the rest of the examine set land at step 7; the frame already files so the
+   * case notebook stays proveable.
    */
   const lookables: Lookable[] = [
     {
-      id: 'greybox.pillar',
-      description: 'Square column. Taller than you are.',
-      object: greybox.props.pillar,
+      id: '1a.bed',
+      description: 'Single bed. Chenille spread, dusty pink.',
+      object: room.props.bed,
     },
     {
-      id: 'greybox.block',
-      description: "Waist-high block. There's nothing on top of it.",
-      object: greybox.props.block,
+      id: '1a.dresser',
+      description: 'Timber dresser. Things on top of it.',
+      object: room.props.dresser,
     },
     {
-      id: 'greybox.cube',
-      description: 'A cube, about a metre each way.',
-      object: greybox.props.cube,
+      id: '1a.wardrobe',
+      description: 'Tall wardrobe. Doors shut.',
+      object: room.props.wardrobe,
     },
     {
-      id: 'greybox.frame',
-      description: 'Something flat lying face down on the block.',
+      id: '1a.chair',
+      description: 'Wooden chair by the window.',
+      object: room.props.chair,
+    },
+    {
+      id: '1a.sideTable',
+      description: 'Small table by the bed head.',
+      object: room.props.sideTable,
+    },
+    {
+      id: '1a.sash',
+      description: "Sash window, open a hand's width.",
+      object: room.props.sash,
+    },
+    {
+      id: '1a.sill',
+      description: 'Windowsill. Timber, worn.',
+      object: room.props.sill,
+    },
+    {
+      id: '1a.frame',
+      description: 'Photo frame lying face down on the dresser.',
       examine:
-        "Dust on the block around it. It sat face up for a long time before someone turned it over.",
+        'Crystal and a man, black shirt, ponytail. Dust ring shows it lay face down for weeks.',
       evidenceId: 'frame',
-      object: greybox.props.frame,
+      object: room.props.frame,
     },
     {
-      id: 'greybox.jamb',
-      description: "Stub wall. There's a gap beside it wide enough to walk through.",
-      object: greybox.props.jambLeft,
+      id: '1a.magazines',
+      description: 'Travel magazines. Covers faded.',
+      object: room.props.magazines,
+    },
+    {
+      id: '1a.note',
+      description: 'A note, her handwriting.',
+      object: room.props.note,
     },
   ]
 

@@ -48,11 +48,13 @@ export class PlayerController {
     input: Input,
     solver: CollisionSolver,
     spawn: Vector3,
+    spawnYaw = 0,
   ) {
     this.camera = camera
     this.input = input
     this.solver = solver
     this.position.copy(spawn)
+    this.yaw = spawnYaw
     this.eyeHeight = PLAYER.eyeHeightStand
     this.syncCamera(0)
   }

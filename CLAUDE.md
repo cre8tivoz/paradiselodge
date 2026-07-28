@@ -26,8 +26,9 @@ Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Cloudflare Pages is
 | 3b. Hand mesh | Done. Blender segmented glTF at `public/models/miller-hand.glb` |
 | 4. Examine tier two, held input | Done. Confirmed in browser. Hold F; release cancels |
 | 5. Case file, evidence IDs, notebook UI | Done. N opens. Examine files. Idempotent |
+| 6. Room 1A, geometry, fixed 3pm sun | Done. Kit furniture, sash, sun across the bed |
 
-Everything from step 6 on is untouched.
+Everything from step 7 on is untouched.
 
 ### Added outside the build order
 
@@ -38,8 +39,7 @@ Everything from step 6 on is untouched.
 
 | Thing | Goes at |
 |---|---|
-| `src/world/greybox.ts`, the whole test room | Step 6, room 1A |
-| The `F` examine trigger in `main.ts` | Gone. Step 4 replaced it with hold-to-examine |
+| `src/world/greybox.ts` | Gone. Replaced by room 1A at step 6 |
 | The pointer lock prompt and its CSS | When the real HUD lands |
 | `window.__lodge` dev handle | Stays. It is `import.meta.env.DEV` only, and the capture tooling wants it |
 
@@ -229,8 +229,8 @@ Do not scaffold five scenes. Scene 1 is roughly 80% of the engine and everything
 3. Hand rig and gloves. One contextual examine animation, proven on a single object — **done**
 4. Examine tier two, held input — **done**
 5. Case file. Evidence IDs, notebook UI — **done**
-6. Room 1A. Geometry, fixed 3pm sun — **next**
-7. Crystal as a prop. All eight examine objects, all animations
+6. Room 1A. Geometry, fixed 3pm sun — **done**
+7. Crystal as a prop. All eight examine objects, all animations — **next**
 8. Dialogue system
 9. Rosie at reception, then relocated to the parlour
 10. Moretti. Navmesh follow, tag and bag

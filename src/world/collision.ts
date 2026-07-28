@@ -18,9 +18,8 @@ export interface CollisionSolver {
 /**
  * PROVISIONAL. Axis-aligned boxes, circle-vs-AABB pushout in XZ.
  *
- * This exists so there is something to bump into in the grey box room. It is
- * not the shipping solution and it is not worth extending. When the lodge
- * geometry lands, replace it with the navmesh and delete this file.
+ * Good enough for room shells and kit furniture. The lodge will eventually
+ * walk a navmesh; swapping this out must not touch player/controller.ts.
  */
 export class BoxCollisionSolver implements CollisionSolver {
   private readonly solids: Box3[]
