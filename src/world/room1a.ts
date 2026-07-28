@@ -5,8 +5,10 @@ import {
   DirectionalLight,
   Group,
   Mesh,
+  MeshBasicMaterial,
   MeshStandardMaterial,
   Object3D,
+  PlaneGeometry,
   Vector3,
 } from 'three'
 import { INTERIOR, ROOM_1A } from '../materials/palette.ts'
@@ -272,13 +274,45 @@ export function buildRoom1A(): Room1A {
   const sash = new Group()
   sash.name = 'sash'
   const sashZ = halfD - 0.02
-  const lower = box(WINDOW_WIDTH - 0.08, WINDOW_HEIGHT / 2 - 0.05, 0.04, timber)
+
+  /*
+   * Glass, not board. These panes used to be solid timber boxes filling the
+   * opening, which made the window a black rectangle and, worse, made the sash
+   * a shadow caster, so the 3pm sun was reduced to what leaked around the edges.
+   *
+   * Unlit and barely opaque: you look through it, with just enough sheen left
+   * to read as glass rather than a hole. It casts nothing.
+   */
+  const glass = new MeshBasicMaterial({
+    color: ROOM_1A.daylight,
+    transparent: true,
+    opacity: 0.14,
+    depthWrite: false,
+  })
+  const pane = (w: number, h: number): Mesh => {
+    const mesh = new Mesh(new BoxGeometry(w, h, 0.012), glass)
+    mesh.castShadow = false
+    mesh.receiveShadow = false
+    return mesh
+  }
+
+  const paneHeight = WINDOW_HEIGHT / 2 - 0.05
+  const lower = pane(WINDOW_WIDTH - 0.08, paneHeight)
   lower.position.set(0, WINDOW_SILL + WINDOW_HEIGHT * 0.28, 0)
   sash.add(lower)
-  const upper = box(WINDOW_WIDTH - 0.08, WINDOW_HEIGHT / 2 - 0.05, 0.04, timber)
+  const upper = pane(WINDOW_WIDTH - 0.08, paneHeight)
   // Open a hand's width — upper pane raised.
   upper.position.set(0, WINDOW_SILL + WINDOW_HEIGHT * 0.78, -0.03)
   sash.add(upper)
+
+  // Meeting rail and the bottom rail of the raised upper sash, so the joinery
+  // still reads now the panes are see-through.
+  const meetingRail = box(WINDOW_WIDTH - 0.08, 0.055, 0.05, timber)
+  meetingRail.position.set(0, WINDOW_SILL + WINDOW_HEIGHT * 0.28 + paneHeight / 2, 0)
+  sash.add(meetingRail)
+  const upperRail = box(WINDOW_WIDTH - 0.08, 0.05, 0.05, timber)
+  upperRail.position.set(0, WINDOW_SILL + WINDOW_HEIGHT * 0.78 - paneHeight / 2, -0.03)
+  sash.add(upperRail)
   // Stiles.
   sash.add(placed(box(0.05, WINDOW_HEIGHT, 0.05, timber), -WINDOW_WIDTH / 2 + 0.04, WINDOW_SILL + WINDOW_HEIGHT / 2, 0))
   sash.add(placed(box(0.05, WINDOW_HEIGHT, 0.05, timber), WINDOW_WIDTH / 2 - 0.04, WINDOW_SILL + WINDOW_HEIGHT / 2, 0))
@@ -292,9 +326,37 @@ export function buildRoom1A(): Room1A {
   sill.receiveShadow = true
   group.add(sill)
 
+  /*
+   * What is outside the sash.
+   *
+   * Without this the window is a black rectangle, and a room whose whole point
+   * is 3pm sun has a hole where its brightest thing should be. No amount of
+   * light inside fixes that: the eye reads the darkest area as the exposure
+   * reference and calls the room dim.
+   *
+   * Unlit on purpose. MeshBasicMaterial ignores lights, so this is a blown
+   * highlight rather than a surface, which is what a window is in a photograph
+   * exposed for the interior. The verandah proper arrives at step 11.
+   */
+  const daylight = new Mesh(
+    new PlaneGeometry(16, 12),
+    new MeshBasicMaterial({ color: ROOM_1A.daylight }),
+  )
+  daylight.name = 'daylight'
+  daylight.position.set(0, 1.6, halfD + 2.6)
+  daylight.rotation.y = Math.PI
+  daylight.castShadow = false
+  daylight.receiveShadow = false
+  group.add(daylight)
+
   // --- Fixed 3pm sun ---
   // Low and warm, through the verandah sash (+Z), crossing the bed.
-  const sun = new DirectionalLight(ROOM_1A.sunWarm, 2.9)
+  /*
+   * Strong. The sash only lets a small patch in, and everything it does not
+   * touch is carried by fill, so the beam has to sit well clear of the fill or
+   * there is no beam, only a warm room.
+   */
+  const sun = new DirectionalLight(ROOM_1A.sunWarm, 8.0)
   sun.position.set(2.2, 3.6, 7.2)
   sun.target.position.set(-1.2, 0.5, 0.0)
   sun.castShadow = true
@@ -307,14 +369,22 @@ export function buildRoom1A(): Room1A {
   sun.shadow.camera.far = 24
   sun.shadow.bias = -0.0005
   sun.shadow.normalBias = 0.025
-  // Soften so the beam reads without turning the rest of the room black.
-  sun.shadow.intensity = 0.72
+  // Not quite full, so shade keeps a little shape instead of going flat.
+  sun.shadow.intensity = 0.85
   group.add(sun)
   group.add(sun.target)
 
-  // Baked-feel fill. Nicotine keeps the walls alive in shade; a little sun-warm
-  // on top so the whole room stays afternoon rather than dusk.
-  group.add(new AmbientLight(INTERIOR.nicotine, 0.7))
+  /*
+   * Baked-feel fill, standing in for the bounce we do not compute. Nicotine
+   * keeps the walls alive in shade, a little sun-warm on top so the room stays
+   * afternoon rather than dusk.
+   *
+   * Left high on purpose. Cutting fill to make the beam stand out is the wrong
+   * instinct and was tried: it buys contrast and spends the whole room, and a
+   * real sunlit interior is bright everywhere because light bounces. Raise the
+   * sun to separate the beam, do not lower this.
+   */
+  group.add(new AmbientLight(INTERIOR.nicotine, 0.72))
   group.add(new AmbientLight(ROOM_1A.sunWarm, 0.28))
 
   return {

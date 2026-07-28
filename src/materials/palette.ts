@@ -31,6 +31,16 @@ export const ROOM_1A = {
   sunShadow: 0x6e6255,
   bedspreadRose: 0x9c6b72,
   crystalDress: 0xe8e2d6,
+  /**
+   * What you see through the sash at 3pm. Not in ASSETS.md, so it is an
+   * assumption like the glove colour.
+   *
+   * It is deliberately near white rather than sky blue. A real photograph of a
+   * sunlit room blows its windows out, and BRIEF.md asks room 1A to photograph
+   * like a real estate listing. A correctly exposed sky outside would make the
+   * interior read as the dark thing in frame, which is the opposite of the point.
+   */
+  daylight: 0xfff6e6,
 } as const
 
 /**

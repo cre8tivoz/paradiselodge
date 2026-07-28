@@ -18,6 +18,8 @@ export class Hud {
   private readonly unsubscribes: Array<() => void> = []
   private examineText: string | undefined = undefined
   private currentLookId: string | undefined = undefined
+  /** The case file and a conversation both take the screen. The line waits. */
+  private suppressed = false
 
   constructor(root: HTMLElement, describe: DescribeFn) {
     this.describe = describe
@@ -45,6 +47,26 @@ export class Hud {
         this.line.classList.remove('is-visible')
       }),
     )
+
+    // Nothing else owns this. The line hides itself rather than making main.ts
+    // remember to, so a future overlay only has to emit its own open and close.
+    const suppress = (): void => {
+      this.suppressed = true
+      this.line.classList.remove('is-visible')
+    }
+    const release = (): void => {
+      this.suppressed = false
+      if (this.examineText !== undefined) {
+        this.line.classList.add('is-visible')
+      } else if (this.currentLookId !== undefined) {
+        this.showLook(this.currentLookId)
+      }
+    }
+
+    this.unsubscribes.push(on('casefile:open', suppress))
+    this.unsubscribes.push(on('casefile:close', release))
+    this.unsubscribes.push(on('dialogue:start', suppress))
+    this.unsubscribes.push(on('dialogue:end', release))
   }
 
   /** Tier two. Stays until the player looks away from this object. */
@@ -52,7 +74,10 @@ export class Hud {
     this.examineText = text
     this.currentLookId = objectId
     this.line.textContent = text
-    this.line.classList.add('is-visible', 'is-examine')
+    this.line.classList.add('is-examine')
+    if (!this.suppressed) {
+      this.line.classList.add('is-visible')
+    }
   }
 
   clearExamine(): void {
@@ -75,7 +100,9 @@ export class Hud {
       return
     }
     this.line.textContent = text
-    this.line.classList.add('is-visible')
+    if (!this.suppressed) {
+      this.line.classList.add('is-visible')
+    }
   }
 
   dispose(): void {

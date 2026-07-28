@@ -4,6 +4,18 @@ Standing rules. Read every session. `docs/BRIEF.md` is the design spec, `docs/AS
 
 ---
 
+## How to report
+
+**Quiet by default.** Chat costs money. Do the work, then give the short version.
+
+- No narration of what you are about to do, and no recap of what you just did if the diff already says it
+- When a step lands: what changed, anything that needs a decision, and stop. A few lines
+- Detail belongs in the commit message and the code comments, not in chat
+- Speak up properly when it actually needs attention: a real bug, a design conflict, an assumption that could be wrong, or a choice only the author can make
+- Do not ask permission to continue an agreed step. Finish it
+
+---
+
 ## What this is
 
 A first-person detective game. St Kilda, 26 February 1994. Five scenes. No combat.
@@ -31,6 +43,16 @@ Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Cloudflare Pages is
 | 8. Dialogue system | Done. Node graph, runner, DOM panel. Proven on the hall door with Rosie's reception lines (stub until step 9) |
 
 Everything from step 9 on is untouched. **Next: Rosie**, rooted NPC, using `images/characters/rosie-sheet.png`.
+
+### Room 1A light, settled
+
+The room read dim and muddy and the window was a black rectangle. Three causes, all fixed:
+
+- **The sash had no glass.** Both panes were solid timber boxes filling the opening, so the window was opaque *and* the sash cast a shadow across the whole room. The 3pm sun was only ever leaking round the edges. Panes are now unlit, barely opaque glass that casts nothing
+- **There was nothing outside.** A `daylight` plane sits beyond the sash, deliberately blown near-white rather than sky blue. A photograph exposed for a sunlit interior blows its windows, and with a correctly exposed sky the room becomes the dark thing in frame
+- **The sun was too weak to separate from the fill.** 2.9 to 8.0
+
+Fill stays high, around 0.72 and 0.28. Cutting it to make the beam stand out was tried and is the wrong instinct: it buys contrast and spends the whole room. A real sunlit interior is bright everywhere because light bounces, and ambient is the only bounce there is. **Raise the sun to separate the beam, do not lower the fill.**
 
 ### What is kit vs modelled
 
@@ -69,6 +91,8 @@ Assumptions, flagged, cheap to change:
 - **`sun-shadow`.** ASSETS.md lists `#6E6croll`, which is not a colour. The note in that table says `#6E6255`. That is what the palette uses
 - **The date is settled.** BRIEF.md still carries it as the one open decision, but ASSETS.md and both title cards say 26 February 1994. That section of BRIEF.md can go
 - **Look sensitivity** is 0.0022 rad/px, picked blind, shared between pointer lock and drag. Untuned
+- **`ROOM_1A.daylight`.** What you see through the sash. Not in ASSETS.md, same class of assumption as the glove colour. It goes when the verandah is built at step 11
+- **Overlays own their own hiding.** The look line hides itself on `casefile:open` and `dialogue:start`. The pointer lock prompt asks `dialogue.isActive`, not `dialoguePanel.isOpen`, because the runner sets its state *before* it emits and the panel opens on the callback *after*, so a panel check runs one step too early
 
 ---
 

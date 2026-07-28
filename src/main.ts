@@ -310,7 +310,10 @@ async function main(): Promise<void> {
     'WASD move &middot; Shift run &middot; C or Ctrl crouch &middot; Q and E lean &middot; Hold F examine &middot; F talk &middot; N case file'
 
   const updatePrompt = (): void => {
-    if (input.isLocked || notebook.isOpen || dialoguePanel.isOpen) {
+    // Ask the runner, not the panel. The runner sets its state before it emits
+    // dialogue:start, and the panel opens on the callback after it, so a panel
+    // check here runs one step too early and leaves the prompt over the scene.
+    if (input.isLocked || notebook.isOpen || dialogue.isActive) {
       prompt.style.display = 'none'
       return
     }
