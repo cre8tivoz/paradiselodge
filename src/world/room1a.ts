@@ -52,6 +52,8 @@ export interface Room1A {
     readonly sideTable: Object3D
     readonly sash: Object3D
     readonly sill: Object3D
+    /** The second sash, in the street elevation. Shut. */
+    readonly frontWindow: Object3D
     readonly daylight: Object3D
     readonly frame: Object3D
     readonly magazines: Object3D
@@ -73,6 +75,28 @@ const WINDOW_WIDTH = 1.35
 const WINDOW_HEIGHT = 1.45
 const WINDOW_SILL = 0.95
 
+/*
+ * The second sash, in the local +X wall.
+ *
+ * Local +X is the street elevation once the room is placed: the quarter turn
+ * that puts the door on the hall puts this wall on the front of the building.
+ * A corner room with nothing in its front wall reads as a mistake from the
+ * footpath, and BRIEF.md has 1A on the corner of the front and the side.
+ *
+ * It is over the dresser, so the travel pile gets the front light. It is shut,
+ * and it stays shut: the verandah sash is the one Sterling came in through and
+ * the one the `sill` evidence hangs off. Two openable windows in a room whose
+ * whole point is how somebody got in would be a second answer to a solved
+ * question.
+ *
+ * The lodge cuts a matching hole in the exterior wall in front of it. Move one,
+ * move the other.
+ */
+const FRONT_WINDOW_Z0 = -1.41
+const FRONT_WINDOW_Z1 = -0.39
+const FRONT_WINDOW_SILL = 0.95
+const FRONT_WINDOW_TOP = 2.55
+
 export function buildRoom1A(placement: Room1APlacement): Room1A {
   const group = new Group()
   const solids: Box3[] = []
@@ -89,6 +113,21 @@ export function buildRoom1A(placement: Room1APlacement): Room1A {
   const timber = mat(INTERIOR.timberDark, 0.78)
   const spread = mat(ROOM_1A.bedspreadRose, 0.88)
   const floorMat = mat(INTERIOR.carpetBrown, 0.95)
+
+  /*
+   * Glass, not board. Both sashes used to be solid timber boxes filling their
+   * openings, which made the window a black rectangle and, worse, made the sash
+   * a shadow caster, so the 3pm sun was reduced to what leaked around the edges.
+   *
+   * Unlit and barely opaque: you look through it, with just enough sheen left
+   * to read as glass rather than a hole. It casts nothing.
+   */
+  const glass = new MeshBasicMaterial({
+    color: ROOM_1A.daylight,
+    transparent: true,
+    opacity: 0.14,
+    depthWrite: false,
+  })
 
   const halfW = WIDTH / 2
   const halfD = DEPTH / 2
@@ -190,9 +229,74 @@ export function buildRoom1A(placement: Room1APlacement): Room1A {
     halfD,
   )
 
-  // East and west solid walls.
+  // West wall (-X). Solid: it is an internal party wall.
   addSolid(group, solids, box(WALL, HEIGHT, DEPTH, wallpaper), -halfW, HEIGHT / 2, 0)
-  addSolid(group, solids, box(WALL, HEIGHT, DEPTH, wallpaper), halfW, HEIGHT / 2, 0)
+
+  // East wall (+X) is the street elevation, with the second sash in it.
+  const frontNear = FRONT_WINDOW_Z0 + halfD
+  addSolid(
+    group,
+    solids,
+    box(WALL, HEIGHT, frontNear, wallpaper),
+    halfW,
+    HEIGHT / 2,
+    -halfD + frontNear / 2,
+  )
+  const frontFar = halfD - FRONT_WINDOW_Z1
+  addSolid(
+    group,
+    solids,
+    box(WALL, HEIGHT, frontFar, wallpaper),
+    halfW,
+    HEIGHT / 2,
+    halfD - frontFar / 2,
+  )
+  const frontWidth = FRONT_WINDOW_Z1 - FRONT_WINDOW_Z0
+  const frontMidZ = (FRONT_WINDOW_Z0 + FRONT_WINDOW_Z1) / 2
+  addSolid(
+    group,
+    solids,
+    box(WALL, FRONT_WINDOW_SILL, frontWidth, wallpaper),
+    halfW,
+    FRONT_WINDOW_SILL / 2,
+    frontMidZ,
+  )
+  const frontAbove = HEIGHT - FRONT_WINDOW_TOP
+  addSolid(
+    group,
+    solids,
+    box(WALL, frontAbove, frontWidth, wallpaper),
+    halfW,
+    FRONT_WINDOW_TOP + frontAbove / 2,
+    frontMidZ,
+  )
+
+  /*
+   * The second sash. Shut, so it is one pane and a meeting rail rather than the
+   * two sliding leaves of the verandah window.
+   */
+  const frontWindow = new Group()
+  frontWindow.name = 'frontWindow'
+  frontWindow.position.set(halfW - 0.03, 0, 0)
+  const frontHeight = FRONT_WINDOW_TOP - FRONT_WINDOW_SILL
+  const frontMidY = (FRONT_WINDOW_SILL + FRONT_WINDOW_TOP) / 2
+  const frontPane = new Mesh(
+    new BoxGeometry(0.012, frontHeight - 0.08, frontWidth - 0.08),
+    glass,
+  )
+  frontPane.position.set(0, frontMidY, frontMidZ)
+  frontWindow.add(frontPane)
+  frontWindow.add(
+    placed(box(0.05, 0.055, frontWidth - 0.08, timber), 0, frontMidY, frontMidZ),
+  )
+  for (const z of [FRONT_WINDOW_Z0 + 0.04, FRONT_WINDOW_Z1 - 0.04]) {
+    frontWindow.add(placed(box(0.05, frontHeight, 0.05, timber), 0, frontMidY, z))
+  }
+  group.add(frontWindow)
+
+  const frontSill = box(0.16, 0.05, frontWidth + 0.08, timber)
+  frontSill.position.set(halfW - 0.08, FRONT_WINDOW_SILL, frontMidZ)
+  group.add(frontSill)
 
   // Skirting, picture-rail height band.
   for (const z of [-halfD + 0.02, halfD - 0.02]) {
@@ -224,24 +328,35 @@ export function buildRoom1A(placement: Room1APlacement): Room1A {
   crystal.root.rotation.y = Math.PI
   group.add(crystal.root)
 
-  // Dresser opposite the bed, under the picture rail on the east wall.
+  /*
+   * Dresser, back to the street wall and under the new window.
+   *
+   * It used to stand across the room with its long side pointing at the wall,
+   * which nobody notices in a blank wall and everybody notices under a window.
+   * Turned so its length runs along the wall, and pushed back to it. The travel
+   * pile on top now gets the front light, which is the right thing for the one
+   * group of objects in this room that is evidence of a life rather than
+   * evidence of a crime.
+   */
+  const dresserX = halfW - WALL / 2 - 0.24
+  const dresserZ = (FRONT_WINDOW_Z0 + FRONT_WINDOW_Z1) / 2
   const dresser = new Group()
   dresser.name = 'dresser'
-  dresser.add(placed(box(1.15, 0.85, 0.48, timber), 0, 0.425, 0))
-  dresser.position.set(1.7, 0, -0.85)
+  dresser.add(placed(box(0.48, 0.85, 1.15, timber), 0, 0.425, 0))
+  dresser.position.set(dresserX, 0, dresserZ)
   addGroupSolid(group, solids, dresser)
 
-  // Top drawer face — examinable on its own.
-  const drawer = box(1.05, 0.18, 0.02, timber)
+  // Top drawer face — examinable on its own. Faces into the room, so -X.
+  const drawer = box(0.02, 0.18, 1.05, timber)
   drawer.name = 'drawer'
-  drawer.position.set(1.7, 0.62, -0.85 - 0.24)
+  drawer.position.set(dresserX - 0.25, 0.62, dresserZ)
   drawer.castShadow = true
   group.add(drawer)
 
   // Frame on the dresser — face down.
   const frame = box(0.17, 0.022, 0.125, timber)
   frame.name = 'frame'
-  frame.position.set(1.55, 0.862, -0.85)
+  frame.position.set(dresserX + 0.04, 0.862, dresserZ + 0.35)
   frame.rotation.y = 0.18
   frame.castShadow = true
   frame.receiveShadow = true
@@ -250,21 +365,21 @@ export function buildRoom1A(placement: Room1APlacement): Room1A {
   // Travel pile: magazines, map with pins, note.
   const magazines = box(0.28, 0.04, 0.36, mat(ROOM_1A.crystalDress, 0.7))
   magazines.name = 'magazines'
-  magazines.position.set(1.85, 0.875, -0.72)
+  magazines.position.set(dresserX + 0.03, 0.875, dresserZ - 0.04)
   magazines.rotation.y = -0.25
   magazines.castShadow = true
   group.add(magazines)
 
-  const map = box(0.34, 0.005, 0.28, mat(0xd2c4a8, 0.85))
+  const map = box(0.28, 0.005, 0.34, mat(0xd2c4a8, 0.85))
   map.name = 'map'
-  map.position.set(1.95, 0.855, -1.0)
+  map.position.set(dresserX + 0.02, 0.855, dresserZ - 0.38)
   map.rotation.y = 0.15
   map.castShadow = true
   group.add(map)
 
-  const note = box(0.12, 0.002, 0.16, mat(ROOM_1A.crystalDress, 0.85))
+  const note = box(0.16, 0.002, 0.12, mat(ROOM_1A.crystalDress, 0.85))
   note.name = 'note'
-  note.position.set(1.72, 0.855, -0.98)
+  note.position.set(dresserX - 0.11, 0.855, dresserZ + 0.2)
   note.rotation.y = 0.4
   group.add(note)
 
@@ -304,20 +419,6 @@ export function buildRoom1A(placement: Room1APlacement): Room1A {
   sash.name = 'sash'
   const sashZ = halfD - 0.02
 
-  /*
-   * Glass, not board. These panes used to be solid timber boxes filling the
-   * opening, which made the window a black rectangle and, worse, made the sash
-   * a shadow caster, so the 3pm sun was reduced to what leaked around the edges.
-   *
-   * Unlit and barely opaque: you look through it, with just enough sheen left
-   * to read as glass rather than a hole. It casts nothing.
-   */
-  const glass = new MeshBasicMaterial({
-    color: ROOM_1A.daylight,
-    transparent: true,
-    opacity: 0.14,
-    depthWrite: false,
-  })
   const pane = (w: number, h: number): Mesh => {
     const mesh = new Mesh(new BoxGeometry(w, h, 0.012), glass)
     mesh.castShadow = false
@@ -411,6 +512,7 @@ export function buildRoom1A(placement: Room1APlacement): Room1A {
       sideTable,
       sash,
       sill,
+      frontWindow,
       daylight,
       frame,
       magazines,

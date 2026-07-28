@@ -205,23 +205,37 @@ export function buildLodge(): Lodge {
   const SILL = 0.95
   const HEAD = 2.75
 
+  /*
+   * The first-floor opening is room 1A's street window. It sits inside the
+   * head over the reception window, which is why the elevation is built by
+   * scanline and not as piers: openings here stack as well as sit side by side.
+   *
+   * Keep FIRST_WINDOW in step with FRONT_WINDOW_* in room1a.ts. This is the
+   * hole in the outside wall; that is the hole in the room's own wall, and they
+   * have to be the same hole.
+   */
+  const FIRST_WINDOW = { x0: 2.55, x1: 3.65, y0: 4.32, y1: 6.08 }
+
+  /*
+   * Three bays and a centred entrance. The upstairs windows sit directly over
+   * the downstairs ones, because they are meant to be the same house twice and
+   * a facade where they do not line up reads as a mistake before it reads as
+   * anything else.
+   */
+  const BAYS = [-5.9, -3.6, 2.55] as const
+  const BAY_WIDTH = 1.1
+
   const openings = [
-    { x0: -5.85, x1: -4.85, y0: SILL, y1: HEAD, glazed: true },
-    { x0: -3.35, x1: -2.35, y0: SILL, y1: HEAD, glazed: true },
+    { x0: BAYS[0], x1: BAYS[0] + BAY_WIDTH, y0: SILL, y1: HEAD, glazed: true },
+    { x0: BAYS[1], x1: BAYS[1] + BAY_WIDTH, y0: SILL, y1: HEAD, glazed: true },
     { x0: -0.62, x1: 0.62, y0: PATH - 0.4, y1: DOOR_H, glazed: false },
-    { x0: 2.55, x1: 3.95, y0: SILL, y1: HEAD, glazed: true },
+    { x0: BAYS[2], x1: BAYS[2] + BAY_WIDTH, y0: SILL, y1: HEAD, glazed: true },
   ] as const
 
-  let pier = LEFT - 0.25
-  for (const o of openings) {
-    wall(group, solids, render, pier, o.x0, PATH - 0.4, PARAPET, frontZ0, frontZ1)
-    if (o.y0 > PATH - 0.4) {
-      wall(group, solids, render, o.x0, o.x1, PATH - 0.4, o.y0, frontZ0, frontZ1)
-    }
-    wall(group, solids, render, o.x0, o.x1, o.y1, PARAPET, frontZ0, frontZ1)
-    pier = o.x1
-  }
-  wall(group, solids, render, pier, RIGHT + 0.25, PATH - 0.4, PARAPET, frontZ0, frontZ1)
+  elevation(group, solids, render, LEFT - 0.25, RIGHT + 0.25, PATH - 0.4, PARAPET, frontZ0, frontZ1, [
+    ...openings,
+    FIRST_WINDOW,
+  ])
 
   // Rising damp. Unlit-flat would be wrong; it is a stain on render.
   slab(group, stain, LEFT - 0.25, RIGHT + 0.25, PATH - 0.4, PATH + 0.72, frontZ0 - 0.01, frontZ0)
@@ -258,15 +272,22 @@ export function buildLodge(): Lodge {
   }
 
   /*
-   * First-floor windows, applied rather than cut. At 3pm an unlit upstairs room
-   * photographs as a black rectangle from the street, which is exactly what
-   * these are, so there is nothing behind them worth opening a hole for.
+   * The other two first-floor windows are applied, not cut. At 3pm an unlit
+   * upstairs room photographs as a black rectangle from the street, which is
+   * exactly what these are, so there is nothing behind them worth a hole.
+   *
+   * 1A's is the real one, and it only gets a surround here.
    */
-  for (const x0 of [-5.7, -3.2, 2.7]) {
-    const x1 = x0 + 1.05
-    slab(group, timber, x0, x1, 4.25, 6.1, frontZ0 - 0.07, frontZ0)
-    slab(group, mat(0x2a2620, 0.35, 0.1), x0 + 0.07, x1 - 0.07, 4.32, 6.03, frontZ0 - 0.08, frontZ0 - 0.07)
-    slab(group, marble, x0 - 0.12, x1 + 0.12, 4.16, 4.25, frontZ0 - 0.14, frontZ0)
+  for (const x0 of BAYS) {
+    const x1 = x0 + BAY_WIDTH
+    const cut = x0 === FIRST_WINDOW.x0
+    slab(group, marble, x0 - 0.12, x1 + 0.12, FIRST_WINDOW.y0 - 0.1, FIRST_WINDOW.y0, frontZ0 - 0.16, frontZ0)
+    slab(group, timber, x0 - 0.09, x0, FIRST_WINDOW.y0, FIRST_WINDOW.y1, frontZ0 - 0.08, frontZ0)
+    slab(group, timber, x1, x1 + 0.09, FIRST_WINDOW.y0, FIRST_WINDOW.y1, frontZ0 - 0.08, frontZ0)
+    slab(group, timber, x0 - 0.09, x1 + 0.09, FIRST_WINDOW.y1, FIRST_WINDOW.y1 + 0.1, frontZ0 - 0.08, frontZ0)
+    if (!cut) {
+      slab(group, mat(0x2a2620, 0.35, 0.1), x0, x1, FIRST_WINDOW.y0, FIRST_WINDOW.y1, frontZ0 - 0.02, frontZ0)
+    }
   }
 
   // Sides and back. The right side stops short of 1A's sash: that opening is in
@@ -289,11 +310,13 @@ export function buildLodge(): Lodge {
   const neon = new Group()
   neon.name = 'neon'
   group.add(neon)
-  slab(neon, mat(EXTERIOR.signBoard, 0.85), -2.5, 2.5, 3.55, 5.0, frontZ0 - 0.16, frontZ0 - 0.02)
+  // Narrow enough to clear the first-floor bays either side of it. The board
+  // used to run into the window at -2.5.
+  slab(neon, mat(EXTERIOR.signBoard, 0.85), -2.1, 2.1, 3.55, 5.0, frontZ0 - 0.16, frontZ0 - 0.02)
   const pinkMat = new MeshBasicMaterial({ color: EXTERIOR.neonPink })
   const cyanMat = new MeshBasicMaterial({ color: EXTERIOR.neonCyan })
-  unlit(neon, pinkMat, -2.2, 2.2, 4.36, 4.52, frontZ0 - 0.22, frontZ0 - 0.16)
-  unlit(neon, cyanMat, -1.35, 1.35, 3.85, 3.95, frontZ0 - 0.22, frontZ0 - 0.16)
+  unlit(neon, pinkMat, -1.85, 1.85, 4.36, 4.52, frontZ0 - 0.22, frontZ0 - 0.16)
+  unlit(neon, cyanMat, -1.15, 1.15, 3.85, 3.95, frontZ0 - 0.22, frontZ0 - 0.16)
 
   // === Front door ===
 
@@ -624,6 +647,65 @@ function wall(
   const mesh = slab(parent, material, x0, x1, y0, y1, z0, z1)
   solids.push(aabb(x0, x1, y0, y1, z0, z1))
   return mesh
+}
+
+interface Opening {
+  readonly x0: number
+  readonly x1: number
+  readonly y0: number
+  readonly y1: number
+}
+
+/**
+ * A wall with holes in it. Scanline over the opening edges in x, then over
+ * their y ranges within each column, emitting the solid between them.
+ *
+ * The pier-and-lintel version this replaced could only do openings that sat
+ * side by side. The front elevation stacks them: room 1A's street window is
+ * directly over the head of the reception window.
+ */
+function elevation(
+  parent: Object3D,
+  solids: Box3[],
+  material: MeshStandardMaterial,
+  x0: number,
+  x1: number,
+  y0: number,
+  y1: number,
+  z0: number,
+  z1: number,
+  openings: readonly Opening[],
+): void {
+  const columns = [...new Set([x0, x1, ...openings.flatMap((o) => [o.x0, o.x1])])]
+    .filter((x) => x > x0 && x < x1)
+    .sort((a, b) => a - b)
+  columns.unshift(x0)
+  columns.push(x1)
+
+  for (let i = 0; i < columns.length - 1; i += 1) {
+    const left = columns[i]
+    const right = columns[i + 1]
+    if (left === undefined || right === undefined || right - left < 1e-6) {
+      continue
+    }
+    const mid = (left + right) / 2
+    const bands = openings
+      .filter((o) => o.x0 < mid && o.x1 > mid)
+      .map((o) => ({ y0: Math.max(o.y0, y0), y1: Math.min(o.y1, y1) }))
+      .filter((o) => o.y1 > o.y0)
+      .sort((a, b) => a.y0 - b.y0)
+
+    let cursor = y0
+    for (const band of bands) {
+      if (band.y0 > cursor) {
+        wall(parent, solids, material, left, right, cursor, band.y0, z0, z1)
+      }
+      cursor = Math.max(cursor, band.y1)
+    }
+    if (cursor < y1) {
+      wall(parent, solids, material, left, right, cursor, y1, z0, z1)
+    }
+  }
 }
 
 function aabb(x0: number, x1: number, y0: number, y1: number, z0: number, z1: number): Box3 {

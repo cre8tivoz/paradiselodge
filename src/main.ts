@@ -181,6 +181,14 @@ async function main(): Promise<void> {
       object: room.props.sash,
     },
     {
+      id: '1a.frontWindow',
+      // Look only. The verandah sash is the one that matters and it already
+      // carries the `sill` evidence; a second examinable window would read as a
+      // second answer to a question the room has already answered.
+      description: 'The other sash, over the dresser. Shut, and painted in.',
+      object: room.props.frontWindow,
+    },
+    {
       id: '1a.sill',
       description: 'Windowsill. Timber, worn.',
       examine: sill.examine,

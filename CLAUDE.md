@@ -66,6 +66,14 @@ Deliberately not built:
 
 Plan, so the numbers in `lodge.ts` mean something: **-Z is the street, +X is the side the verandah wraps onto.** The building runs x -6.5 to 6.4 and z 0 to 10.5. Ground floor at y 0, first floor at y 3.45. The flight climbs the -X half of the hall toward the back, so the passage runs *beside* it, not under it, and the stairwell above it is open on that side.
 
+**Room 1A has two windows.** The verandah sash in its local +Z wall, and a second one in its local +X wall, which the quarter turn puts on the street elevation. A corner room with a blank front wall reads as a mistake from the footpath.
+
+The front one is **shut and stays shut**, and it is look-only. The verandah sash is how Sterling got in and it is what the `sill` evidence hangs off; a second openable window in a room whose whole point is how somebody got in would be a second answer to a solved question.
+
+It is cut through two walls: `FRONT_WINDOW_*` in `room1a.ts` is the hole in the room, `FIRST_WINDOW` in `lodge.ts` is the hole in the outside wall. **They have to be the same hole. Move one, move the other,** and keep the exterior one the larger of the two or the reveal cuts across the view out.
+
+The front elevation is built by scanline over the opening rectangles, not as piers, because openings there stack as well as sit side by side: 1A's window is directly over the head of the reception window. Three bays and a centred entrance, upstairs lined up over downstairs.
+
 **Room 1A is placed, not moved.** `buildRoom1A` takes a position and a rotation and applies them before it bakes any collision box, because `Box3.setFromObject` reads the matrix chain. It sits at (4.0, 3.45, 2.6) turned a quarter turn, which puts its local -Z door onto the first-floor hall and its local +Z sash out at x = 6.3. Front and side corner room, per BRIEF.md. **Do not set `room.group.position` after the fact.** The solids are already world space and will not follow.
 
 ### Where the floor is
@@ -144,6 +152,7 @@ Assumptions, flagged, cheap to change:
 - **Look sensitivity** is 0.0022 rad/px, picked blind, shared between pointer lock and drag. Untuned
 - **`ROOM_1A.daylight`.** What you see through the sash. Not in ASSETS.md, same class of assumption as the glove colour. It goes when the verandah is built at step 10. It is now a card sized to the opening rather than a sixteen metre panel, because it sits outside a real building and the old one was visible from the street. It still peeks past the front corner from the far right of the footpath
 - **`EXTERIOR.bitumen`, `EXTERIOR.sky`, `EXTERIOR.signBoard`.** Same class again. `sky` is pale and hot rather than postcard blue, for the same reason the sash is blown: it is the exposure reference for every exterior shot
+- **The wardrobe stands with its long side into the room**, about 250mm off the east wall, and reads as floating. Same fault the dresser had before it was turned under the front window. Not fixed, because nothing has asked it to yet
 - **The stair is 18 risers at 0.19.** Steepish for a grand staircase, and it is what fits a 3.45 floor-to-floor in a hall this deep. `RISE` is fenced by `stepUp` and `stepDown` at both ends
 - **Overlays own their own hiding.** The look line hides itself on `casefile:open` and `dialogue:start`. The pointer lock prompt asks `dialogue.isActive`, not `dialoguePanel.isOpen`, because the runner sets its state *before* it emits and the panel opens on the callback *after*, so a panel check runs one step too early
 
