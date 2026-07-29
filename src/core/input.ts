@@ -15,6 +15,7 @@ export type Action =
   | 'leanLeft'
   | 'leanRight'
   | 'examine'
+  | 'tag'
   | 'notebook'
 
 const BINDINGS: ReadonlyMap<string, Action> = new Map([
@@ -33,6 +34,10 @@ const BINDINGS: ReadonlyMap<string, Action> = new Map([
   ['KeyQ', 'leanLeft'],
   ['KeyE', 'leanRight'],
   ['KeyF', 'examine'],
+  // Tag is its own key rather than a second meaning for F. F is already a hold
+  // and a press, and a taggable object is examinable too: you look at the
+  // hammer, you examine the hammer, then you call Moretti over for it.
+  ['KeyG', 'tag'],
   ['KeyN', 'notebook'],
 ])
 

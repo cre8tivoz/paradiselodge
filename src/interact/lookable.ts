@@ -18,6 +18,11 @@ import type { Object3D } from 'three'
  *
  * `evidenceId`, when present, is the case-file ID filed on a completed examine.
  * Only tier two creates evidence.
+ *
+ * `taggable` means the tag key calls Moretti over to bag it. Tag does not file
+ * anything: examine already did that, and the case file holds knowledge, not
+ * objects. What tagging changes is that the object leaves the scene in a bag,
+ * which is what the objective gates read.
  */
 export interface Lookable {
   readonly id: string
@@ -26,6 +31,7 @@ export interface Lookable {
   readonly dialogueId?: string
   readonly clipId?: string
   readonly evidenceId?: string
+  readonly taggable?: boolean
   readonly object: Object3D
 }
 

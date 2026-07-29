@@ -57,6 +57,7 @@ export interface Lodge {
     readonly ashtray: Object3D
     readonly armchair: Object3D
     readonly parlourTable: Object3D
+    readonly diary: Object3D
     readonly television: Object3D
     readonly standardLamp: Object3D
   }
@@ -527,6 +528,22 @@ export function buildLodge(): Lodge {
   }
   solids.push(aabb(-3.95, -2.85, GROUND, 0.48, 2.05, 2.95))
 
+  /*
+   * The diary. Gate 6.
+   *
+   * BRIEF.md puts it on the parlour table, which is the table Rosie is standing
+   * next to, and the player walks past it on the way in without a reason to
+   * care. It is not hidden and it is not signposted.
+   */
+  const diary = new Group()
+  diary.name = 'diary'
+  group.add(diary)
+  slab(diary, mat(0x2f2a24, 0.92), -3.62, -3.18, 0.48, 0.512, 2.32, 2.68)
+  // Pages, proud of the cover on three sides, and the cover flipped back off
+  // the top of them. It is lying open, not shut on the table.
+  slab(diary, mat(0xd9d0bb, 0.95), -3.60, -3.20, 0.512, 0.528, 2.34, 2.66)
+  slab(diary, mat(0x2f2a24, 0.92), -3.60, -3.22, 0.528, 0.542, 2.36, 2.50)
+
   const television = new Group()
   television.name = 'television'
   group.add(television)
@@ -565,6 +582,7 @@ export function buildLodge(): Lodge {
       ashtray,
       armchair,
       parlourTable,
+      diary,
       television,
       standardLamp,
     },

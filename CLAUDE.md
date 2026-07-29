@@ -50,10 +50,11 @@ Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Cloudflare Pages is
 | 9. Approach and ground floor | Done. Street, steps, neon, facade, hall, reception, parlour, staircase, first-floor hall. 1A is placed in it. See below |
 | 10. Verandah and back yard | Done. Iron lace off 1A, external stairs, yard, Hills hoist, shed, hammer. See below |
 | 11. Rosie | Done. Placed, talkable, relocates. Two graphs. See below |
+| 12. Moretti | Done. Breadcrumb follow, the tag verb, bag and hide. Diary is built and both taggables work. See below |
 
-**Next: step 12, Moretti.** Navmesh follow, tag and bag.
+**Next: step 13, objective gates and the scene exit.** Everything scene 1 needs is now in the world.
 
-Seven of the eight scene 1 evidence IDs file. Only `diary` is left, and it waits for Moretti at step 12 because it is tagged, not examined.
+All eight scene 1 evidence IDs file.
 
 ### The lodge, and what step 9 left out
 
@@ -62,7 +63,6 @@ The route plays: footpath, marble steps, front door, hall, up the flight, turn a
 Deliberately not built:
 
 - **The Commodore, the two uniforms, and the tape lift.** ASSETS.md files them under street and entry, but they are all cold-open staging and the cold open is step 15. The tape is already parted in the middle so the lift has somewhere to land
-- **The diary on the parlour table.** Gate 6. It needs the tag verb and Moretti, so it files with him at step 12
 - **Texture on any of it.** Rendered facade, carpet, marble and neon are flat palette colours. The neon is two tubes, not letterforms, because letterforms are a texture
 
 Plan, so the numbers in `lodge.ts` mean something: **-Z is the street, +X is the side the verandah wraps onto.** The building runs x -6.5 to 6.4 and z 0 to 10.5. Ground floor at y 0, first floor at y 3.45. The flight climbs the -X half of the hall toward the back, so the passage runs *beside* it, not under it, and the stairwell above it is open on that side.
@@ -143,6 +143,7 @@ The lodge, room 1A, Crystal, and every prop are **primitives** (boxes, capsules,
 | Iron lace as boxes, and the yard's tufts | When cast-lace and grass assets land |
 | `window.__lodge` dev handle | Stays. It is `import.meta.env.DEV` only, and the capture tooling wants it |
 | Rosie relocating on `player.position.y > 3.0` | Step 13. It stands in for gate 0 |
+| The `bagged` set living in `main.ts` | Step 13. The gates want it, and they will own it |
 
 ---
 
@@ -182,6 +183,34 @@ All of it was invisible in Blender and obvious the moment she was standing in a 
 - **The crown of her hair read as a grey swim cap.** Now a red-grey mid tone, so it goes grey rather than wearing a hat
 
 `mat()` now also writes `diffuse_color`. Workbench reads that and not the node tree, so every clay render came back grey, which is no use for judging whether a face reads.
+
+---
+
+### Moretti follows a breadcrumb trail
+
+`src/npc/moretti.ts`. Miller drops a crumb every 0.36 metres and Moretti walks the crumbs in order, holding two metres back.
+
+**That is the whole navigation system and it is deliberate.** The walkable set is axis-aligned boxes, not a graph, so there is nothing to run A* over without building a graph first. A trail gets the stairs, the doorways and the verandah for nothing, because Miller has already proved every step of the route is walkable by standing on it. Every move still resolves against the collision solver, so the trail says where to go and not where he ends up.
+
+Three things it needed before it worked, all found by walking the route:
+
+- **He yields.** An offsider holding station two metres back is standing exactly where Miller walks when Miller turns round, and on a staircase that is a wall. Inside `YIELD` he backs off along the line away from Miller. The solver refuses anything that runs out of floor, so on a flight he retreats down it
+- **He rejoins the trail at the nearest crumb, not the oldest.** Walking the queue from the front assumes he is always at the old end of it, and yielding breaks that completely: he ends up beside the newest crumb with the whole outbound route still queued in front, and the moment Miller stops he sets off to walk it again from the beginning. Distance is full 3D, because the staircase passes within a metre of the hall below it in plan
+- **He turns to face Miller when he is standing still.** Otherwise he holds station with his back to you and the head tracking cannot save it, because Miller is usually directly behind him and that is past where a neck goes
+
+**His collision box is empty while he is walking.** He resolves against the same solver Miller does, so a solid of his own ejects him from himself every frame. He is only ever an obstacle worth having when he is standing still, which is exactly when it is back.
+
+### Tag, and what it does not do
+
+The fourth verb. **G**, not a second meaning for F: F is already a hold and a press, and a taggable object is examinable too.
+
+**Tag files nothing.** Examine files, the way every clue in the game does, and the case file holds knowledge rather than objects. What tagging changes is that the object leaves the scene in a bag, which is what gates 6 and 7 read. So the diary and the hammer are both examinable *and* taggable, and neither rule bends.
+
+`sendTo` takes the object **and somewhere to stand**. Walking straight at a tagged object does not work: he steers into the first armchair between him and it and wedges there, because a straight line is not a route. Miller's own feet are the approach point, because Miller had to be within arm's length to tag it, so that spot is reachable by construction and the object may not be. The trail is frozen at tag time, so Miller wandering off afterwards does not drag him away from the job.
+
+There is a stall timeout. If something the route did not know about blocks him, he bags from where he got to. A constable frozen against a chair is a worse outcome than one who reaches a little further.
+
+**A lookable's position is its bounding box centre, not `getWorldPosition`.** Most kit props are a Group left at the origin with their parts placed by world-space extents, so the group origin is the middle of the building. Found by tagging the diary and watching Moretti set off for the front hall. Examine anchors its hand clip the same way and had the same latent bug.
 
 ---
 
@@ -426,11 +455,11 @@ The navmesh landed with step 9, as a set of walkable boxes rather than triangles
 ### People
 
 11. **Rosie.** At reception on the way in, relocated to the parlour on the way back down — **done**
-12. **Moretti.** Navmesh follow, tag and bag. Diary and hammer file through him — **next**
+12. **Moretti.** Breadcrumb follow, tag and bag — **done**
 
 ### Sequencing
 
-13. Objective gates, scene exit
+13. Objective gates, scene exit — **next**
 14. Scene manager, save on scene boundary
 15. Cold open sequence, last
 

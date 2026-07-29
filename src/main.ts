@@ -1,5 +1,5 @@
 import './style.css'
-import { Group, Scene, Vector3 } from 'three'
+import { Box3, Group, Scene, Vector3 } from 'three'
 import * as events from './core/events.ts'
 import { emit } from './core/events.ts'
 import { Input } from './core/input.ts'
@@ -28,6 +28,8 @@ import { ROSIE_RECEPTION } from './dialogue/graphs/rosie-reception.ts'
 import { ROSIE_PARLOUR } from './dialogue/graphs/rosie-parlour.ts'
 import type { DialogueGraph } from './dialogue/graph.ts'
 import { buildRosie } from './npc/rosie.ts'
+import { buildMoretti } from './npc/moretti.ts'
+import { MORETTI_BAG } from './dialogue/graphs/moretti-bag.ts'
 
 const canvasEl = document.querySelector<HTMLCanvasElement>('#game')
 const hudRootEl = document.querySelector<HTMLDivElement>('#hud')
@@ -99,11 +101,30 @@ async function main(): Promise<void> {
   // Rosie's box goes in by reference, not by copy. She relocates, and the
   // solver reads min and max every frame with nothing precomputed, so she
   // rewrites that one box in place and the solver follows her.
+  // Kept as a handle, because Moretti cannot be built until the solver exists
+  // and his box has to go into the same array once he has one. The solver holds
+  // it by reference and reads it every frame, so a later push is seen.
+  const solids = [
+    ...lodge.solids,
+    ...room.solids,
+    ...verandah.solids,
+    ...yard.solids,
+    ...rosie.solids,
+  ]
   const solver = new BoxCollisionSolver(
-    [...lodge.solids, ...room.solids, ...verandah.solids, ...yard.solids, ...rosie.solids],
+    solids,
     [...lodge.floors, ...room.floors, ...verandah.floors, ...yard.floors],
   )
   const player = new PlayerController(camera, input, solver, lodge.spawn, lodge.spawnYaw)
+
+  /*
+   * Moretti is built after the solver because he walks on it, and his own box
+   * goes into it by reference the way Rosie's does. He collapses that box while
+   * he is moving, or the pushout would eject him from himself.
+   */
+  const moretti = await buildMoretti(solver)
+  world.add(moretti.root)
+  solids.push(...moretti.solids)
 
   /*
    * Look and examine copy for room 1A. Writing rules apply. Register Crystal's
@@ -116,6 +137,7 @@ async function main(): Promise<void> {
   const frame = getEvidence('frame')
   const sill = getEvidence('sill')
   const lighter = getEvidence('lighter')
+  const diary = getEvidence('diary')
   const hammer = getEvidence('hammer')
   if (
     needle === undefined ||
@@ -124,6 +146,7 @@ async function main(): Promise<void> {
     frame === undefined ||
     sill === undefined ||
     lighter === undefined ||
+    diary === undefined ||
     hammer === undefined
   ) {
     throw new Error('Scene 1 evidence catalogue is missing an entry')
@@ -329,6 +352,17 @@ async function main(): Promise<void> {
       object: lodge.props.parlourTable,
     },
     {
+      id: 'lodge.diary',
+      description: diary.look,
+      examine: diary.examine,
+      // Gate 6. Examine files it, the way every other clue in the game does.
+      // Tag is separate and it is Moretti carrying the object away.
+      clipId: 'liftNote',
+      evidenceId: diary.id,
+      taggable: true,
+      object: lodge.props.diary,
+    },
+    {
       id: 'lodge.television',
       description: 'Television in the corner. Off.',
       object: lodge.props.television,
@@ -382,6 +416,8 @@ async function main(): Promise<void> {
        */
       clipId: 'leanIn',
       evidenceId: hammer.id,
+      // Gate 7.
+      taggable: true,
       object: yard.props.hammer,
     },
   ]
@@ -389,6 +425,7 @@ async function main(): Promise<void> {
   const graphs = new Map<string, DialogueGraph>([
     [ROSIE_RECEPTION.id, ROSIE_RECEPTION],
     [ROSIE_PARLOUR.id, ROSIE_PARLOUR],
+    ...Object.values(MORETTI_BAG).map((graph) => [graph.id, graph] as const),
   ])
 
   const registry = new LookRegistry()
@@ -427,7 +464,21 @@ async function main(): Promise<void> {
   const hud = new Hud(hudRoot, (id) => registry.get(id)?.description)
 
   const targetWorld = new Vector3()
+  const targetBounds = new Box3()
   let examiningId: string | undefined = undefined
+
+  /**
+   * Where a lookable actually is in the world.
+   *
+   * Not `getWorldPosition`. Most kit props are a Group left at the origin with
+   * their parts placed by world-space extents, so a group origin is the middle
+   * of the building rather than the middle of the object. Found by tagging the
+   * diary and watching Moretti set off for the front hall.
+   */
+  const locate = (object: Lookable['object'], into: Vector3): Vector3 => {
+    targetBounds.setFromObject(object)
+    return targetBounds.isEmpty() ? object.getWorldPosition(into) : targetBounds.getCenter(into)
+  }
 
   function tryTalk(): boolean {
     if (hands.isPlaying || notebook.isOpen || dialogue.isActive) {
@@ -446,6 +497,35 @@ async function main(): Promise<void> {
     return true
   }
 
+  /**
+   * Tag. Miller calls Moretti over and Moretti bags it.
+   *
+   * It files nothing. Examine already did that and the case file holds
+   * knowledge, not objects. What this changes is that the object leaves in a
+   * bag, which is what gates 6 and 7 read at step 13.
+   *
+   * Deliberately not gated on having examined it first. The player who tags
+   * something they have not looked at still has to look at it to know it is
+   * there, and a refusal with no stated reason is worse than a wasted walk.
+   */
+  const bagged = new Set<string>()
+
+  function tryTag(): void {
+    if (hands.isPlaying || notebook.isOpen || dialogue.isActive) {
+      return
+    }
+    const target = look.target
+    if (target === undefined || target.taggable !== true) {
+      return
+    }
+    if (bagged.has(target.id) || moretti.state === 'approaching' || moretti.state === 'bagging') {
+      return
+    }
+    locate(target.object, targetWorld)
+    emit('tag:requested', { objectId: target.id })
+    moretti.sendTo(targetWorld, player.position, target.id)
+  }
+
   function tryExamine(): void {
     if (hands.isPlaying || notebook.isOpen || dialogue.isActive) {
       return
@@ -459,13 +539,29 @@ async function main(): Promise<void> {
     }
     examiningId = target.id
     hud.clearExamine()
-    target.object.getWorldPosition(targetWorld)
+    locate(target.object, targetWorld)
     emit('examine:start', { objectId: target.id })
     hands.play(getClip(target.clipId), target.id, targetWorld)
   }
 
   function isClipId(id: string): id is ClipId {
     return Object.prototype.hasOwnProperty.call(CLIPS, id)
+  }
+
+  moretti.onBagged = (objectId) => {
+    bagged.add(objectId)
+    emit('tag:bagged', { objectId })
+    // The object goes with him. Hiding it is the whole point of the verb, and
+    // it is also what stops the player tagging the same hammer twice.
+    const lookable = registry.get(objectId)
+    if (lookable !== undefined) {
+      lookable.object.visible = false
+      registry.remove(objectId)
+    }
+    const graph = MORETTI_BAG[objectId]
+    if (graph !== undefined) {
+      dialogue.start(graph)
+    }
   }
 
   hands.onComplete = (objectId) => {
@@ -503,7 +599,7 @@ async function main(): Promise<void> {
   hudRoot.appendChild(prompt)
 
   const CONTROLS =
-    'WASD move &middot; Shift run &middot; C or Ctrl crouch &middot; Q and E lean &middot; Hold F examine &middot; F talk &middot; N case file'
+    'WASD move &middot; Shift run &middot; C or Ctrl crouch &middot; Q and E lean &middot; Hold F examine &middot; F talk &middot; G tag &middot; N case file'
 
   const updatePrompt = (): void => {
     // Ask the runner, not the panel. The runner sets its state before it emits
@@ -562,6 +658,9 @@ async function main(): Promise<void> {
     // whole conversation and a figure that freezes the moment you talk to her
     // is worse than one that never moved.
     rosie.update(delta, player.position)
+    // Ahead of the early-outs with Rosie, and for the same reason: he is on
+    // screen walking toward something when the panel opens on him arriving.
+    moretti.update(delta, player.position)
 
     if (input.wasPressed('notebook')) {
       if (dialogue.isActive) {
@@ -622,6 +721,10 @@ async function main(): Promise<void> {
       }
     }
 
+    if (input.wasPressed('tag')) {
+      tryTag()
+    }
+
     hands.update(delta)
     renderer.render(scene, camera)
     input.endFrame()
@@ -655,6 +758,8 @@ async function main(): Promise<void> {
       verandah,
       yard,
       rosie,
+      moretti,
+      bagged,
       solver,
       lighting,
       clips: CLIPS,
