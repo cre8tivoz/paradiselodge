@@ -42,6 +42,15 @@ export interface Station {
   readonly dialogueId: string
   /** Tier one look line. Writing rules apply: surface only, no signalling. */
   readonly description: string
+  /**
+   * Where the cigarette hand sits between drags, 0 hanging and 1 at her mouth.
+   *
+   * This is a staging number, not a mannerism. At reception the counter is at
+   * 1.06 and a hanging hand is at 0.82, so an arm at rest puts the one prop she
+   * has behind the desk where nobody ever sees it. She holds it up, which is
+   * what people do behind a counter anyway.
+   */
+  readonly restLift: number
 }
 
 /**
@@ -62,20 +71,17 @@ export const STATIONS: Readonly<Record<StationId, Station>> = {
     position: new Vector3(3.5, 0, 3.15),
     yaw: 0,
     dialogueId: 'rosie.reception',
-    /*
-     * No cigarette in this line, even though she has one. The counter is at
-     * 1.06 and her hand rests at 0.82, so it is behind the desk except at the
-     * top of a drag. A look line that names something the player cannot see
-     * reads as a bug in the renderer. Her glasses are pushed up on her head and
-     * they are visible, so they do the work instead.
-     */
-    description: 'A woman behind the desk. Cardigan, glasses pushed up.',
+    description: 'Rosie in her infamous cardigan, glasses pushed up.',
+    restLift: 0.62,
   },
   parlour: {
     position: new Vector3(-3.05, 0, 0.75),
     yaw: Math.PI,
     dialogueId: 'rosie.parlour',
     description: "She's at the window now. Cigarette going.",
+    // Out in the open, so it reads where it hangs. Just off straight, because
+    // a ramrod arm is the one pose a person standing about never adopts.
+    restLift: 0.1,
   },
 }
 
@@ -248,17 +254,23 @@ export async function buildRosie(): Promise<Rosie> {
       // --- The cigarette ---
 
       const phase = elapsed % DRAG_PERIOD
-      let lift = 0
+      let reach = 0
       let draw = 0
       if (phase < DRAG_RAISE) {
-        lift = smoothstep(phase / DRAG_RAISE)
+        reach = smoothstep(phase / DRAG_RAISE)
       } else if (phase < DRAG_RAISE + DRAG_HOLD) {
-        lift = 1
+        reach = 1
         // Draw hard in the middle of the hold, not for all of it.
         draw = Math.sin(((phase - DRAG_RAISE) / DRAG_HOLD) * Math.PI)
       } else if (phase < DRAG_RAISE + DRAG_HOLD + DRAG_LOWER) {
-        lift = 1 - smoothstep((phase - DRAG_RAISE - DRAG_HOLD) / DRAG_LOWER)
+        reach = 1 - smoothstep((phase - DRAG_RAISE - DRAG_HOLD) / DRAG_LOWER)
       }
+
+      // The drag runs from wherever this station rests to her mouth, so at
+      // reception it is a short lift from chest height and in the parlour it is
+      // the whole way up from hanging.
+      const rest = STATIONS[stationId].restLift
+      const lift = rest + reach * (1 - rest)
 
       /*
        * Setting the euler writes the quaternion, then the bind goes on the

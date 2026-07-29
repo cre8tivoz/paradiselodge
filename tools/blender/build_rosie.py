@@ -36,6 +36,9 @@ GLB_PATH = OUT_DIR / "rosie.glb"
 SKIN = (0.639, 0.545, 0.451, 1.0)
 HAIR_RED = (0.400, 0.161, 0.063, 1.0)
 HAIR_GREY = (0.427, 0.404, 0.376, 1.0)
+# The crown. Halfway between the two, or the grey cap reads as a swim hat
+# sitting on top of red hair instead of as hair going grey.
+HAIR_CROWN = (0.400, 0.271, 0.212, 1.0)
 CARD_TAN = (0.463, 0.345, 0.196, 1.0)
 CARD_MUSTARD = (0.612, 0.482, 0.208, 1.0)
 CARD_BURGUNDY = (0.365, 0.129, 0.157, 1.0)
@@ -44,6 +47,10 @@ SHIRT = (0.400, 0.353, 0.345, 1.0)
 SKIRT = (0.098, 0.106, 0.129, 1.0)
 SHOE = (0.220, 0.176, 0.133, 1.0)
 GLASSES = (0.075, 0.075, 0.075, 1.0)
+# Face. Not in ASSETS.md, same class of assumption as the glove colour.
+EYE = (0.055, 0.045, 0.040, 1.0)
+BROW = (0.208, 0.161, 0.129, 1.0)
+MOUTH = (0.341, 0.161, 0.153, 1.0)
 CIGARETTE = (0.878, 0.867, 0.831, 1.0)
 EMBER = (1.000, 0.290, 0.090, 1.0)
 
@@ -75,6 +82,11 @@ def mat(name: str, colour, roughness: float, emissive=None) -> bpy.types.Materia
     if emissive is not None:
         bsdf.inputs["Emission Color"].default_value = emissive
         bsdf.inputs["Emission Strength"].default_value = 3.0
+    # Workbench reads diffuse_color, not the node tree. Without this a solid
+    # viewport and every clay render come back grey, which is no use for
+    # checking whether a face reads.
+    m.diffuse_color = colour
+    m.roughness = roughness
     return m
 
 
@@ -213,6 +225,7 @@ def build_export() -> None:
     m_skin = mat("skin", SKIN, 0.72)
     m_hair_red = mat("hair_red", HAIR_RED, 0.85)
     m_hair_grey = mat("hair_grey", HAIR_GREY, 0.88)
+    m_hair_crown = mat("hair_crown_mat", HAIR_CROWN, 0.88)
     m_tan = mat("cardigan_tan", CARD_TAN, 0.96)
     m_mustard = mat("cardigan_mustard", CARD_MUSTARD, 0.96)
     m_burgundy = mat("cardigan_burgundy", CARD_BURGUNDY, 0.96)
@@ -221,6 +234,9 @@ def build_export() -> None:
     m_skirt = mat("skirt", SKIRT, 0.92)
     m_shoe = mat("shoe", SHOE, 0.62)
     m_glasses = mat("glasses", GLASSES, 0.28)
+    m_eye = mat("eye", EYE, 0.32)
+    m_brow = mat("brow", BROW, 0.9)
+    m_mouth = mat("mouth", MOUTH, 0.7)
     m_cig = mat("cigarette", CIGARETTE, 0.85)
     m_ember = mat("ember", EMBER, 0.9, emissive=EMBER)
 
@@ -326,23 +342,48 @@ def build_export() -> None:
     ]
     for i, (material, deg, z, half) in enumerate(patches):
         angle = math.radians(deg)
+        # Barely proud of the knit. At 0.004 out and 0.010 thick they read as
+        # plates bolted to a barrel rather than as panels knitted into it.
         prof = [
-            (card_radius(z - half) + 0.003, z - half),
-            (card_radius(z) + 0.004, z),
-            (card_radius(z + half) + 0.003, z + half),
+            (card_radius(z - half) + 0.0012, z - half),
+            (card_radius(z) + 0.0018, z),
+            (card_radius(z + half) + 0.0012, z + half),
         ]
         link(
             f"patch_{i}",
-            arc_shell(f"patch_{i}_m", prof, 0.010, angle - math.radians(13.0), angle + math.radians(13.0), 8),
+            arc_shell(f"patch_{i}_m", prof, 0.005, angle - math.radians(18.0), angle + math.radians(18.0), 10),
             chest,
             material,
         )
 
     # Arms. Sleeves to the wrist, hands bare.
     for side, tag in ((-1, "l"), (1, "r")):
-        shoulder = empty(f"arm_{tag}_0", chest, (side * 0.207, 0.0, HEIGHT_SHOULDER - HEIGHT_HIP - 0.015))
+        shoulder = empty(f"arm_{tag}_0", chest, (side * 0.198, 0.0, HEIGHT_SHOULDER - HEIGHT_HIP - 0.015))
         shoulder.rotation_euler = (math.radians(4.0), -side * math.radians(11.0), 0.0)
-        link(f"upperarm_{tag}", limb(f"upperarm_{tag}_m", 0.062, 0.052, 0.27), shoulder, m_tan)
+
+        """
+        Deltoid. The elbow and the wrist both get a bridging lathe and the
+        shoulder did not, which is why the arms read as detached once she was
+        standing in a room rather than being looked at in Blender.
+
+        The cardigan is a shell, not a solid, and its outer radius is 0.238
+        against the torso's 0.216. So the sleeve crosses that shell on its way
+        out and its top cap ends up floating outside the knit with the shell
+        curving away inboard above it. You see straight through the join. This
+        cap is wide enough to bridge from under the shell out to the sleeve.
+        """
+        link(
+            f"deltoid_{tag}",
+            lathe(
+                f"deltoid_{tag}_m",
+                [(0.0, -0.070), (0.048, -0.052), (0.072, -0.020), (0.078, 0.010), (0.062, 0.042), (0.0, 0.066)],
+                12,
+            ),
+            shoulder,
+            m_tan,
+        )
+
+        link(f"upperarm_{tag}", limb(f"upperarm_{tag}_m", 0.066, 0.052, 0.27), shoulder, m_tan)
 
         link(f"elbow_{tag}", lathe(f"elbow_{tag}_m", [(0.0, -0.052), (0.036, -0.030), (0.052, 0.0), (0.036, 0.030), (0.0, 0.052)], 10), shoulder, m_tan, (0.0, 0.0, -0.265))
 
@@ -364,8 +405,16 @@ def build_export() -> None:
         if side == 1:
             cig = empty("cig", wrist, (0.012, 0.030, -0.055))
             cig.rotation_euler = (math.radians(74.0), 0.0, math.radians(-18.0))
-            link("cig_stick", lathe("cig_stick_m", [(0.0, 0.0), (0.0042, 0.002), (0.0042, 0.062), (0.0, 0.064)], 8), cig, m_cig)
-            link("cig_ember", lathe("cig_ember_m", [(0.0, 0.064), (0.0045, 0.066), (0.0042, 0.072), (0.0, 0.074)], 8), cig, m_ember)
+            """
+            Slightly over life size, and the ember more so.
+
+            A 4mm cigarette is correct and it is also two pixels at the distance
+            the player stands to talk to her, which makes the one prop BRIEF.md
+            gives her invisible. The ember is what actually carries it, so it is
+            the part that is pushed hardest.
+            """
+            link("cig_stick", lathe("cig_stick_m", [(0.0, 0.0), (0.0058, 0.003), (0.0058, 0.068), (0.0, 0.070)], 8), cig, m_cig)
+            link("cig_ember", lathe("cig_ember_m", [(0.0, 0.068), (0.0072, 0.071), (0.0066, 0.080), (0.0, 0.083)], 8), cig, m_ember)
 
     # Neck and head.
     link("neck", limb("neck_m", 0.052, 0.048, 0.09), chest, m_skin, (0.0, 0.0, 0.50))
@@ -408,7 +457,7 @@ def build_export() -> None:
             close_bottom=False,
         ),
         head,
-        m_hair_grey,
+        m_hair_crown,
     )
     cap.scale = (1.03, 1.13, 1.0)
 
@@ -435,18 +484,47 @@ def build_export() -> None:
         lathe("nose_m", [(0.0, -0.030), (0.013, -0.018), (0.016, 0.0), (0.011, 0.016), (0.0, 0.024)], 8),
         head,
         m_skin,
-        (0.0, 0.098, -0.012),
+        (0.0, 0.098, -0.008),
     )
-    nose.scale = (1.0, 1.5, 1.35)
+    nose.scale = (1.0, 1.5, 1.0)
 
-    brow = link(
-        "brow",
-        lathe("brow_m", [(0.0, -0.008), (0.030, -0.004), (0.030, 0.006), (0.0, 0.010)], 10),
-        head,
-        m_skin,
-        (0.0, 0.086, 0.026),
-    )
-    brow.scale = (2.5, 0.9, 1.0)
+    """
+    Eyes, brows and a mouth.
+
+    The head was a blank ovoid until she was actually placed, and BRIEF.md has
+    the player standing close enough to talk to her, so a face that is only a
+    nose reads as unfinished rather than as stylised.
+
+    They are squashed spheres laid on the skull surface, not sockets cut into
+    it. Sockets want a boolean and a boolean wants topology this mesh does not
+    have. At conversation distance the difference does not survive.
+
+    The skull is scaled 1.12 in Y, so its front surface at eye height sits at
+    about y 0.097 and everything here is placed just proud of that.
+
+    They read on colour, not on relief. Everything here is only a few
+    millimetres proud, because a feature modelled deep enough to read in a clay
+    render is a lump on the face once it is the same colour as the skin.
+
+    The skin-coloured brow ridge that used to sit at z 0.026 is gone. It was
+    there because there was nothing else on the face, and with real eyebrows
+    above real eyes it became a third shelf between them.
+    """
+    face_bits = [
+        ("eye_l", m_eye, (-0.042, 0.090, 0.014), 0.015, (1.35, 0.50, 0.66)),
+        ("eye_r", m_eye, (0.042, 0.090, 0.014), 0.015, (1.35, 0.50, 0.66)),
+        ("brow_l", m_brow, (-0.042, 0.090, 0.036), 0.015, (2.00, 0.26, 0.20)),
+        ("brow_r", m_brow, (0.042, 0.090, 0.036), 0.015, (2.00, 0.26, 0.20)),
+        ("mouth", m_mouth, (0.0, 0.090, -0.052), 0.013, (2.00, 0.36, 0.34)),
+    ]
+    for name, material, loc, radius, scale in face_bits:
+        r = radius
+        profile = [
+            (0.0, -r), (0.5 * r, -0.866 * r), (0.866 * r, -0.5 * r), (r, 0.0),
+            (0.866 * r, 0.5 * r), (0.5 * r, 0.866 * r), (0.0, r),
+        ]
+        obj = link(name, lathe(f"{name}_m", profile, 10), head, material, loc)
+        obj.scale = scale
 
     # Reading glasses pushed up, in all three views of the sheet.
     glasses = link(

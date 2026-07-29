@@ -163,7 +163,7 @@ Her collision box goes into the solver **by reference**. The solver reads `min` 
 
 The parlour has her standing at the street window rather than in an armchair. There is no seated pose on this mesh, and an armchair would put her below Miller's eyeline for the one conversation in scene 1 that carries information.
 
-**Her reception look line does not mention the cigarette.** The counter is at 1.06 and her hand rests at 0.82, so it is behind the desk except at the top of a drag. A look line naming something the player cannot see reads as a render fault.
+**The cigarette is not set dressing, so it is staged per station.** `Station.restLift` is where her hand sits between drags, 0 hanging and 1 at her mouth. Reception is 0.62 and the parlour is 0.1. That is a visibility number, not a mannerism: the counter is at 1.06 and a hanging hand is at 0.82, so an arm at rest puts the one prop she has behind the desk where nobody ever sees it. At 0.62 it rests at 1.23, nine centimetres clear.
 
 #### The idle is procedural, and there are no clips on this mesh
 
@@ -171,12 +171,17 @@ She is rooted at both stations, so there is no walk cycle and no path. What is l
 
 The drag pose was **solved, not eyeballed**. Her shoulder is 0.57 from the cigarette and her mouth is 0.26 from her shoulder, so the arm has to fold to under half its length and there is very little slack in the joints. The `rotation.y` term is the one that is not obvious: her arm hangs down -Y, so that rolls the humerus about its own length and decides which way the elbow carries the forearm when it closes. Without it the shoulder has to drag the whole arm across the chest, which is a hand over the mouth and not a drag on a cigarette.
 
-#### Known mesh defects, for the next Blender session
+#### What placing her found in the mesh
 
-Both were invisible until she was standing in a room. Neither is a runtime bug and neither blocks step 12.
+All of it was invisible in Blender and obvious the moment she was standing in a room, which is the general lesson: **check a character in the engine, at the distance the player stands, before calling the mesh done.** All fixed in `build_rosie.py` and re-exported.
 
-- **The arms are detached at the shoulder.** There is a clear gap between the cardigan body and both sleeves. The shoulder empties sit at x ±0.207 and the upper arm starts there at radius 0.062, but the bind rotation splays it out and the cardigan shell is only 0.238 at that height. Widen the upper arm, pull the shoulder inboard, or cap it with a deltoid
-- **The face is blank.** Nose and brow are modelled, there are no eyes or mouth. At conversation distance that shows
+- **The arms were detached at the shoulder.** The elbow and the wrist each get a bridging lathe and the shoulder got nothing. The cardigan is a shell at radius 0.238 against the torso's 0.216, so the sleeve crossed that shell on its way out and its top cap floated outside the knit with the shell curving away inboard above it. You could see straight through the join. Fixed with a `deltoid_l` / `deltoid_r` cap wide enough to bridge from under the shell out to the sleeve
+- **The face was a blank ovoid.** Eyes, brows and a mouth, as squashed spheres laid on the skull rather than sockets cut into it, because a socket wants a boolean and a boolean wants topology this mesh has not got. They read on colour, not relief: anything modelled deep enough to show in a clay render is a lump once it is skin coloured. The old skin-coloured brow ridge is gone, it became a third shelf between the eyes and the new brows
+- **The knitted patches stood off the cardigan like plates.** 4mm proud and 10mm thick. Now 1.5mm and 5mm, and wider, so they read as panels knitted in
+- **The cigarette was two pixels.** Correct at 4mm and useless at conversation distance. Stick and ember both up about 40%, ember more, since the ember is what actually carries it
+- **The crown of her hair read as a grey swim cap.** Now a red-grey mid tone, so it goes grey rather than wearing a hat
+
+`mat()` now also writes `diffuse_color`. Workbench reads that and not the node tree, so every clay render came back grey, which is no use for judging whether a face reads.
 
 ---
 
@@ -228,7 +233,7 @@ Done. Segmented gloved right hand authored in Blender, exported as glTF. Both fi
 
 ## Rosie mesh
 
-Modelled in Blender and exported as glTF, same workflow as the hand. Placed and wired at step 11. See *Rosie, placed* above, and the two known defects listed there.
+Modelled in Blender and exported as glTF, same workflow as the hand. Placed and wired at step 11, and revised once she was in the room. See *Rosie, placed* above.
 
 | Role | Path |
 |---|---|
@@ -242,6 +247,8 @@ Modelled in Blender and exported as glTF, same workflow as the hand. Placed and 
 - **The exporter bakes the Yup conversion through the whole hierarchy, not just the root.** So unlike the hand, every joint on this mesh is in honest three.js axes: +Y up, +X her right, forward -Z, limbs hanging down -Y. Check the glTF before assuming either convention on the next character
 - Joints for the runtime: `rosie_root`, `hips`, `chest`, `head`, `arm_l_0` / `arm_l_1` / `hand_l`, `arm_r_0` / `arm_r_1` / `hand_r`, `cig`, `cig_ember`. Underscores, because the exporter strips dots
 - The cardigan is an open **arc**, not a tube. A revolve closes over the front and there is no cardigan left. Same trap on hair: a full revolve is a helmet that closes over the face, so the length is an arc open at the front and only the crown is a full cap
+- **An arc shell is a shell.** It has an inside and an outside and nothing between them, so anything passing through it needs its own cap or you see the join. That is what the deltoids are for
+- She faces **+Y**, so a Blender front view is a camera on +Y looking back down -Y, `rotation_euler = (90°, 0, 180°)`. The obvious camera at -Y renders her back, and her back is symmetrical enough to pass for a front at a glance
 - Rebuild: Blender MCP on TCP `localhost:9876`, `exec(open('tools/blender/build_rosie.py').read())`. Writes the `.blend` and re-exports the `.glb`
 
 ---
