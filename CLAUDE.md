@@ -32,7 +32,7 @@ The player is Detective Graham Miller. You never see him until the last shot of 
 
 ## Status
 
-Last updated 28 July 2026. Update this whenever a step lands.
+Last updated 29 July 2026. Update this whenever a step lands.
 
 Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Cloudflare Pages is deliberately not connected yet. That happens once scene 1 plays end to end.
 
@@ -46,16 +46,14 @@ Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Cloudflare Pages is
 | 5. Case file, evidence IDs, notebook UI | Done. N opens. Examine files. Idempotent |
 | 6. Room 1A, geometry, fixed 3pm sun | Done. Kit furniture, sash, sun across the bed |
 | 7. Crystal + examine set | Done. Kit Crystal. Twelve room 1A clips. Six evidence IDs file here; diary and hammer wait for parlour and yard |
-| 8. Dialogue system | Done. Node graph, runner, DOM panel. No talkable is wired now the 1A door stub is gone; Rosie is its first real user at step 11 |
+| 8. Dialogue system | Done. Node graph, runner, DOM panel. Rosie is its first real user |
 | 9. Approach and ground floor | Done. Street, steps, neon, facade, hall, reception, parlour, staircase, first-floor hall. 1A is placed in it. See below |
 | 10. Verandah and back yard | Done. Iron lace off 1A, external stairs, yard, Hills hoist, shed, hammer. See below |
-| Rosie's mesh | Built and exported. Not placed, and not wired. See below |
+| 11. Rosie | Done. Placed, talkable, relocates. Two graphs. See below |
 
-**Next: step 11, Rosie.** Both her rooms exist now.
+**Next: step 12, Moretti.** Navmesh follow, tag and bag.
 
 Seven of the eight scene 1 evidence IDs file. Only `diary` is left, and it waits for Moretti at step 12 because it is tagged, not examined.
-
-`rosie.glb` is modelled with every joint the runtime needs. There is no placement, no runtime module and no wiring yet.
 
 ### The lodge, and what step 9 left out
 
@@ -144,8 +142,41 @@ The lodge, room 1A, Crystal, and every prop are **primitives** (boxes, capsules,
 | Neon as two tubes rather than letterforms | When the sign texture lands |
 | Iron lace as boxes, and the yard's tufts | When cast-lace and grass assets land |
 | `window.__lodge` dev handle | Stays. It is `import.meta.env.DEV` only, and the capture tooling wants it |
+| Rosie relocating on `player.position.y > 3.0` | Step 13. It stands in for gate 0 |
 
-Gone: the `1a.door` talk stub that pointed at Rosie's reception graph. Reception exists now, so her voice coming out of a door upstairs is no longer a stub, it is a bug. Nothing is talkable until step 11.
+---
+
+### Rosie, placed
+
+`src/npc/rosie.ts` is the only file that knows about `rosie.glb`. She is one figure with two stations, not two figures, because BRIEF.md's parlour beat only lands if the player was told where she would be and she is there.
+
+| | Reception | Parlour |
+|---|---|---|
+| Stands at | (3.5, 0, 3.15), yaw 0 | (-3.05, 0, 0.75), yaw π |
+| Graph | `rosie.reception` | `rosie.parlour` |
+
+**She is not in `main.ts`'s static lookable list.** Her look line and her graph both change when she moves and `Lookable` is readonly by design, so she is registered through `registerRosie()` and re-registered on relocation. The HUD's description lookup now asks the registry instead of a snapshot map, or her line goes stale the moment she moves.
+
+Her collision box goes into the solver **by reference**. The solver reads `min` and `max` every frame and precomputes nothing, so she rewrites that one `Box3` in place and it follows her.
+
+**She relocates when Miller gets to the first floor.** That is the earliest moment the move cannot be seen: the stairwell is open on the -X side and reception is behind a wall on the +X side. It is a stand-in for gate 0 and it goes at step 13.
+
+The parlour has her standing at the street window rather than in an armchair. There is no seated pose on this mesh, and an armchair would put her below Miller's eyeline for the one conversation in scene 1 that carries information.
+
+**Her reception look line does not mention the cigarette.** The counter is at 1.06 and her hand rests at 0.82, so it is behind the desk except at the top of a drag. A look line naming something the player cannot see reads as a render fault.
+
+#### The idle is procedural, and there are no clips on this mesh
+
+She is rooted at both stations, so there is no walk cycle and no path. What is left is the difference between a mannequin and a person standing still: breath, weight shift, head tracking, and one drag on the cigarette every fourteen seconds.
+
+The drag pose was **solved, not eyeballed**. Her shoulder is 0.57 from the cigarette and her mouth is 0.26 from her shoulder, so the arm has to fold to under half its length and there is very little slack in the joints. The `rotation.y` term is the one that is not obvious: her arm hangs down -Y, so that rolls the humerus about its own length and decides which way the elbow carries the forearm when it closes. Without it the shoulder has to drag the whole arm across the chest, which is a hand over the mouth and not a drag on a cigarette.
+
+#### Known mesh defects, for the next Blender session
+
+Both were invisible until she was standing in a room. Neither is a runtime bug and neither blocks step 12.
+
+- **The arms are detached at the shoulder.** There is a clear gap between the cardigan body and both sleeves. The shoulder empties sit at x ±0.207 and the upper arm starts there at radius 0.062, but the bind rotation splays it out and the cardigan shell is only 0.238 at that height. Widen the upper arm, pull the shoulder inboard, or cap it with a deltoid
+- **The face is blank.** Nose and brow are modelled, there are no eyes or mouth. At conversation distance that shows
 
 ---
 
@@ -197,7 +228,7 @@ Done. Segmented gloved right hand authored in Blender, exported as glTF. Both fi
 
 ## Rosie mesh
 
-Modelled in Blender and exported as glTF, same workflow as the hand. Not placed. See the status note above.
+Modelled in Blender and exported as glTF, same workflow as the hand. Placed and wired at step 11. See *Rosie, placed* above, and the two known defects listed there.
 
 | Role | Path |
 |---|---|
@@ -208,6 +239,7 @@ Modelled in Blender and exported as glTF, same workflow as the hand. Not placed.
 
 - **Lathed profiles, not stacked capsules.** A capsule figure reads as a snowman, and the player stands close enough to talk to her. The silhouette is the whole job
 - Built facing Blender **+Y**, which is Three **-Z** after the Yup export, so she arrives on three.js default forward. Her right hand is +X in both, which is where the cigarette is
+- **The exporter bakes the Yup conversion through the whole hierarchy, not just the root.** So unlike the hand, every joint on this mesh is in honest three.js axes: +Y up, +X her right, forward -Z, limbs hanging down -Y. Check the glTF before assuming either convention on the next character
 - Joints for the runtime: `rosie_root`, `hips`, `chest`, `head`, `arm_l_0` / `arm_l_1` / `hand_l`, `arm_r_0` / `arm_r_1` / `hand_r`, `cig`, `cig_ember`. Underscores, because the exporter strips dots
 - The cardigan is an open **arc**, not a tube. A revolve closes over the front and there is no cardigan left. Same trap on hair: a full revolve is a helmet that closes over the face, so the length is an arc open at the front and only the crown is a full cap
 - Rebuild: Blender MCP on TCP `localhost:9876`, `exec(open('tools/blender/build_rosie.py').read())`. Writes the `.blend` and re-exports the `.glb`
@@ -386,8 +418,8 @@ The navmesh landed with step 9, as a set of walkable boxes rather than triangles
 
 ### People
 
-11. **Rosie.** At reception on the way in, relocated to the parlour on the way back down. Her mesh is built and exported and both rooms now exist, so she is unblocked — **next**
-12. **Moretti.** Navmesh follow, tag and bag. Diary and hammer file through him
+11. **Rosie.** At reception on the way in, relocated to the parlour on the way back down — **done**
+12. **Moretti.** Navmesh follow, tag and bag. Diary and hammer file through him — **next**
 
 ### Sequencing
 

@@ -25,7 +25,9 @@ import { getEvidence } from './case/evidence.ts'
 import { DialogueRunner } from './dialogue/runner.ts'
 import { DialoguePanel } from './dialogue/panel.ts'
 import { ROSIE_RECEPTION } from './dialogue/graphs/rosie-reception.ts'
+import { ROSIE_PARLOUR } from './dialogue/graphs/rosie-parlour.ts'
 import type { DialogueGraph } from './dialogue/graph.ts'
+import { buildRosie } from './npc/rosie.ts'
 
 const canvasEl = document.querySelector<HTMLCanvasElement>('#game')
 const hudRootEl = document.querySelector<HTMLDivElement>('#hud')
@@ -79,6 +81,11 @@ async function main(): Promise<void> {
   const yard = buildYard()
   world.add(yard.group)
 
+  // Under `world`, so the look raycast reaches her and her own hands are not a
+  // special case the way Miller's are.
+  const rosie = await buildRosie()
+  world.add(rosie.root)
+
   scene.add(world)
 
   const lighting = buildSceneLighting()
@@ -89,8 +96,11 @@ async function main(): Promise<void> {
   scene.add(camera)
 
   const input = new Input(canvas)
+  // Rosie's box goes in by reference, not by copy. She relocates, and the
+  // solver reads min and max every frame with nothing precomputed, so she
+  // rewrites that one box in place and the solver follows her.
   const solver = new BoxCollisionSolver(
-    [...lodge.solids, ...room.solids, ...verandah.solids, ...yard.solids],
+    [...lodge.solids, ...room.solids, ...verandah.solids, ...yard.solids, ...rosie.solids],
     [...lodge.floors, ...room.floors, ...verandah.floors, ...yard.floors],
   )
   const player = new PlayerController(camera, input, solver, lodge.spawn, lodge.spawnYaw)
@@ -376,12 +386,32 @@ async function main(): Promise<void> {
     },
   ]
 
-  const graphs = new Map<string, DialogueGraph>([[ROSIE_RECEPTION.id, ROSIE_RECEPTION]])
+  const graphs = new Map<string, DialogueGraph>([
+    [ROSIE_RECEPTION.id, ROSIE_RECEPTION],
+    [ROSIE_PARLOUR.id, ROSIE_PARLOUR],
+  ])
 
   const registry = new LookRegistry()
   for (const lookable of lookables) {
     registry.add(lookable)
   }
+
+  /*
+   * Rosie is not in the static list, because her look line and her graph both
+   * change when she relocates and `Lookable` is readonly by design. Re-register
+   * rather than mutate: the registry indexes descendants by object id, so
+   * swapping the entry is the supported way to change one.
+   */
+  const registerRosie = (): void => {
+    registry.remove('rosie')
+    registry.add({
+      id: 'rosie',
+      description: rosie.current.description,
+      dialogueId: rosie.current.dialogueId,
+      object: rosie.root,
+    })
+  }
+  registerRosie()
 
   const look = new LookRaycaster(camera, registry, world)
   const hands = await Hands.create(camera)
@@ -390,11 +420,11 @@ async function main(): Promise<void> {
   const dialogue = new DialogueRunner()
   const dialoguePanel = new DialoguePanel(hudRoot, dialogue)
 
-  const descriptions = new Map(lookables.map((entry) => [entry.id, entry.description]))
-
   // Built before examine wiring so tier-two text can land on it.
   // The prompt is appended after so its scrim sits behind the description line.
-  const hud = new Hud(hudRoot, (id) => descriptions.get(id))
+  // Asks the registry rather than a snapshot map, because Rosie's line changes
+  // when she relocates and a map built from the static list would go stale.
+  const hud = new Hud(hudRoot, (id) => registry.get(id)?.description)
 
   const targetWorld = new Vector3()
   let examiningId: string | undefined = undefined
@@ -528,6 +558,10 @@ async function main(): Promise<void> {
   const loop = new Loop((delta) => {
     elapsed += delta
     lodge.update(elapsed)
+    // Ahead of the notebook and dialogue early-outs. She is on screen for the
+    // whole conversation and a figure that freezes the moment you talk to her
+    // is worse than one that never moved.
+    rosie.update(delta, player.position)
 
     if (input.wasPressed('notebook')) {
       if (dialogue.isActive) {
@@ -560,6 +594,20 @@ async function main(): Promise<void> {
 
     player.update(delta)
     look.update()
+
+    /*
+     * She relocates once Miller is upstairs. "Come find me when you're done" is
+     * the instruction, and him being on the first floor is the earliest moment
+     * the move cannot be seen: the stairwell is open on the -X side and
+     * reception is behind a wall on the +X side.
+     *
+     * This is a stand-in for gate 0, which lands with the objective gates at
+     * step 13. When it does, the trigger becomes the gate and this goes.
+     */
+    if (rosie.station === 'reception' && player.position.y > 3.0) {
+      rosie.setStation('parlour')
+      registerRosie()
+    }
 
     // Hold to examine. Press starts it; release before the clip ends cancels.
     // Talkables take the same key as a press, not a hold.
@@ -606,6 +654,7 @@ async function main(): Promise<void> {
       room,
       verandah,
       yard,
+      rosie,
       solver,
       lighting,
       clips: CLIPS,

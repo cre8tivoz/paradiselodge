@@ -1,8 +1,15 @@
 import type { DialogueGraph } from '../graph.ts'
 
 /**
- * Rosie at reception. BRIEF.md cold-open beat, used here to prove the runner
- * until she exists as a rooted NPC (step 9). Wired to the hall door stub in 1A.
+ * Rosie at reception, on the way in. BRIEF.md's cold-open beat.
+ *
+ * Brief and directive, and it stays that way. The cold open at step 15 plays
+ * this over the walk in without the player pressing anything, so it has to work
+ * as something overheard as well as something asked for. That is why the two
+ * options both end in the same place and neither of them is information.
+ *
+ * She names the parlour here. That is the only signposting scene 1 gets, and it
+ * lands before the player has any reason to want it.
  */
 export const ROSIE_RECEPTION: DialogueGraph = {
   id: 'rosie.reception',
