@@ -51,8 +51,9 @@ Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Cloudflare Pages is
 | 10. Verandah and back yard | Done. Iron lace off 1A, external stairs, yard, Hills hoist, shed, hammer. See below |
 | 11. Rosie | Done. Placed, talkable, relocates. Two graphs. See below |
 | 12. Moretti | Done. Breadcrumb follow, the tag verb, bag and hide. Diary is built and both taggables work. See below |
+| 13. Objective gates, scene exit | Done. Eight gates, none of them locks. Theorise with Moretti ends the scene. See below |
 
-**Next: step 13, objective gates and the scene exit.** Everything scene 1 needs is now in the world.
+**Next: step 14, the scene manager and saving on a scene boundary.** Scene 1 plays end to end.
 
 All eight scene 1 evidence IDs file.
 
@@ -142,8 +143,7 @@ The lodge, room 1A, Crystal, and every prop are **primitives** (boxes, capsules,
 | Neon as two tubes rather than letterforms | When the sign texture lands |
 | Iron lace as boxes, and the yard's tufts | When cast-lace and grass assets land |
 | `window.__lodge` dev handle | Stays. It is `import.meta.env.DEV` only, and the capture tooling wants it |
-| Rosie relocating on `player.position.y > 3.0` | Step 13. It stands in for gate 0 |
-| The `bagged` set living in `main.ts` | Step 13. The gates want it, and they will own it |
+| The scene-exit fade, and `.scene-fade` | Step 14. The scene manager owns what comes after it |
 
 ---
 
@@ -211,6 +211,41 @@ The fourth verb. **G**, not a second meaning for F: F is already a hold and a pr
 There is a stall timeout. If something the route did not know about blocks him, he bags from where he got to. A constable frozen against a chair is a worse outcome than one who reaches a little further.
 
 **A lookable's position is its bounding box centre, not `getWorldPosition`.** Most kit props are a Group left at the origin with their parts placed by world-space extents, so the group origin is the middle of the building. Found by tagging the diary and watching Moretti set off for the front hall. Examine anchors its hand clip the same way and had the same latent bug.
+
+---
+
+### The gates are not locks
+
+`src/case/gates.ts`. Eight gates from BRIEF.md's table, evaluated independently, and **not one of them refuses the player anything.**
+
+BRIEF.md puts the ordering in the geometry rather than in code. Gate 4 comes before gate 7 because the yard is only reachable down the verandah stairs, so you cannot reach the hammer without having walked past them. Nothing enforces that and nothing needs to.
+
+What the gates are for is knowing when the scene is finished, which is the one thing the world cannot say by its shape. The only consequence of the set being complete is that Moretti has something to say.
+
+**Every gate has to be reachable without knowing it exists.** That is the trap in the whole file. Gate 5 first hung off Rosie's 2am answer, which was one branch of a hub the player could finish without ever picking it, and a gate behind an optional branch is a fail state for anybody who asked her something else. The bang is now the first thing she says in the parlour, unprompted, which is better writing anyway: it is the thing on her mind, so it is the thing she says.
+
+The tracker subscribes to the bus itself rather than being poked from `main.ts`. The one fact that is not an event is where Miller is standing, and gate 0 is a `Box3` over the ground-floor hall because every route to the staircase crosses it. **Keep that box in step with `lodge.ts` by hand.**
+
+`tag:bagged` is recorded here, so the `bagged` set that lived in `main.ts` is gone.
+
+**Rosie moves on gate 1, not on a position check.** Gate 1 is Miller working the body, so he is in 1A with his back to the door and the move cannot be seen from anywhere in the building. It also honours what she told him at the desk: she is in the parlour by the time he comes back down, because she went while he was busy.
+
+### Moretti is the objective display
+
+No map, no marker, no checklist. A notebook page listing outstanding gates would be a quest log wearing a different hat, so the way the player finds out where they are is to turn round and ask the constable.
+
+He has two graphs and the gates pick which:
+
+| | |
+|---|---|
+| `moretti.standby` | Until the last gate. One line, and **deliberately not a list.** He does not name the unfinished room and he does not count anything off, because either turns the scene into errands |
+| `moretti.theorise` | The exit. Reaching its last node emits `scene:complete` |
+
+**Miller speaks in the theorise graph.** First time in the game, and the player still never sees him.
+
+It stops where scene 1's evidence stops: two sets of hands in one room, one of them tidying up, and a hammer left at the bottom of the stairs. **No name.** Victor is scene 2 and Sterling is scene 4, and a player handed a name here has been handed the end of the game in the first half hour. The last line is an instruction rather than a conclusion, because scene 2 opens with walking the hammer to forensics.
+
+Moretti is de-registered on completion, so the exit cannot be replayed.
 
 ---
 
@@ -459,8 +494,8 @@ The navmesh landed with step 9, as a set of walkable boxes rather than triangles
 
 ### Sequencing
 
-13. Objective gates, scene exit — **next**
-14. Scene manager, save on scene boundary
+13. Objective gates, scene exit — **done**
+14. Scene manager, save on scene boundary — **next**
 15. Cold open sequence, last
 
 Verify in the browser between each step. Do not stack three steps in one prompt.

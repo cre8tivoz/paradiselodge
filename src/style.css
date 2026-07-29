@@ -267,3 +267,24 @@ body {
   font-size: 0.65rem;
   opacity: 0.45;
 }
+
+/*
+ * Scene exit. Scaffolding until the scene manager lands at step 14, which will
+ * own what comes after the fade. It is not a title card: ASSETS.md allows two in
+ * the whole game and neither of them belongs here.
+ */
+.scene-fade {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 2.4s ease-in;
+  /* Over everything. Nothing in the HUD is created in a useful order and the
+     fade has to cover whatever is up when the scene ends. */
+  z-index: 10;
+}
+
+.scene-fade.is-out {
+  opacity: 1;
+}

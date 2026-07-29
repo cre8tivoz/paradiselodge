@@ -13,46 +13,45 @@ import type { DialogueChoice, DialogueGraph } from '../graph.ts'
  * anyone got upstairs, and she says so herself without knowing what she has
  * said. Miller does not react and the player is not told.
  *
+ * **She leads with the bang, unprompted.** It used to be one branch of the
+ * question hub, which made gate 5 hang off an option the player could finish
+ * the conversation without ever picking. A gate that needs an optional branch
+ * is a fail state for anyone who asked something else. It is also better
+ * writing this way: it is the thing on her mind, so it is the thing she says.
+ *
  * No evidence files here. The diary is on the table beside her and it is
- * tagged, not examined, so it lands with Moretti at step 12.
+ * tagged as well as examined, so Moretti carries it off at gate 6.
  */
 
 const ASK: readonly DialogueChoice[] = [
-  { id: 'noise', label: 'Did you hear anything last night?', next: 'noise' },
   { id: 'crystal', label: 'How long had she been here?', next: 'crystal' },
   { id: 'who', label: 'Who else was in the house?', next: 'who' },
+  { id: 'keys', label: 'Who else has a key to 1A?', next: 'keys' },
   { id: 'leave', label: "That'll do for now.", next: 'leave' },
 ]
 
 export const ROSIE_PARLOUR: DialogueGraph = {
   id: 'rosie.parlour',
-  start: 'sit',
+  start: 'bang',
   nodes: {
-    sit: {
-      id: 'sit',
+    bang: {
+      id: 'bang',
       speaker: 'Rosie',
-      line: "You were up there a while. Sit down if you want, I'm not getting up.",
+      line: 'I heard it, you know. Two o clock, near enough. A bang, and then another one.',
+      next: 'street',
+    },
+    street: {
+      id: 'street',
+      speaker: 'Rosie',
+      // The whole point of her, and she has no idea she has just said it.
+      line: "This is Fitzroy Street, Detective. There's always a loud bang. You'd never sleep if you got up for every one of them.",
       next: 'ask',
     },
     ask: {
       id: 'ask',
       speaker: 'Rosie',
-      line: 'Go on then.',
+      line: 'Was there something else?',
       choices: ASK,
-    },
-
-    noise: {
-      id: 'noise',
-      speaker: 'Rosie',
-      line: 'There was a bang. Two of them, close together. Around two.',
-      next: 'noise2',
-    },
-    noise2: {
-      id: 'noise2',
-      speaker: 'Rosie',
-      // The whole point of her, and she has no idea she has just said it.
-      line: "This is Fitzroy Street. There's always a loud bang. You'd never sleep if you got up for every one of them.",
-      next: 'more',
     },
 
     crystal: {
@@ -71,13 +70,26 @@ export const ROSIE_PARLOUR: DialogueGraph = {
     who: {
       id: 'who',
       speaker: 'Rosie',
-      line: "Nine rooms let, six of them in. I don't sit at that desk all night, Detective.",
+      line: "Nine rooms let, six of them in. I don't sit at that desk all night.",
       next: 'who2',
     },
     who2: {
       id: 'who2',
       speaker: 'Rosie',
       line: "Anyone could come up the side stairs and I'd not know a thing about it.",
+      next: 'more',
+    },
+
+    keys: {
+      id: 'keys',
+      speaker: 'Rosie',
+      line: "Me. There's a spare in the pigeonhole and it has been in the pigeonhole all week.",
+      next: 'keys2',
+    },
+    keys2: {
+      id: 'keys2',
+      speaker: 'Rosie',
+      line: "She had the other one. It'll be up there with her things.",
       next: 'more',
     },
 

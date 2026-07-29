@@ -22,6 +22,7 @@ import { Hud } from './ui/hud.ts'
 import { CaseFile } from './case/casefile.ts'
 import { Notebook } from './case/notebook.ts'
 import { getEvidence } from './case/evidence.ts'
+import { GateTracker } from './case/gates.ts'
 import { DialogueRunner } from './dialogue/runner.ts'
 import { DialoguePanel } from './dialogue/panel.ts'
 import { ROSIE_RECEPTION } from './dialogue/graphs/rosie-reception.ts'
@@ -30,6 +31,7 @@ import type { DialogueGraph } from './dialogue/graph.ts'
 import { buildRosie } from './npc/rosie.ts'
 import { buildMoretti } from './npc/moretti.ts'
 import { MORETTI_BAG } from './dialogue/graphs/moretti-bag.ts'
+import { MORETTI_STANDBY, MORETTI_THEORISE, THEORISE_LAST_NODE } from './dialogue/graphs/moretti-exit.ts'
 
 const canvasEl = document.querySelector<HTMLCanvasElement>('#game')
 const hudRootEl = document.querySelector<HTMLDivElement>('#hud')
@@ -425,8 +427,15 @@ async function main(): Promise<void> {
   const graphs = new Map<string, DialogueGraph>([
     [ROSIE_RECEPTION.id, ROSIE_RECEPTION],
     [ROSIE_PARLOUR.id, ROSIE_PARLOUR],
+    [MORETTI_STANDBY.id, MORETTI_STANDBY],
+    [MORETTI_THEORISE.id, MORETTI_THEORISE],
     ...Object.values(MORETTI_BAG).map((graph) => [graph.id, graph] as const),
   ])
+
+  const caseFile = new CaseFile()
+  // Ahead of the registry, because Moretti's entry reads the gate state to pick
+  // which of his two graphs he has.
+  const gates = new GateTracker(caseFile)
 
   const registry = new LookRegistry()
   for (const lookable of lookables) {
@@ -450,9 +459,26 @@ async function main(): Promise<void> {
   }
   registerRosie()
 
+  /*
+   * Moretti is talkable, and which graph he has depends on the gates. Same
+   * re-registration as Rosie and for the same reason: `Lookable` is readonly.
+   *
+   * He is the objective display. No map, no marker, no checklist: you turn round
+   * and ask the constable.
+   */
+  const registerMoretti = (): void => {
+    registry.remove('moretti')
+    registry.add({
+      id: 'moretti',
+      description: 'Constable Moretti.',
+      dialogueId: gates.allUnlocked ? MORETTI_THEORISE.id : MORETTI_STANDBY.id,
+      object: moretti.root,
+    })
+  }
+  registerMoretti()
+
   const look = new LookRaycaster(camera, registry, world)
   const hands = await Hands.create(camera)
-  const caseFile = new CaseFile()
   const notebook = new Notebook(hudRoot, caseFile)
   const dialogue = new DialogueRunner()
   const dialoguePanel = new DialoguePanel(hudRoot, dialogue)
@@ -462,6 +488,9 @@ async function main(): Promise<void> {
   // Asks the registry rather than a snapshot map, because Rosie's line changes
   // when she relocates and a map built from the static list would go stale.
   const hud = new Hud(hudRoot, (id) => registry.get(id)?.description)
+
+  /** Set once the theorise conversation reaches its last node. */
+  let sceneComplete = false
 
   const targetWorld = new Vector3()
   const targetBounds = new Box3()
@@ -508,8 +537,6 @@ async function main(): Promise<void> {
    * something they have not looked at still has to look at it to know it is
    * there, and a refusal with no stated reason is worse than a wasted walk.
    */
-  const bagged = new Set<string>()
-
   function tryTag(): void {
     if (hands.isPlaying || notebook.isOpen || dialogue.isActive) {
       return
@@ -518,7 +545,7 @@ async function main(): Promise<void> {
     if (target === undefined || target.taggable !== true) {
       return
     }
-    if (bagged.has(target.id) || moretti.state === 'approaching' || moretti.state === 'bagging') {
+    if (gates.isBagged(target.id) || moretti.state === 'approaching' || moretti.state === 'bagging') {
       return
     }
     locate(target.object, targetWorld)
@@ -549,7 +576,7 @@ async function main(): Promise<void> {
   }
 
   moretti.onBagged = (objectId) => {
-    bagged.add(objectId)
+    // The tracker records it off the bus, so nothing here keeps a second list.
     emit('tag:bagged', { objectId })
     // The object goes with him. Hiding it is the whole point of the verb, and
     // it is also what stops the player tagging the same hammer twice.
@@ -594,6 +621,28 @@ async function main(): Promise<void> {
     console.debug('dialogue end', nodeId)
   })
 
+  gates.onUnlocked = (gateId) => {
+    console.debug('gate', gateId)
+
+    /*
+     * Rosie moves on gate 1, not on a position check.
+     *
+     * Gate 1 is Miller working the body, so he is in 1A with his back to the
+     * door and the move cannot be seen from anywhere. It also honours what she
+     * told him at the desk: she is in the parlour by the time he comes back
+     * down, because she went while he was busy.
+     */
+    if (gateId === 'body' && rosie.station === 'reception') {
+      rosie.setStation('parlour')
+      registerRosie()
+    }
+
+    // The last gate is what gives Moretti the exit conversation.
+    if (gates.allUnlocked) {
+      registerMoretti()
+    }
+  }
+
   const prompt = document.createElement('div')
   prompt.className = 'prompt'
   hudRoot.appendChild(prompt)
@@ -605,7 +654,7 @@ async function main(): Promise<void> {
     // Ask the runner, not the panel. The runner sets its state before it emits
     // dialogue:start, and the panel opens on the callback after it, so a panel
     // check here runs one step too early and leaves the prompt over the scene.
-    if (input.isLocked || notebook.isOpen || dialogue.isActive) {
+    if (input.isLocked || notebook.isOpen || dialogue.isActive || sceneComplete) {
       prompt.style.display = 'none'
       return
     }
@@ -638,6 +687,33 @@ async function main(): Promise<void> {
   events.on('casefile:close', updatePrompt)
   events.on('dialogue:start', updatePrompt)
   events.on('dialogue:end', updatePrompt)
+
+  /*
+   * The scene exit. Reaching the last node of the theorise graph ends scene 1.
+   *
+   * Scaffolding: the fade is all there is, and the scene manager at step 14 owns
+   * what comes after it. No title card, because ASSETS.md allows exactly two in
+   * the whole game and neither of them is here.
+   */
+  const fade = document.createElement('div')
+  fade.className = 'scene-fade'
+  hudRoot.appendChild(fade)
+
+  events.on('dialogue:end', ({ nodeId }) => {
+    if (sceneComplete || nodeId !== THEORISE_LAST_NODE) {
+      return
+    }
+    sceneComplete = true
+    registry.remove('moretti')
+    hud.clearExamine()
+    updatePrompt()
+    fade.classList.add('is-out')
+    emit('scene:complete', { id: 'scene1' })
+  })
+
+  events.on('scene:complete', ({ id }) => {
+    console.debug('scene complete', id)
+  })
 
   // Esc closes the notebook without going through Input, so we do not
   // preventDefault on Escape and trap pointer lock. Dialogue handles its own Esc.
@@ -693,20 +769,8 @@ async function main(): Promise<void> {
 
     player.update(delta)
     look.update()
+    gates.update(player.position)
 
-    /*
-     * She relocates once Miller is upstairs. "Come find me when you're done" is
-     * the instruction, and him being on the first floor is the earliest moment
-     * the move cannot be seen: the stairwell is open on the -X side and
-     * reception is behind a wall on the +X side.
-     *
-     * This is a stand-in for gate 0, which lands with the objective gates at
-     * step 13. When it does, the trigger becomes the gate and this goes.
-     */
-    if (rosie.station === 'reception' && player.position.y > 3.0) {
-      rosie.setStation('parlour')
-      registerRosie()
-    }
 
     // Hold to examine. Press starts it; release before the clip ends cancels.
     // Talkables take the same key as a press, not a hold.
@@ -759,7 +823,7 @@ async function main(): Promise<void> {
       yard,
       rosie,
       moretti,
-      bagged,
+      gates,
       solver,
       lighting,
       clips: CLIPS,
