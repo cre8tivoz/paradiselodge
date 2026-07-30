@@ -171,6 +171,21 @@ export class Input {
   }
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
+    /*
+     * Esc releases the mouse. Never preventDefault it: the browser must be
+     * allowed to exit pointer lock, and a trapped cursor is how you force-quit
+     * a tab. Notebook and dialogue read Escape themselves after this runs.
+     */
+    if (event.code === 'Escape') {
+      if (this.locked) {
+        document.exitPointerLock()
+      }
+      this.held.clear()
+      this.pressedThisFrame.clear()
+      this.dragging = false
+      return
+    }
+
     const action = BINDINGS.get(event.code)
     if (action === undefined) {
       return

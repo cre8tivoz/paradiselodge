@@ -716,7 +716,7 @@ async function main(): Promise<void> {
   hudRoot.appendChild(prompt)
 
   const CONTROLS =
-    'WASD move &middot; Shift run &middot; C or Ctrl crouch &middot; Q and E lean &middot; Hold F examine &middot; F talk &middot; G tag &middot; N case file'
+    'WASD move &middot; Shift run &middot; C or Ctrl crouch &middot; Q and E lean &middot; Hold F examine &middot; F talk &middot; G tag &middot; N case file &middot; Esc release mouse'
 
   const updatePrompt = (): void => {
     // Ask the runner, not the panel. The runner sets its state before it emits
@@ -736,7 +736,7 @@ async function main(): Promise<void> {
       ? '<strong>Drag to look around</strong>' +
         `<span>${CONTROLS}</span>` +
         '<span class="prompt-note">This browser refused pointer lock, so hold the left button to turn.</span>'
-      : `<strong>Click to look around</strong><span>${CONTROLS} &middot; Esc release</span>`
+      : `<strong>Click to look around</strong><span>${CONTROLS}</span>`
   }
 
   /*

@@ -444,15 +444,19 @@ export function buildLodge(): Lodge {
    * rotated meshes and carry no collision of their own. The upright box below
    * is what actually keeps Miller off the edge.
    *
-   * The line runs from the middle of tread one to the middle of tread
-   * seventeen, which is why the rise and run are counted over TREADS - 1.
+   * Stop short of the top landing. A rail that ran to STAIR_Z1 left less than a
+   * player radius between its end and the back wall, so the landing was a dead
+   * end. The last few treads are open on this side; the top newel marks where
+   * the rail stops and the turn onto the landing begins.
    */
-  const run = (TREADS - 1) * GOING
-  const climb = (TREADS - 1) * RISE
+  const RAIL_TREADS = TREADS - 3
+  const run = (RAIL_TREADS - 1) * GOING
+  const climb = (RAIL_TREADS - 1) * RISE
   const rake = Math.atan2(climb, run)
   const rakeLength = Math.hypot(run, climb)
   const rakeMidY = RISE + climb / 2
   const rakeMidZ = STAIR_Z0 + GOING / 2 + run / 2
+  const railEndZ = STAIR_Z0 + RAIL_TREADS * GOING
 
   const string = raked(stairs, timber, 0.14, 0.4, rakeLength)
   string.position.set(STAIR_EDGE, rakeMidY - 0.22, rakeMidZ)
@@ -462,16 +466,26 @@ export function buildLodge(): Lodge {
   rail.position.set(STAIR_EDGE, rakeMidY + 0.92, rakeMidZ)
   rail.rotation.x = -rake
 
-  // Newel at the foot, and the solid that keeps Miller off the open side. That
-  // solid starts past the bottom two treads: the gap is how you get onto the
-  // flight from the passage.
+  // Newels at foot and head of the flight rail.
   slab(stairs, timber, STAIR_EDGE - 0.09, STAIR_EDGE + 0.09, 0, 1.2, STAIR_Z0 + 0.52, STAIR_Z0 + 0.7)
+  const railTopY = RAIL_TREADS * RISE
+  slab(
+    stairs,
+    timber,
+    STAIR_EDGE - 0.09,
+    STAIR_EDGE + 0.09,
+    railTopY,
+    railTopY + 1.05,
+    railEndZ - 0.12,
+    railEndZ + 0.06,
+  )
+  // Solid stops with the rail. Landing clearance past this is what lets Miller
+  // turn onto the first-floor hall; do not push it back to STAIR_Z1.
   solids.push(
-    aabb(STAIR_EDGE - 0.02, STAIR_EDGE + 0.14, GROUND, CEIL_FIRST, STAIR_Z0 + 0.58, STAIR_Z1),
+    aabb(STAIR_EDGE - 0.02, STAIR_EDGE + 0.14, GROUND, CEIL_FIRST, STAIR_Z0 + 0.58, railEndZ),
   )
 
-  // Balusters, one a tread, from the newel up.
-  for (let n = 3; n <= TREADS; n += 1) {
+  for (let n = 3; n <= RAIL_TREADS; n += 1) {
     const top = n * RISE
     const z = STAIR_Z0 + (n - 0.5) * GOING
     slab(stairs, timber, STAIR_EDGE - 0.03, STAIR_EDGE + 0.03, top, top + 0.82, z - 0.025, z + 0.025)
@@ -494,6 +508,22 @@ export function buildLodge(): Lodge {
   wall(group, solids, nicotine, HALL_X1 - INT, HALL_X1, FIRST, CEIL_FIRST, STAIR_Z0, BACK)
   wall(group, solids, nicotine, STAIR_X0 - 0.05, STAIR_X0 + 0.09, FIRST, CEIL_FIRST, STAIR_Z1 - 0.06, BACK)
 
+  /*
+   * Banister along the open stairwell on the first-floor hall. Waist height,
+   * not a wall: the void is what you look down into as you walk back toward
+   * the street. Stops at the same z as the flight rail so the landing stays clear.
+   */
+  const hallRailZ0 = STAIR_Z0
+  const hallRailZ1 = railEndZ
+  slab(group, timber, STAIR_EDGE - 0.04, STAIR_EDGE + 0.06, FIRST + 0.9, FIRST + 0.98, hallRailZ0, hallRailZ1)
+  for (let z = hallRailZ0 + 0.2; z < hallRailZ1; z += 0.28) {
+    slab(group, timber, STAIR_EDGE - 0.02, STAIR_EDGE + 0.04, FIRST, FIRST + 0.9, z - 0.02, z + 0.02)
+  }
+  slab(group, timber, STAIR_EDGE - 0.08, STAIR_EDGE + 0.08, FIRST, FIRST + 1.0, hallRailZ1 - 0.1, hallRailZ1 + 0.06)
+  solids.push(
+    aabb(STAIR_EDGE - 0.02, STAIR_EDGE + 0.1, FIRST, FIRST + 1.05, hallRailZ0, hallRailZ1),
+  )
+
   // Numbered doors, shut. 1A is the first on the right and is a real room; these
   // are the neighbours and they stay closed for the whole game.
   for (const z of [6.0, 8.1]) {
@@ -505,12 +535,16 @@ export function buildLodge(): Lodge {
   slab(group, nicotine, STAIR_X0 - 0.05, HALL_X1, CEIL_FIRST, CEIL_FIRST + 0.09, FRONT, BACK)
 
   // === Reception ===
+  // Desk sits clear of the hall opening. A previous span started at x 2.32,
+  // which left 0.57m against the hall wall — less than a player diameter — so
+  // the doorway dumped Miller into a dead end. Gap from HALL_X1 to the desk
+  // end is the circulation path; Rosie stays behind it at z 3.15.
 
   const desk = new Group()
   desk.name = 'desk'
   group.add(desk)
-  slab(desk, timber, 2.4, 5.4, GROUND, 1.06, 1.9, 2.5)
-  slab(desk, timber, 2.32, 5.48, 1.06, 1.14, 1.82, 2.62)
+  slab(desk, timber, 3.4, 5.6, GROUND, 1.06, 2.0, 2.6)
+  slab(desk, timber, 3.32, 5.68, 1.06, 1.14, 1.92, 2.72)
 
   const keyRack = new Group()
   keyRack.name = 'keyRack'
@@ -524,17 +558,17 @@ export function buildLodge(): Lodge {
     }
   }
 
-  const ledger = slab(group, mat(0xd8cfbc, 0.9), 3.5, 4.2, 1.14, 1.2, 2.0, 2.42)
+  const ledger = slab(group, mat(0xd8cfbc, 0.9), 4.0, 4.7, 1.14, 1.2, 2.1, 2.52)
   ledger.name = 'ledger'
   const phone = new Group()
   phone.name = 'phone'
   group.add(phone)
-  slab(phone, mat(0x17130f, 0.5), 4.6, 5.05, 1.14, 1.28, 2.02, 2.34)
-  slab(phone, mat(0x17130f, 0.5), 4.62, 5.03, 1.28, 1.36, 2.04, 2.14)
-  const ashtray = slab(group, mat(EXTERIOR.marbleStep, 0.35), 2.62, 2.94, 1.14, 1.2, 2.06, 2.38)
+  slab(phone, mat(0x17130f, 0.5), 5.0, 5.45, 1.14, 1.28, 2.12, 2.44)
+  slab(phone, mat(0x17130f, 0.5), 5.02, 5.43, 1.28, 1.36, 2.14, 2.24)
+  const ashtray = slab(group, mat(EXTERIOR.marbleStep, 0.35), 3.5, 3.82, 1.14, 1.2, 2.16, 2.48)
   ashtray.name = 'ashtray'
 
-  solids.push(aabb(2.32, 5.48, GROUND, 1.14, 1.82, 2.62))
+  solids.push(aabb(3.32, 5.68, GROUND, 1.14, 1.92, 2.72))
   solids.push(aabb(2.6, 5.2, GROUND, 2.5, ROOM_BACK - 0.22, ROOM_BACK))
 
   // === Parlour ===
