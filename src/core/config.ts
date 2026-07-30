@@ -94,6 +94,13 @@ export const LOOP = {
 
 export const RENDER = {
   maxPixelRatio: 2,
+  /**
+   * ACES filmic + this exposure are what stop the 3pm sun (intensity 8) from
+   * turning Crystal's cream dress and every lit wall into clipped white. The
+   * light grade CLAUDE.md still lists as owed starts here; without it the room
+   * cannot photograph.
+   */
+  exposure: 0.85,
 } as const
 
 export const HAND = {

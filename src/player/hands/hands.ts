@@ -61,6 +61,12 @@ export class Hands {
     return this.objectId
   }
 
+  /** Capture / HUD hide. Does not cancel a playing clip's clock. */
+  setVisible(visible: boolean): void {
+    this.right.setVisible(visible)
+    this.left.setVisible(visible)
+  }
+
   /**
    * @param target World position of the thing being examined. The hand reaches
    *   toward it, clamped to arm's length, so a bespoke clip lands on the object

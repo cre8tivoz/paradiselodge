@@ -1,4 +1,10 @@
-import { PCFSoftShadowMap, PerspectiveCamera, WebGLRenderer } from 'three'
+import {
+  ACESFilmicToneMapping,
+  PCFSoftShadowMap,
+  PerspectiveCamera,
+  SRGBColorSpace,
+  WebGLRenderer,
+} from 'three'
 import { CAMERA, RENDER } from '../core/config.ts'
 
 export interface Viewport {
@@ -10,15 +16,18 @@ export interface Viewport {
 /**
  * Renderer and camera. Deliberately thin.
  *
- * No tone mapping and no post yet. Room 1A's fixed sun is the thing that
- * decides the grade, and that is build order step 6. Setting it here would be
- * guessing at it three steps early.
+ * Tone mapping is required once the sun is bright enough to make a beam: without
+ * it, MeshStandardMaterial values above 1 clip to white and Crystal's cream
+ * dress reads as a mannequin. ACES keeps the beam and stops the clip.
  */
 export function createViewport(canvas: HTMLCanvasElement): Viewport {
   const renderer = new WebGLRenderer({ canvas, antialias: true })
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, RENDER.maxPixelRatio))
   renderer.shadowMap.enabled = true
   renderer.shadowMap.type = PCFSoftShadowMap
+  renderer.outputColorSpace = SRGBColorSpace
+  renderer.toneMapping = ACESFilmicToneMapping
+  renderer.toneMappingExposure = RENDER.exposure
 
   const camera = new PerspectiveCamera(CAMERA.fov, 1, CAMERA.near, CAMERA.far)
 

@@ -1,6 +1,7 @@
 import {
   Box3,
   BoxGeometry,
+  CylinderGeometry,
   Group,
   Mesh,
   MeshBasicMaterial,
@@ -8,7 +9,16 @@ import {
   Object3D,
   Vector3,
 } from 'three'
-import { INTERIOR, ROOM_1A } from '../materials/palette.ts'
+import { EXTERIOR, INTERIOR, ROOM_1A } from '../materials/palette.ts'
+import {
+  bedspreadMap,
+  carpetMap,
+  floorboardMap,
+  mapped,
+  plasterMap,
+  timberMap,
+  wallpaperMap,
+} from '../materials/surfaces.ts'
 import { CRYSTAL_LENGTH, CRYSTAL_SPINE_OFFSET, buildCrystalProp } from './crystal.ts'
 import type { CrystalProp } from './crystal.ts'
 import type { WalkableRegion } from './collision.ts'
@@ -125,10 +135,13 @@ export async function buildRoom1A(placement: Room1APlacement): Promise<Room1A> {
   group.rotation.y = placement.rotationY
   group.updateMatrixWorld(true)
 
-  const wallpaper = mat(ROOM_1A.wallpaperFloral, 0.92)
-  const timber = mat(INTERIOR.timberDark, 0.78)
-  const spread = mat(ROOM_1A.bedspreadRose, 0.88)
-  const floorMat = mat(INTERIOR.carpetBrown, 0.95)
+  const wallpaper = mapped(ROOM_1A.wallpaperFloral, 0.92, wallpaperMap(ROOM_1A.wallpaperFloral))
+  const timber = mapped(INTERIOR.timberDark, 0.78, timberMap(INTERIOR.timberDark))
+  const spread = mapped(ROOM_1A.bedspreadRose, 0.88, bedspreadMap(ROOM_1A.bedspreadRose))
+  const floorMat = mapped(0x8a7358, 0.92, floorboardMap(0x8a7358))
+  // Ceiling stays off the floral: the reference has stained plaster above the
+  // picture rail, not papered.
+  const ceilingMat = mapped(ROOM_1A.wallpaperFloral, 0.95, plasterMap(ROOM_1A.wallpaperFloral))
 
   /*
    * Glass, not board. Both sashes used to be solid timber boxes filling their
@@ -154,7 +167,7 @@ export async function buildRoom1A(placement: Room1APlacement): Promise<Room1A> {
   floor.receiveShadow = true
   group.add(floor)
 
-  const ceiling = box(WIDTH, 0.08, DEPTH, wallpaper)
+  const ceiling = box(WIDTH, 0.08, DEPTH, ceilingMat)
   ceiling.position.set(0, HEIGHT + 0.04, 0)
   ceiling.receiveShadow = true
   group.add(ceiling)
@@ -347,26 +360,57 @@ export async function buildRoom1A(placement: Room1APlacement): Promise<Room1A> {
   frontSill.position.set(halfW - 0.08, FRONT_WINDOW_SILL, frontMidZ)
   group.add(frontSill)
 
-  // Skirting, picture-rail height band.
-  for (const z of [-halfD + 0.02, halfD - 0.02]) {
+  // Skirting, picture rail, and a simple crown. The reference reads as trim
+  // before it reads as furniture — without these the textured walls still look
+  // like a greybox with a stamp on them.
+  const skirtingH = 0.12
+  const crownH = 0.08
+  for (const z of [-halfD + 0.03, halfD - 0.03]) {
+    const skirt = box(WIDTH - WALL * 2, skirtingH, 0.04, timber)
+    skirt.position.set(0, skirtingH / 2, z)
+    group.add(skirt)
     const rail = box(WIDTH - WALL * 2, 0.04, 0.03, timber)
     rail.position.set(0, 2.15, z)
     group.add(rail)
+    const crown = box(WIDTH - WALL * 2, crownH, 0.05, timber)
+    crown.position.set(0, HEIGHT - crownH / 2, z)
+    group.add(crown)
+  }
+  for (const x of [-halfW + 0.03, halfW - 0.03]) {
+    const skirt = box(0.04, skirtingH, DEPTH - WALL * 2, timber)
+    skirt.position.set(x, skirtingH / 2, 0)
+    group.add(skirt)
+    const rail = box(0.03, 0.04, DEPTH - WALL * 2, timber)
+    rail.position.set(x, 2.15, 0)
+    group.add(rail)
+    const crown = box(0.05, crownH, DEPTH - WALL * 2, timber)
+    crown.position.set(x, HEIGHT - crownH / 2, 0)
+    group.add(crown)
   }
 
   // --- Furniture ---
 
+  const iron = mat(EXTERIOR.ironLace, 0.55)
+  iron.metalness = 0.65
+
   // Bed along the west wall, head toward -Z. Sun should cross it from the sash.
+  // Iron frame: the target is a black metal single, not a timber box headboard.
   const bed = new Group()
   bed.name = 'bed'
-  const mattress = box(1.35, 0.42, 2.05, spread)
-  mattress.position.set(0, 0.35, 0)
+  const mattress = box(1.35, 0.32, 2.05, spread)
+  mattress.position.set(0, 0.4, 0)
   bed.add(mattress)
-  const headboard = box(1.35, 0.85, 0.08, timber)
-  headboard.position.set(0, 0.72, -1.02)
-  bed.add(headboard)
-  const bedBase = box(1.4, 0.28, 2.1, timber)
-  bedBase.position.set(0, 0.14, 0)
+  // Chenille drop / fringe lip.
+  const skirt = box(1.38, 0.16, 2.08, spread)
+  skirt.position.set(0, 0.22, 0)
+  bed.add(skirt)
+  const pillow = box(0.55, 0.12, 0.32, spread)
+  pillow.position.set(0, 0.62, -0.78)
+  bed.add(pillow)
+  bed.add(ironEnd(-1.02, 0.95))
+  bed.add(ironEnd(1.02, 0.72))
+  const bedBase = box(1.3, 0.08, 1.95, iron)
+  bedBase.position.set(0, 0.12, 0)
   bed.add(bedBase)
   bed.position.set(-1.45, 0, 0.15)
   addGroupSolid(group, solids, bed)
@@ -404,6 +448,17 @@ export async function buildRoom1A(placement: Room1APlacement): Promise<Room1A> {
   const dresser = new Group()
   dresser.name = 'dresser'
   dresser.add(placed(box(0.48, 0.85, 1.15, timber), 0, 0.425, 0))
+  // Drawer fronts and knobs so it reads as furniture, not a timber slab.
+  for (const y of [0.22, 0.42, 0.62]) {
+    dresser.add(placed(box(0.02, 0.16, 1.05, timber), -0.25, y, 0))
+    dresser.add(placed(box(0.03, 0.03, 0.03, timber), -0.27, y, -0.28))
+    dresser.add(placed(box(0.03, 0.03, 0.03, timber), -0.27, y, 0.28))
+  }
+  // Standing mirror.
+  const mirrorGlass = mat(0xc8d0d4, 0.15)
+  mirrorGlass.metalness = 0.4
+  dresser.add(placed(box(0.04, 0.42, 0.32, timber), 0.1, 1.08, 0))
+  dresser.add(placed(box(0.01, 0.34, 0.24, mirrorGlass), 0.07, 1.08, 0))
   dresser.position.set(dresserX, 0, dresserZ)
   addGroupSolid(group, solids, dresser)
 
@@ -461,16 +516,42 @@ export async function buildRoom1A(placement: Room1APlacement): Promise<Room1A> {
   const wardrobe = new Group()
   wardrobe.name = 'wardrobe'
   wardrobe.add(placed(box(1.05, 2.15, 0.55, timber), 0, 1.075, 0))
+  wardrobe.add(placed(box(0.03, 0.03, 0.03, timber), -0.28, 1.05, 0))
   wardrobe.position.set(-halfW + WALL / 2 + 0.53, 0, -halfD + WALL / 2 + 0.28)
   addGroupSolid(group, solids, wardrobe)
 
   // Chair near the sash.
   const chair = new Group()
   chair.name = 'chair'
-  chair.add(placed(box(0.48, 0.45, 0.48, timber), 0, 0.225, 0))
-  chair.add(placed(box(0.48, 0.55, 0.06, timber), 0, 0.7, -0.21))
+  chair.add(placed(box(0.48, 0.08, 0.48, timber), 0, 0.42, 0))
+  chair.add(placed(box(0.48, 0.55, 0.06, timber), 0, 0.72, -0.21))
+  for (const [x, z] of [
+    [-0.18, -0.18],
+    [0.18, -0.18],
+    [-0.18, 0.18],
+    [0.18, 0.18],
+  ] as const) {
+    chair.add(placed(box(0.05, 0.42, 0.05, timber), x, 0.21, z))
+  }
   chair.position.set(-0.15, 0, 1.55)
   addGroupSolid(group, solids, chair)
+
+  // Second chair near the front window — the target has a pair.
+  const chair2 = new Group()
+  chair2.name = 'chair2'
+  chair2.add(placed(box(0.42, 0.08, 0.42, timber), 0, 0.4, 0))
+  chair2.add(placed(box(0.42, 0.5, 0.05, timber), 0, 0.68, -0.18))
+  for (const [x, z] of [
+    [-0.16, -0.16],
+    [0.16, -0.16],
+    [-0.16, 0.16],
+    [0.16, 0.16],
+  ] as const) {
+    chair2.add(placed(box(0.045, 0.4, 0.045, timber), x, 0.2, z))
+  }
+  chair2.position.set(0.85, 0, 1.35)
+  chair2.rotation.y = -0.4
+  addGroupSolid(group, solids, chair2)
 
   // Side table by the bed head.
   const sideTable = new Group()
@@ -479,10 +560,37 @@ export async function buildRoom1A(placement: Room1APlacement): Promise<Room1A> {
   sideTable.position.set(-0.55, 0, -1.35)
   addGroupSolid(group, solids, sideTable)
 
-  lighter.position.set(-0.55, 0.58, -1.35)
+  // Small bedside lamp — the target's nightstand is not empty.
+  const lamp = new Group()
+  lamp.name = 'lamp'
+  const brass = mat(0x8a7348, 0.35)
+  brass.metalness = 0.5
+  lamp.add(placed(cyl(0.05, 0.05, 0.04, brass), 0, 0.02, 0))
+  lamp.add(placed(cyl(0.012, 0.012, 0.28, brass), 0, 0.18, 0))
+  const shade = mat(0xc4a882, 0.9)
+  lamp.add(placed(cyl(0.11, 0.08, 0.14, shade), 0, 0.38, 0))
+  lamp.position.set(-0.55, 0.55, -1.35)
+  group.add(lamp)
+
+  lighter.position.set(-0.38, 0.58, -1.22)
   lighter.rotation.z = 0.2
   lighter.castShadow = true
   group.add(lighter)
+
+  // Floor rug in the sun path. Patterned, dark — stops the carpet reading empty.
+  const rug = box(1.6, 0.015, 2.2, mapped(0x5a3028, 0.95, carpetMap(0x5a3028)))
+  rug.name = 'rug'
+  rug.position.set(0.15, 0.01, 0.1)
+  rug.rotation.y = 0.08
+  rug.castShadow = false
+  group.add(rug)
+
+  // Small table under the verandah sash.
+  const windowTable = new Group()
+  windowTable.name = 'windowTable'
+  windowTable.add(placed(box(0.55, 0.48, 0.35, timber), 0, 0.24, 0))
+  windowTable.position.set(0.35, 0, 1.85)
+  addGroupSolid(group, solids, windowTable)
 
   // Sash: two sliding panes, open a hand's width. Sill is the lookable ledge.
   const sash = new Group()
@@ -518,6 +626,17 @@ export async function buildRoom1A(placement: Room1APlacement): Promise<Room1A> {
   sash.add(placed(box(0.05, WINDOW_HEIGHT, 0.05, timber), WINDOW_WIDTH / 2 - 0.04, WINDOW_SILL + WINDOW_HEIGHT / 2, 0))
   sash.position.set(0, 0, sashZ)
   group.add(sash)
+
+  // Roller blind, half down — the target always has one, and a naked sash
+  // reads as unfinished joinery.
+  const blind = box(WINDOW_WIDTH - 0.1, WINDOW_HEIGHT * 0.42, 0.02, mat(0xc4a882, 0.9))
+  blind.position.set(0, WINDOW_SILL + WINDOW_HEIGHT - WINDOW_HEIGHT * 0.21, sashZ - 0.04)
+  blind.castShadow = true
+  group.add(blind)
+  const blindRoll = cyl(0.03, 0.03, WINDOW_WIDTH - 0.08, mat(0xa88860, 0.7))
+  blindRoll.rotation.z = Math.PI / 2
+  blindRoll.position.set(0, WINDOW_SILL + WINDOW_HEIGHT - 0.02, sashZ - 0.04)
+  group.add(blindRoll)
 
   const sill = box(WINDOW_WIDTH + 0.08, 0.05, 0.16, timber)
   sill.name = 'sill'
@@ -589,6 +708,48 @@ function box(w: number, h: number, d: number, material: MeshStandardMaterial): M
   mesh.castShadow = true
   mesh.receiveShadow = true
   return mesh
+}
+
+function cyl(
+  radiusTop: number,
+  radiusBottom: number,
+  height: number,
+  material: MeshStandardMaterial,
+): Mesh {
+  const mesh = new Mesh(new CylinderGeometry(radiusTop, radiusBottom, height, 10), material)
+  mesh.castShadow = true
+  mesh.receiveShadow = true
+  return mesh
+}
+
+/** Iron bed end: posts, top rail, vertical spindles. */
+function ironEnd(z: number, height: number): Group {
+  const iron = mat(EXTERIOR.ironLace, 0.55)
+  iron.metalness = 0.65
+  const end = new Group()
+  const postL = cyl(0.025, 0.025, height, iron)
+  postL.position.set(-0.62, height / 2, z)
+  end.add(postL)
+  const postR = cyl(0.025, 0.025, height, iron)
+  postR.position.set(0.62, height / 2, z)
+  end.add(postR)
+  const top = cyl(0.018, 0.018, 1.28, iron)
+  top.rotation.z = Math.PI / 2
+  top.position.set(0, height - 0.04, z)
+  end.add(top)
+  for (let i = -4; i <= 4; i++) {
+    if (i === 0) continue
+    const spindle = cyl(0.012, 0.012, height - 0.12, iron)
+    spindle.position.set(i * 0.12, (height - 0.12) / 2, z)
+    end.add(spindle)
+  }
+  const knobL = cyl(0.035, 0.035, 0.05, iron)
+  knobL.position.set(-0.62, height + 0.02, z)
+  end.add(knobL)
+  const knobR = cyl(0.035, 0.035, 0.05, iron)
+  knobR.position.set(0.62, height + 0.02, z)
+  end.add(knobR)
+  return end
 }
 
 function placed(mesh: Mesh, x: number, y: number, z: number): Mesh {

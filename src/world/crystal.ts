@@ -1,5 +1,5 @@
-import { Group, Object3D } from 'three'
-import type { Mesh } from 'three'
+import { Group, Object3D, CanvasTexture, RepeatWrapping, SRGBColorSpace } from 'three'
+import type { Mesh, MeshStandardMaterial } from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 
 /**
@@ -83,9 +83,44 @@ export async function buildCrystalProp(): Promise<CrystalProp> {
 
   body.traverse((object) => {
     const mesh = object as Mesh
-    if (mesh.isMesh === true) {
-      mesh.castShadow = true
-      mesh.receiveShadow = true
+    if (mesh.isMesh !== true) {
+      return
+    }
+    mesh.castShadow = true
+    mesh.receiveShadow = true
+    // Cream dress and pale skin blow to mannequin-white under the 3pm sun.
+    // Force the authored palette onto every mesh so a missing material name
+    // cannot leave her unlit-looking.
+    const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+    for (const material of materials) {
+      const std = material as MeshStandardMaterial
+      if (std.isMeshStandardMaterial !== true || std.color === undefined) {
+        continue
+      }
+      const name = (std.name ?? '').toLowerCase()
+      if (name.includes('dress') || name.includes('shoe')) {
+        std.color.setHex(0xffffff)
+        std.map = dressTexture()
+        std.roughness = 0.88
+      } else if (name.includes('hair')) {
+        std.color.setHex(0x7a6a52)
+        std.roughness = 0.84
+      } else if (name.includes('livid') || name.includes('bruise')) {
+        std.color.setHex(0x6f5f66)
+        std.roughness = 0.78
+      } else if (name.includes('sling') || name.includes('rubber')) {
+        std.color.setHex(0x1a1817)
+        std.roughness = 0.55
+      } else if (name.includes('gold') || name.includes('bracelet')) {
+        std.color.setHex(0xb89650)
+        std.metalness = 0.55
+        std.roughness = 0.4
+      } else {
+        // Skin and anything unnamed.
+        std.color.setHex(0x8f7d6e)
+        std.roughness = 0.74
+      }
+      std.needsUpdate = true
     }
   })
 
@@ -111,6 +146,49 @@ export async function buildCrystalProp(): Promise<CrystalProp> {
     needle: requireNode(body, 'needle'),
     sling: requireNode(body, 'sling'),
   }
+}
+
+let dressTex: CanvasTexture | undefined
+
+/** Small cream floral for the tea dress — stops her reading as unfinished kit. */
+function dressTexture(): CanvasTexture {
+  if (dressTex !== undefined) {
+    return dressTex
+  }
+  const size = 256
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext('2d')
+  if (ctx === null) {
+    throw new Error('2d context unavailable for Crystal dress')
+  }
+  ctx.fillStyle = '#c4b49a'
+  ctx.fillRect(0, 0, size, size)
+  for (let y = 8; y < size; y += 22) {
+    for (let x = 8; x < size; x += 20) {
+      const ox = x + ((y / 22) % 2 === 0 ? 0 : 10)
+      ctx.fillStyle = '#9a8a6e'
+      ctx.beginPath()
+      ctx.ellipse(ox - 3, y + 2, 4, 1.8, -0.5, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = '#a87878'
+      ctx.beginPath()
+      ctx.arc(ox, y, 2.4, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = '#d8c8a8'
+      ctx.beginPath()
+      ctx.arc(ox + 0.5, y - 0.5, 1, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  }
+  dressTex = new CanvasTexture(canvas)
+  dressTex.colorSpace = SRGBColorSpace
+  dressTex.wrapS = RepeatWrapping
+  dressTex.wrapT = RepeatWrapping
+  dressTex.repeat.set(3, 4)
+  dressTex.needsUpdate = true
+  return dressTex
 }
 
 function requireNode(root: Object3D, name: string): Object3D {

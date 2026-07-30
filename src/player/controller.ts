@@ -83,6 +83,30 @@ export class PlayerController {
     this.surface = surface
   }
 
+  /**
+   * Hard place for capture shots. Snaps feet to the floor under `feet` if one
+   * exists, zeroes velocity and bob, and aims the camera.
+   */
+  place(feet: Vector3, yaw: number, pitch = 0): void {
+    this.position.copy(feet)
+    const ground = this.solver.groundAt(feet.x, feet.z, feet.y)
+    if (ground !== undefined) {
+      this.position.y = ground.y
+      this.surface = ground.surface
+    }
+    this.yaw = yaw
+    this.pitch = Math.min(Math.max(pitch, -CAMERA.pitchClamp), CAMERA.pitchClamp)
+    this.velocity.set(0, 0, 0)
+    this.lean = 0
+    this.stridePhase = 0
+    this.stepOffset = 0
+    this.running = false
+    this.stance = 'stand'
+    this.crouchToggled = false
+    this.eyeHeight = PLAYER.eyeHeightStand
+    this.syncCamera(0)
+  }
+
   get currentStance(): Stance {
     return this.stance
   }

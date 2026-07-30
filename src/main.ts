@@ -33,6 +33,7 @@ import { buildRosie } from './npc/rosie.ts'
 import { buildMoretti } from './npc/moretti.ts'
 import { MORETTI_BAG } from './dialogue/graphs/moretti-bag.ts'
 import { MORETTI_STANDBY, MORETTI_THEORISE, THEORISE_LAST_NODE } from './dialogue/graphs/moretti-exit.ts'
+import { applyShot, listShots } from './dev/shots.ts'
 
 const canvasEl = document.querySelector<HTMLCanvasElement>('#game')
 const hudRootEl = document.querySelector<HTMLDivElement>('#hud')
@@ -856,6 +857,24 @@ async function main(): Promise<void> {
       clips: CLIPS,
       Vector3,
     })
+
+    const shotCtx = { player, hands, hud, hudRoot }
+    Reflect.set(window, '__SHOTS__', Object.fromEntries(listShots().map((n) => [n, true])))
+    Reflect.set(window, '__APPLY_SHOT__', (name: string) => applyShot(name, shotCtx))
+
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('capture') === '1') {
+      const name = params.get('shot') ?? '1a'
+      applyShot(name, shotCtx)
+      // One frame so the placed camera and the shadow map settle before the
+      // harness is allowed to treat the page as ready.
+      requestAnimationFrame(() => {
+        renderer.render(scene, camera)
+        Reflect.set(window, '__READY__', true)
+      })
+    } else {
+      Reflect.set(window, '__READY__', true)
+    }
   }
 }
 

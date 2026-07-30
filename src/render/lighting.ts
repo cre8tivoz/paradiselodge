@@ -1,4 +1,4 @@
-import { AmbientLight, Color, DirectionalLight, Group, Vector3 } from 'three'
+import { AmbientLight, Color, DirectionalLight, Group, HemisphereLight, Vector3 } from 'three'
 import { EXTERIOR, INTERIOR, ROOM_1A } from '../materials/palette.ts'
 
 /**
@@ -62,10 +62,10 @@ export function buildSceneLighting(): SceneLighting {
   sun.shadow.camera.bottom = -SHADOW_EXTENT
   sun.shadow.camera.near = 2
   sun.shadow.camera.far = DISTANCE + SHADOW_EXTENT * 2
-  sun.shadow.bias = -0.0005
-  sun.shadow.normalBias = 0.025
-  // Not quite full, so shade keeps a little shape instead of going flat.
-  sun.shadow.intensity = 0.85
+  sun.shadow.bias = -0.00035
+  sun.shadow.normalBias = 0.04
+  // Softer read than a full black cutout — still directional, less prototype.
+  sun.shadow.intensity = 0.72
   group.add(sun)
   group.add(sun.target)
 
@@ -79,8 +79,11 @@ export function buildSceneLighting(): SceneLighting {
    * real sunlit interior is bright everywhere because light bounces. Raise the
    * sun to separate the beam, do not lower this.
    */
-  group.add(new AmbientLight(INTERIOR.nicotine, 0.72))
-  group.add(new AmbientLight(ROOM_1A.sunWarm, 0.28))
+  group.add(new AmbientLight(INTERIOR.nicotine, 0.62))
+  group.add(new AmbientLight(ROOM_1A.sunWarm, 0.22))
+  // Soft sky/ground bounce so shade is not a flat cutout.
+  const hemi = new HemisphereLight(ROOM_1A.sunWarm, INTERIOR.carpetBrown, 0.35)
+  group.add(hemi)
 
   return { group, sun, sky: new Color(EXTERIOR.sky) }
 }
