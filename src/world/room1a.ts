@@ -7,9 +7,11 @@ import {
   MeshBasicMaterial,
   MeshStandardMaterial,
   Object3D,
+  Vector2,
   Vector3,
 } from 'three'
 import { EXTERIOR, ROOM_1A } from '../materials/palette.ts'
+import { pbrMaterial, withSecondUv } from '../materials/pbr.ts'
 import { plasterMap, mapped } from '../materials/surfaces.ts'
 import { tiled, windowed } from '../materials/textures.ts'
 import { chamferBoxGeometry } from './kit.ts'
@@ -144,10 +146,17 @@ export async function buildRoom1A(placement: Room1APlacement): Promise<Room1A> {
     map: tiled('bedspread-rose', 2.6, 4.0),
     roughness: 0.88,
   })
-  const floorMat = new MeshStandardMaterial({
-    color: 0xffffff,
-    map: tiled('floorboards-oak', 2.2, 3.4),
-    roughness: 0.92,
+  /*
+   * The floor is the first sourced material in the game, and the only one for
+   * now. Four maps, measured off real boards, at the scale real boards are.
+   * Everything else in this room is still a canvas tile with a guessed
+   * roughness and it stays that way until the room is rebuilt in Blender.
+   */
+  const floorMat = pbrMaterial('wood_planks', {
+    metres: new Vector2(WIDTH, DEPTH),
+    // Contact shadow between the boards, without the tile's own shading fighting
+    // the sun once the room is baked.
+    aoIntensity: 0.85,
   })
   // Ceiling stays off the floral: stained plaster above the picture rail.
   const ceilingMat = mapped(ROOM_1A.wallpaperFloral, 0.95, plasterMap(ROOM_1A.wallpaperFloral))
@@ -170,8 +179,10 @@ export async function buildRoom1A(placement: Room1APlacement): Promise<Room1A> {
   const halfW = WIDTH / 2
   const halfD = DEPTH / 2
 
-  // Floor and ceiling.
+  // Floor and ceiling. The floor's geometry gets a second UV set, because that
+  // is the one `aoMap` reads and a box only ships with one.
   const floor = box(WIDTH, 0.08, DEPTH, floorMat)
+  withSecondUv(floor.geometry)
   floor.position.set(0, -0.04, 0)
   floor.receiveShadow = true
   group.add(floor)
