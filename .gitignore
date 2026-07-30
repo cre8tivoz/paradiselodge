@@ -27,3 +27,8 @@ dist-ssr
 *.blend1
 
 # /images is reference material and IS committed. See SETUP.md step 3.
+
+# Sourced Sketchfab models, unpacked and uncompressed. 200MB+ of source
+# textures, and a download cache rather than a source of truth: every uid is in
+# docs/CREDITS.md and re-fetches the same asset. What ships is the baked room.
+assets/sourced/
