@@ -2,7 +2,9 @@
 
 Art and audio. St Kilda, 26 February 1994.
 
-Everything here is authored. No procedural generation.
+~~Everything here is authored. No procedural generation.~~ **Revoked 30 July 2026.** Assets are sourced: Poly Haven and Sketchfab, CC0 or CC-BY, downloadable, low to mid poly with clean UVs, every one credited in `docs/CREDITS.md`. Surfaces are full PBR sets, not a single albedo tile with a guessed roughness. Indirect light is baked in Cycles and shipped as a map. The layout is still authored and always will be. See *The render reset* in CLAUDE.md.
+
+The palette, the copy, the period rules and the audio direction below are unchanged and still binding.
 
 ---
 
@@ -183,7 +185,7 @@ That removes character modelling as a blocker entirely. Miller and Moretti never
 
 - Image-to-3D for characters. It is still bad and you will spend longer fixing topology than modelling from scratch
 - Generating the same face across many angles for a model. Identity drifts and it will not hold up
-- Photoreal environment textures. They will not match the authored palette and everything will read as a collage
+- ~~Photoreal environment textures. They will not match the authored palette and everything will read as a collage~~ **Revoked.** Photoreal PBR sets are the point now. What keeps them from reading as a collage is one bake and one grade over the lot, not matching swatches by hand
 
 ---
 

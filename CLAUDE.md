@@ -28,8 +28,11 @@ You will not be the one that gets it right.
 3. **The build order is the build order.** Scene 1 is 80% of the engine.
    Do not scaffold scene 2. Do not suggest refactoring for reusability.
    Do not leave hooks for things that do not exist yet.
-4. **One runtime dependency: `three`.** Do not add another. Do not evaluate
-   one. Do not mention one.
+4. **`three` plus loaders and compression. Nothing else.** Loaders, KTX2 and
+   Meshopt are in. A framework, a physics engine, a state library, a post stack
+   or anything with a UI in it is out. Do not evaluate one. Do not mention one.
+   (This rule used to read "one runtime dependency". The render reset revoked
+   that half of it and nothing else.)
 5. **No physics engine.** No Rapier, no Cannon, no Ammo. Miller walks on a
    navmesh and raycasts at things. That is the whole system.
 6. **No combat.** Not in the lodge, not in the chase, not in the bar.
@@ -43,13 +46,17 @@ You will not be the one that gets it right.
 10. **Do not leave TODO comments.** If something cannot be done now, say so
     in the commit message and move on. A TODO in code is a promise you will
     not keep.
-11. **You cannot generate image assets.** Codex generates them, on the author's
-    machine, and they are committed separately. If your work needs a texture, a
-    photograph, a sign, or any visual asset that does not exist yet, stop and
-    tell the author exactly what you need: what it is, what size, what it
-    depicts, and where it goes in the file tree. Do not improvise a placeholder
-    and move on. Do not generate one procedurally. The author would rather make
-    the asset than spend a session unpicking a workaround.
+11. **Source assets. Do not generate them and do not model them.** Poly Haven
+    and Sketchfab, filtered to downloadable and CC or CC-BY, recorded in
+    `docs/CREDITS.md` as you go. Prefer low to mid poly with clean UVs over
+    high-poly photogrammetry: a scan has unusable UVs and will not bake. If
+    nothing suitable exists, say so and stop. Do not improvise a kit box, do not
+    generate a texture procedurally, and do not spend a session modelling
+    furniture by hand.
+12. **Stop tuning lights.** The look target is `images/mood/1a-target.png` and
+    it is a photograph. It is reached by baking indirect light in Cycles, not by
+    another pass over sun intensity, fill, or exposure. If you find yourself
+    reaching for an `AmbientLight`, you have misread the reset.
 
 ## Output style
 
@@ -69,7 +76,9 @@ The player is Detective Graham Miller. You never see him until the last shot of 
 
 ## Status
 
-Last updated 30 July 2026. **Development paused** after Scene 1 engine + play fixes. Update this whenever work resumes.
+Last updated 30 July 2026. **Scene 1's engine is finished and the render layer is being replaced.** Update this whenever work resumes.
+
+Gameplay is correct and is not to be touched. `src/interact`, `src/case`, `src/dialogue`, `src/npc`, `src/core`, `src/player`, `src/ui`, `src/audio` are closed. Evidence copy, gate order and the event bus are closed. The live job is `src/materials`, `src/render`, and the geometry in `src/world`. See *The render reset* below before anything else.
 
 Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Live at `https://paradiselodge-game.pages.dev` (Cloudflare Pages project `paradiselodge-game`). Custom domain `lodge.billyhaddad.au` not wired yet. Deploys are manual: `npm run build && wrangler pages deploy dist --project-name paradiselodge-game --branch main`.
 
@@ -93,17 +102,66 @@ Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Live at `https://pa
 | 14. Scene manager, save on boundary | Done. `src/core/scene.ts` + `src/core/save.ts`. Fade + localStorage on `scene:complete`. Scene 2 not built, so complete holds on black |
 | 15. Cold open | Done. Title card (`src/ui/title-card.ts`), kit Commodore, two uniforms, tape lift, verbs locked until hall gate `entry` |
 
-**Scene 1 engine checklist is complete.** Play bugs found in live testing were patched (navigation, examine, reception talk). What still owes the *look* of the brief is modelled geometry, not more textures.
+**Scene 1 engine checklist is complete.** Play bugs found in live testing were patched (navigation, examine, reception talk). The engine is done. The picture is not, and the picture is now the whole job.
 
-### What scene 1 still owes the brief
+---
 
-| | State |
+## The render reset
+
+Four days went into tuning a directional light against `images/mood/1a-target.png` and it never got close, because the target is a photograph and the thing it has that the render did not is bounced light. That cannot be tuned in. It has to be computed once, offline, and baked.
+
+Three standing instructions were wrong and are **revoked**. They are struck out in ASSETS.md too.
+
+| Revoked | Now |
 |---|---|
-| **Textures** | Done for scene 1. Authored tiles on 1A and lodge; neon letterforms (+ motion plate); magazines/map; Crystal dress. Facade photo kept as `neon-sign-facade.png` (reference only). `victor-record` waits for scene 2 |
-| **Gloves going on at the front door** | Done. Trigger on hall threshold, clip + foley |
-| **Light grade** | Done. ACES + afternoon LUT pass (`src/render/grade.ts`) |
-| **Play verification** | Examine → case file → Rosie parlour → tag → Moretti theorise needs a clean pass on the live build after the press-F fix. Pause before that was fully signed off |
-| **Visual fidelity** | **Not done.** Lodge, furniture, Commodore, uniforms, iron lace are still **kit boxes**. Hand, Crystal, Rosie, Moretti are glTF. More seamless PNGs will not fix this — needs sourced/commissioned glTF. Do not ask the author for more image-gen tiles |
+| "Everything here is authored. No procedural generation." | Source assets. Poly Haven and Sketchfab, CC0 / CC-BY, credited in `docs/CREDITS.md` |
+| "One runtime dependency: `three`." | Loaders and compression are allowed. GLTFLoader, KTX2Loader, RGBELoader, Meshopt |
+| Procedural surfaces off a single albedo tile | Full PBR sets only. Albedo, normal (OpenGL), roughness, AO |
+
+**The hardware is an Apple Silicon Mac. Cycles runs on Metal, not OptiX.** Every bake number below is set for that. Do not raise them.
+
+### Steps
+
+One step per session. Verify with `tools/shot.mjs`. Commit after each with a real message. If a step is blocked, say so and stop, do not start the adjacent one.
+
+| Step | State |
+|---|---|
+| 1. IBL and colour | **Done.** HDRI + PMREM, AgX, no fill lights. See *The light rig is an HDRI and one sun* |
+| 2. One real material | Floorboards only. Full PBR set from Poly Haven, all four maps on a `MeshStandardMaterial`, to prove the pipeline before anything else is wired |
+| 3. Source the furniture | Via the Blender MCP, Sketchfab and Poly Haven. Bed, dresser with mirror, bentwood chair, wardrobe, bedside table, sash frame, syringe, hammer, picture frame, lighter, magazines |
+| 4. Assemble 1A in Blender | Walls, ceiling with cornice, picture rail, skirtings, floorboards, window opening. Sourced furniture placed. Layout and camera match `images/mood/1a-wide.png`. Sun at the fixed 3pm angle, HDRI outside the window |
+| 5. Bake in Cycles | **Diffuse Indirect only, not Combined.** See *The bake* |
+| 6. Export and load | glTF 2.0 `.glb`, Meshopt on, KTX2 textures, under 25MB for the room. `room1a.ts` becomes a loader and a prop registry, not a geometry builder |
+| 7. Reconnect | Re-wire lookables and examinables to the loaded mesh names. Nothing in `src/case` or `src/interact` should need editing. **If it does, stop and say so rather than editing them** |
+
+### The bake
+
+**Diffuse Indirect, not Combined.** That bakes the bounce and the colour bleed and leaves the direct sun realtime, so the sun angle stays tunable afterward without rebaking. It is the difference between four bakes and twenty.
+
+- Render device: Preferences, System, Cycles Render Devices, Metal, GPU selected. **Confirm this before baking**
+- Second UV channel, lightmap pack, no overlapping faces
+- 2048 x 2048 per major surface group. Not 4096
+- Margin type Adjacent Faces, margin 6px
+- Denoise with OpenImageDenoise. Not OptiX, that is NVIDIA only
+- Persistent Data on
+- **Iterate at 64 samples with denoise on.** Layout, light direction and UV problems are all visible at 64
+- **Final pass only: 256.** Above that, with denoising, the difference is not visible on Metal and the time is roughly linear
+- Close other applications for the final bake
+- Export `.exr`, convert to KTX2
+
+A few minutes per iteration bake, longer for the final. **More than about twenty minutes means the render device is on CPU. Stop and check.**
+
+### Judging it
+
+Against `images/mood/1a-target.png`. Not against "AAA", not against a memory of another game. A sourced mid-poly bed that bakes cleanly beats a photogrammetry scan that does not.
+
+### What the reset does not touch
+
+| | |
+|---|---|
+| **Gloves going on at the front door** | Done. Trigger on hall threshold, clip + foley. Leave it |
+| **Play verification** | Examine → case file → Rosie parlour → tag → Moretti theorise still wants a clean pass on the live build after the press-F fix. Not a render job |
+| **Textures already shipped** | Neon letterforms, magazines, map, Crystal dress stay until something sourced replaces them. `victor-record` waits for scene 2 |
 
 ### Play fixes (30 July, post step 15)
 
@@ -154,6 +212,8 @@ Two more things are set out against the sun and not by eye:
 
 Move any of it and check the room, not the arithmetic.
 
+**The geometry is settled. The pixel values are not.** 98 against 172 was measured under the old rig, with a sun at 8.0 and a pile of ambient behind it. The post spacing and the balustrade height still hold, because they are about where a shadow lands and not how bright it is, but do not treat those two numbers as a target to hit again. Re-measure when 1A is rebuilt at reset step 4.
+
 **Room 1A has a verandah door.** BRIEF.md says a verandah runs off 1A, and something has to run off it: the sash opens a hand's width, `pushSash` gives another inch and stops, and the toe print on the sill is what the `sill` evidence is. A detective climbing out of the murder scene's window would also be wrong. It changes nothing about how Sterling got in. He came through the sash; this is the door he did not use.
 
 ### Where the floor is
@@ -166,25 +226,31 @@ Miller now walks up and down. It is not gravity and it is not a physics engine.
 - **Feet snap, the eye trails.** `position.y` lands on the exact floor so collision stays honest; `stepOffset` decays the difference out of the camera, or every tread is a jolt
 - **The surface comes from the region, every frame.** `setSurface` is only the fallback now
 
-### Room 1A light, settled
+### The light rig is an HDRI and one sun
 
-The room read dim and muddy and the window was a black rectangle. Three causes, all fixed:
+Step 1 of the reset. `render/environment.ts` owns the fill, `render/lighting.ts` owns the sun, and there is nothing else.
 
-- **The sash had no glass.** Both panes were solid timber boxes filling the opening, so the window was opaque *and* the sash cast a shadow across the whole room. The 3pm sun was only ever leaking round the edges. Panes are now unlit, barely opaque glass that casts nothing
-- **There was nothing outside.** A `daylight` plane sits beyond the sash, deliberately blown near-white rather than sky blue. A photograph exposed for a sunlit interior blows its windows, and with a correctly exposed sky the room becomes the dark thing in frame
-- **The sun was too weak to separate from the fill.** 2.9 to 8.0
+Two `AmbientLight`s and a `HemisphereLight` used to stand in for bounce. **Flat fill has no direction**, so a wall facing the sash and a wall facing away from it came back the same value, and nothing in the room had shape in it anywhere the sun did not land. That is the single biggest reason it read as a render. An HDRI is that same fill measured off the real world, so it has direction and colour, and it replaced every fill light in the scene in one commit.
 
-Fill stays high, around 0.72 and 0.28. Cutting it to make the beam stand out was tried and is the wrong instinct: it buys contrast and spends the whole room. A real sunlit interior is bright everywhere because light bounces, and ambient is the only bounce there is. **Raise the sun to separate the beam, do not lower the fill.**
+**Do not put an `AmbientLight` back to lift the shade.** If shade is too dark that is `environmentIntensity`. If it is the wrong colour that is the wrong HDRI.
 
-Those values are unchanged, but they no longer live in `room1a.ts`. See below.
+- **The HDRI is Poly Haven `balcony`, 2k, CC0.** `public/env/`. Partly cloudy morning-afternoon on a suburban deck: trees and a tiled roof, which is both plausible fill and a plausible thing to see out a first floor sash
+- **Raw equirect on `scene.background`, PMREM output on `scene.environment`.** The prefiltered chain is small and smears if you use it as the backdrop. Two textures on purpose
+- **Rotated 0.62π on both.** That puts the bright quarter of the sky on +X, which is the side 1A's sash faces and where the sun comes from, so the fill agrees with the beam instead of fighting it. It is also what puts trees rather than a blue shutter in the window
+- **`environmentIntensity` is 0.45, not 1.** Three applies an environment map **with no occlusion at all**, so a wall two rooms deep takes the full open sky the same as the verandah does. At 1 the interior floods and goes flat, which is the ambient failure again, better coloured. **This goes back to 1 when the baked indirect map lands**, because at that point the bake is what says how much sky each surface can see
+- **AgX, not ACES.** Both stop the sun clipping. ACES pulls saturated highlights toward orange, and on nicotine walls under a warm sun that made every lit surface the same amber. AgX desaturates as it rolls off, so a blown sash stays white and the bedspread stays rose where the beam is on it
+- **Exposure lives in `renderer.ts`, not `core/config.ts`, and is set last.** 1.0, after the environment intensity and the sun. It is not a designer tunable, it only means anything alongside those two
+- **The sun is 4.2 and its `shadow.intensity` fudge is gone.** It was 8.0 to out-shout the ambient pile and 0.72 to fake bounce back into its own shadows. The environment does both honestly now
 
-### The light rig is the scene's, not the room's
+The procedural LUT grade pass (`render/grade.ts`, `render/grade-pass.ts`) is **deleted**. It was built to correct ACES on a scene lit by ambient. Over AgX and an environment map it corrects a problem that no longer exists. Do not reinstate it.
 
-`render/lighting.ts` owns the sun and the fill. It used to be inside `room1a.ts`, which was right while room 1A was the whole world and wrong the moment there was a building around it: **a `DirectionalLight` lights everything in the scene wherever it sits.** Only its shadow camera is local. So the room-scoped rig was already lighting the street, and its shadow volume was a seven metre box around one bedroom.
+Still true from before, and still the reason the rig is scene-scoped:
 
-Direction is the same vector that put the beam across Crystal's bed, carried into world space. Shadow texel size is also the same: `2 * extent / mapSize`, 16 and 4096 against the old 7 and 2048. **Change one, check the other.**
+**A `DirectionalLight` lights everything in the scene wherever it sits.** Only its shadow camera is local, which is why the rig came out of `room1a.ts` the moment there was a building around it. Direction is the vector that put the beam across Crystal's bed, carried into world space. Shadow texel size is `2 * extent / mapSize`, 16 and 4096. **Change one, check the other.**
 
-A window has to have something bright behind it or the eye reads the black rectangle as the exposure reference and calls the room dim. Room 1A gets a `daylight` card; the ground-floor sashes get real openings onto the street and `scene.background`.
+**A window has to have something bright behind it** or the eye reads the black rectangle as the exposure reference and calls the room dim. That is `scene.background` now for every opening in the building. `ROOM_1A.daylight`, the blown card outside 1A's sash, is a leftover from before there was a sky and it goes when the room is rebuilt at step 4.
+
+**The sash has glass.** Both panes were solid timber boxes filling the opening, so the window was opaque and cast a shadow across the whole room. They are unlit, barely opaque, and cast nothing. Keep that when the sash is replaced with a sourced frame.
 
 ### What is kit vs modelled
 
@@ -192,7 +258,9 @@ A window has to have something bright behind it or the eye reads the black recta
 |---|---|
 | Miller's hand, Crystal, Rosie, Moretti | Lodge shell, furniture, Commodore, uniforms, iron lace, yard, most props |
 
-Kit is deliberate scaffolding. `world/kit.ts` builds boxes from **extents**. Replacing kit needs **sourced glTF**, not more image-gen tiles. Image generation is for textures and reference sheets; it does not produce game-ready meshes.
+Kit is deliberate scaffolding. `world/kit.ts` builds boxes from **extents**. Every one of those boxes is on death row: steps 3 and 4 of the reset source the furniture and rebuild room 1A in Blender, and `room1a.ts` stops being a geometry builder at step 6.
+
+**Replacing kit means sourcing a mesh, not modelling one and not generating a texture for one.** Image generation does not produce game-ready meshes, and hand-modelling a wardrobe is a session spent badly when a CC-BY one exists.
 
 ### Room 1A layout (revised)
 
@@ -207,9 +275,11 @@ Dresser under the street window. Side table beside it on the same wall (not by t
 
 | Thing | Goes at |
 |---|---|
-| Kit lodge / furniture / Commodore / uniforms / lace | When modelled glTF lands for each piece. Not a single cutover. Not more PNGs |
+| Kit room 1A and its furniture | Reset steps 3, 4 and 6. Sourced glTF, assembled in Blender, loaded as one `.glb` |
+| Kit lodge / Commodore / uniforms / lace / yard tufts | After 1A proves the pipeline. Same route: sourced, assembled, baked. Not a single cutover, and not more PNGs |
+| `ROOM_1A.daylight`, the blown card outside the sash | Reset step 4. There is a real sky behind the window now |
+| `world/kit.ts` itself | When the last box is replaced. Not before, it is holding up four rooms |
 | The pointer lock prompt and its CSS | When the real HUD lands |
-| Iron lace as boxes, and the yard's tufts | When cast-lace and grass assets land |
 | `window.__lodge` dev handle | Stays. It is `import.meta.env.DEV` only, and the capture tooling wants it |
 
 ---
@@ -356,6 +426,12 @@ The dress uses `crystal-dress` from `public/textures/`. Look pads on head, arm, 
 
 ## Textures
 
+**Full PBR only, from here.** A single albedo tile with a roughness number guessed beside it is what `surfaces.ts` does today and it is revoked. A material is albedo, normal (OpenGL, not DirectX), roughness and AO, sourced as a set at 2k, and all four go on the `MeshStandardMaterial`. Step 2 of the reset does exactly that to the floorboards, alone, to prove it before anything else is rewired.
+
+**`lightMap` and `aoMap` read the second UV set, which is `uv1` in current three, not `uv2`.** That rename has broken this in every project that predates it. Check the attribute name on the loaded geometry before assuming the map is not working.
+
+Everything below this line describes the authored tiles that are still on the lodge. They stay until something sourced replaces them.
+
 `public/textures/`, loaded through `src/materials/textures.ts`. Processed out of `images/assets/` with `sips`, resized to power-of-two and saved as JPEG, which took 6.5 MB of PNG down to 1 MB.
 
 **Windows, not crops.** Every source is a photograph of a whole thing rather than a tidy asset, so each use takes a sub-rectangle through `offset` and `repeat` instead of the region being cut out and baked into the file. The numbers are read off the picture by eye and can be nudged in code. `windowed()` clones the texture, because `offset` lives on the texture and two props windowing the same source would otherwise fight over it; clones share the upload so it costs nothing.
@@ -418,6 +494,9 @@ Settled. Do not re-litigate these without a reason.
 - No new events were added. A run is told from a walk by the `speed` already carried in `player:footstep`
 - **`BoxCollisionSolver` is height-aware, and the walkable set is what decides where Miller can stand.** It used to resolve in XZ only, which made every solid a full-height wall wherever it sat and meant a door lintel bricked up a doorway at floor level. That is fixed and it is what a two-storey building needed. See *Where the floor is* above. It is still boxes and still a pushout rather than a swept test
 - **A ceiling has to cast shadow.** A lid built without `castShadow` lets the 3pm sun straight through it and lights the wall below from above, in a hard slab that reads as a render fault. Found on a hall ceiling, will recur on every room built from here
+- **Fill is an HDRI, never an `AmbientLight`.** Reset step 1. Flat fill has no direction, so it lights a wall facing the window and a wall facing away from it identically. See *The light rig is an HDRI and one sun*
+- **Tone mapping is AgX and exposure lives in `render/renderer.ts`.** Not ACES, and not in `core/config.ts`. Exposure is set after the environment intensity and the sun, never before
+- **`environmentIntensity` below 1 is a stand-in for occlusion, not a taste call.** Three applies an environment map with no occlusion, so interiors flood at 1. It goes to 1 when the bake lands
 - `LOOP.maxDelta` is 0.05 and is a collision guard, not just a tab-out guard. Collision is a pushout, not a swept test. Raise it, or raise `runSpeed`, and check the arithmetic in the comment or Miller goes through a wall on a stalled frame
 
 Assumptions, flagged, cheap to change:
@@ -426,12 +505,13 @@ Assumptions, flagged, cheap to change:
 - **`sun-shadow`.** ASSETS.md lists `#6E6croll`, which is not a colour. The note in that table says `#6E6255`. That is what the palette uses
 - **The date is settled.** BRIEF.md still carries it as the one open decision, but ASSETS.md and both title cards say 26 February 1994. That section of BRIEF.md can go
 - **Look sensitivity** is 0.0022 rad/px, picked blind, shared between pointer lock and drag. Untuned
-- **`ROOM_1A.daylight`.** What you see through the sash. Not in ASSETS.md, same class of assumption as the glove colour. It goes when the verandah is built at step 10. It is now a card sized to the opening rather than a sixteen metre panel, because it sits outside a real building and the old one was visible from the street. It still peeks past the front corner from the far right of the footpath
-- **`EXTERIOR.bitumen`, `sky`, `signBoard`, `grassDry`, `weed`, `paling`, `corrugate`, `rust`.** Same class again, none of them in ASSETS.md. `sky` is near white rather than postcard blue, and it went brighter still once the `daylight` card came out of 1A: it is what you see through the sash now, and a window in a room exposed for its interior blows. `grassDry` is khaki because it is the end of February
+- **`ROOM_1A.daylight`.** The blown card outside the sash. It predates there being a real sky and it goes at reset step 4
+- **`EXTERIOR.sky` is no longer the backdrop.** The HDRI is. The token is still in the palette and still used as a material colour in a couple of places; it stops being the thing behind the building
+- **`EXTERIOR.bitumen`, `signBoard`, `grassDry`, `weed`, `paling`, `corrugate`, `rust`.** None of them in ASSETS.md, all guessed. `grassDry` is khaki because it is the end of February. Every one of them is a stand-in for a sourced PBR set
 - **The stair is 18 risers at 0.19.** Steepish for a grand staircase, and it is what fits a 3.45 floor-to-floor in a hall this deep. `RISE` is fenced by `stepUp` and `stepDown` at both ends
 - **Overlays own their own hiding.** The look line hides itself on `casefile:open` and `dialogue:start`. The pointer lock prompt asks `dialogue.isActive`, not `dialoguePanel.isOpen`, because the runner sets its state *before* it emits and the panel opens on the callback *after*, so a panel check runs one step too early
 - **Examine is press F, run to completion.** Hold-to-cancel and cancel-on-`look:exit` made the verb dead under pointer lock. Esc cancels. BRIEF.md still says hold; the implementation that ships is press-to-start
-- **Visual upgrades need glTF.** Do not spend sessions on more image-gen material tiles. Hand, Crystal, Rosie, Moretti are already meshes; the lodge and furniture are not
+- **Visual upgrades need sourced glTF and a bake.** Not image-gen tiles, not more light tuning. Hand, Crystal, Rosie, Moretti are already meshes; the lodge and furniture are not
 
 ---
 
@@ -485,6 +565,10 @@ Language    TypeScript, strict. No any, no ! assertions
 Build       Vite
 Deploy      Cloudflare Pages, static, own project on a subdomain of billyhaddad.au
             Not inside the author site's Astro build
+Lighting    HDRI through PMREM, one directional sun, AgX. Indirect is baked
+            in Cycles, offline, and shipped as a map. No realtime GI
+Assets      Sourced. Poly Haven and Sketchfab, CC0 / CC-BY, credited
+            glTF 2.0 with Meshopt, KTX2 textures
 Audio       Web Audio API
 Physics     None. No library, no engine
 ```
@@ -493,7 +577,7 @@ Physics     None. No library, no engine
 
 **No framework.** No React, no Vue. The HUD is DOM and CSS over the canvas.
 
-**One runtime dependency: `three`.** Do not add others without being asked.
+**`three` plus loaders and compression.** GLTFLoader, KTX2Loader, RGBELoader and the Meshopt decoder are in, and they all ship inside the `three` package already. Anything with a runtime of its own is out.
 
 ---
 
@@ -507,8 +591,9 @@ This list exists because the genre invites all of it and none of it belongs.
 - Pursuit or flee AI. The scene 3 chase is a scripted set piece with a fixed path
 - A dialogue camera that leaves first person
 - Fail states. The player cannot lose. They can only be slow
-- Procedural generation of anything. Every room is authored
+- Procedurally generated *layout*. Every room is authored and placed by hand. This is not the revoked rule: what was revoked is authoring every surface and mesh yourself, not authoring the level
 - A map or quest marker. Rosie points, the geometry does the rest
+- Realtime GI, SSAO, or any other attempt to compute bounce at 60fps. It is baked in Cycles and shipped as a map
 
 ---
 
@@ -517,8 +602,8 @@ This list exists because the genre invites all of it and none of it belongs.
 ```
 src/
   core/         engine loop, input, config, scene manager
-  render/       renderer setup, lighting, post
-  world/        level geometry, kit pieces, props
+  render/       renderer setup, environment (IBL), lighting
+  world/        level loaders, prop registries, what kit is left
   materials/    material library, textures
   player/       controller, camera, hands
   interact/     raycast, look, examine, tag
@@ -530,21 +615,26 @@ src/
 docs/
   BRIEF.md          design spec
   ASSETS.md         art and audio list
+  CREDITS.md        every sourced asset, its author and its licence
   IMAGE-PROMPTS.md  generation prompts
   SETUP.md          environment and deploy
 images/
   characters/   generated reference sheets. Modelling reference only, never shipped
   assets/       generated textures. Processed copies go to public/textures/
-  mood/         palette and location reference
+  mood/         palette and location reference. 1a-target.png is the look target
 assets/
   blender/      original .blend sources. Keep these; export into public/
 tools/
   blender/      scripts that build or export those .blend files
+  shot.mjs      headless capture. Verify every step with it
 public/
-  models/       shipped glTF (miller-hand.glb)
+  env/          HDRIs (balcony_2k.hdr)
+  models/       shipped glTF
   textures/
   audio/
 ```
+
+**Nothing sourced gets committed without a row in `docs/CREDITS.md`.** Author, source URL, licence. Add it in the same commit as the asset, not afterward.
 
 ### The images folder
 
@@ -658,9 +748,15 @@ The navmesh landed with step 9, as a set of walkable boxes rather than triangles
 14. Scene manager, save on scene boundary — **done**
 15. Cold open sequence, last — **done**
 
-**Paused 30 July 2026** after deploy + play fixes above. Next session: verify the examine → case file → Rosie → Moretti path on production, or wire sourced glTF over kit. Do not generate more material tiles unless a specific map is missing.
+**The engine build order is finished.** Steps 1 to 15 all landed. Nothing on that list is open.
 
-Verify in the browser between each step. Do not stack three steps in one prompt.
+### What comes next is the render reset, not step 16
+
+Seven steps, at the top of this file. Step 1 is done. **Next session is step 2: the floorboards, alone, with a full PBR set on them.**
+
+Scene 2 does not start until room 1A looks like `images/mood/1a-target.png`. That is deliberate: 1A is the room the player spends the first half hour in, and whatever it proves about sourcing, baking and loading is what every room after it copies.
+
+One step per session. Verify with `tools/shot.mjs`. Commit after each, with a real message. Do not stack three steps in one prompt.
 
 ---
 
@@ -668,7 +764,9 @@ Verify in the browser between each step. Do not stack three steps in one prompt.
 
 60 fps at 1080p. These are small interiors with a fixed sun and no dynamic combat. If you are under 60, you have over-built the render pipeline, not under-optimised it.
 
-Do not add TAA, GTAA, cascaded shadow maps, or motion blur. A single directional light with a shadow map, baked ambient, and a light grade is enough and it is the correct amount.
+Do not add TAA, GTAA, cascaded shadow maps, motion blur, SSAO, or any realtime GI. **One directional light with a shadow map, an HDRI through PMREM, and a baked indirect map** is enough and it is the correct amount. Everything expensive happens in Cycles, once, on the author's machine.
+
+Budget for room 1A: **under 25MB** of glTF and KTX2 together. That is the number step 6 has to hit.
 
 ---
 
