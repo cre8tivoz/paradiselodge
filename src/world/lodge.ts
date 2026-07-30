@@ -1,7 +1,19 @@
-import { Box3, BoxGeometry, Group, Mesh, MeshBasicMaterial, Object3D, Vector3 } from 'three'
+import {
+  AdditiveBlending,
+  Box3,
+  BoxGeometry,
+  Group,
+  Mesh,
+  MeshBasicMaterial,
+  MeshStandardMaterial,
+  Object3D,
+  PlaneGeometry,
+  Vector3,
+} from 'three'
 import { EXTERIOR, INTERIOR } from '../materials/palette.ts'
+import { neonPlate, tiled } from '../materials/textures.ts'
 import type { WalkableRegion } from './collision.ts'
-import { aabb, elevation, mat, raked, slab, unlit, walk, wall } from './kit.ts'
+import { aabb, elevation, mat, raked, slab, walk, wall } from './kit.ts'
 
 /**
  * The Paradise Lodge: the approach and the ground floor, plus the staircase and
@@ -123,14 +135,30 @@ export function buildLodge(): Lodge {
   const solids: Box3[] = []
   const floors: WalkableRegion[] = []
 
-  const render = mat(EXTERIOR.renderCream, 0.94)
+  const render = new MeshStandardMaterial({
+    color: 0xffffff,
+    map: tiled('render-cream', 4.5, 3.2),
+    roughness: 0.94,
+  })
   const stain = mat(EXTERIOR.renderStain, 0.96)
-  const marble = mat(EXTERIOR.marbleStep, 0.5)
+  const marble = new MeshStandardMaterial({
+    color: 0xffffff,
+    map: tiled('marble-step', 2.2, 1.4),
+    roughness: 0.55,
+  })
   const iron = mat(EXTERIOR.ironLace, 0.55, 0.4)
   const bitumen = mat(EXTERIOR.bitumen, 0.62)
   const nicotine = mat(INTERIOR.nicotine, 0.95)
-  const carpet = mat(INTERIOR.carpetBrown, 0.98)
-  const timber = mat(INTERIOR.timberDark, 0.76)
+  const carpet = new MeshStandardMaterial({
+    color: 0xffffff,
+    map: tiled('carpet-brown', 8, 5),
+    roughness: 0.98,
+  })
+  const timber = new MeshStandardMaterial({
+    color: 0xffffff,
+    map: tiled('timber-dark', 1.6, 2.0),
+    roughness: 0.76,
+  })
   const brass = mat(INTERIOR.brassVerdigris, 0.42, 0.55)
   const maroon = mat(INTERIOR.curtainMaroon, 0.9)
   const tapeBlue = mat(EXTERIOR.tapeBlue, 0.8)
@@ -323,13 +351,20 @@ export function buildLodge(): Lodge {
   const neon = new Group()
   neon.name = 'neon'
   group.add(neon)
-  // Narrow enough to clear the first-floor bays either side of it. The board
-  // used to run into the window at -2.5.
-  slab(neon, mat(EXTERIOR.signBoard, 0.85), -2.1, 2.1, 3.55, 5.0, frontZ0 - 0.16, frontZ0 - 0.02)
-  const pinkMat = new MeshBasicMaterial({ color: EXTERIOR.neonPink })
-  const cyanMat = new MeshBasicMaterial({ color: EXTERIOR.neonCyan })
-  unlit(neon, pinkMat, -1.85, 1.85, 4.36, 4.52, frontZ0 - 0.22, frontZ0 - 0.16)
-  unlit(neon, cyanMat, -1.15, 1.15, 3.85, 3.95, frontZ0 - 0.22, frontZ0 - 0.16)
+  // 3:2 plate from the authored PNGs. Board is tall enough to carry it.
+  slab(neon, mat(EXTERIOR.signBoard, 0.85), -2.15, 2.15, 3.35, 5.15, frontZ0 - 0.16, frontZ0 - 0.02)
+  const neonTexA = neonPlate('neon-sign')
+  const neonTexB = neonPlate('neon-sign-2')
+  const neonMat = new MeshBasicMaterial({
+    map: neonTexA,
+    transparent: true,
+    depthWrite: false,
+    blending: AdditiveBlending,
+    toneMapped: false,
+  })
+  const neonPlateMesh = new Mesh(new PlaneGeometry(4.05, 2.7), neonMat)
+  neonPlateMesh.position.set(0, 4.25, frontZ0 - 0.2)
+  neon.add(neonPlateMesh)
 
   // === Front door ===
 
@@ -588,13 +623,14 @@ export function buildLodge(): Lodge {
     },
     update(elapsed: number): void {
       /*
-       * ASSETS.md: one tube flickering. A sine would read as a pulse, which is
-       * a working sign. A failing tube is mostly on, occasionally gone, and the
-       * gap is short. Two out-of-phase waves beaten together give that without
-       * a random number and without any state to keep.
+       * ASSETS.md: one tube flickering. Swap to neon-sign-2 on the dip so
+       * motion has a second plate when it differs; opacity covers the fail.
        */
       const beat = Math.sin(elapsed * 11.3) + Math.sin(elapsed * 4.1)
-      pinkMat.color.setHex(beat < -1.72 ? 0x3a1220 : EXTERIOR.neonPink)
+      const failing = beat < -1.72
+      neonMat.map = failing ? neonTexB : neonTexA
+      neonMat.opacity = failing ? 0.35 : 1
+      neonMat.needsUpdate = true
     },
   }
 }

@@ -1,85 +1,136 @@
-import { SRGBColorSpace, Texture, TextureLoader } from 'three'
+import {
+  ClampToEdgeWrapping,
+  RepeatWrapping,
+  SRGBColorSpace,
+  Texture,
+  TextureLoader,
+} from 'three'
 
 /**
- * The shipped textures, and the sub-rectangles the props actually use.
+ * Shipped textures under `public/textures/`.
  *
- * ## Windows, not crops
- *
- * Every source in `images/assets/` is a photograph of a whole thing: the neon
- * one is a facade with a sign on it, not a sign. Rather than cutting the region
- * out with an image tool and baking the decision into the file, each prop takes
- * a **window** into the full image through `offset` and `repeat`. The numbers
- * below are read straight off the picture and can be nudged in code, which is
- * the difference between tuning a texture in a minute and re-exporting an asset.
- *
- * ## Colour space is not optional
- *
- * Three has needed `SRGBColorSpace` on every colour map since r152. Without it
- * a photograph comes back pale and chalky and looks like a washed-out decal,
- * which reads as a bug in the lighting rather than in the texture.
- *
- * ## Windows are measured from the top
- *
- * Because that is how you read them off an image. `uvWindow` flips into three's
- * bottom-left origin so the call site never has to think about it.
+ * Sources live in `images/assets/`. Codex generates them; this module loads the
+ * resized runtime copies. Seamless tiles use `tiled()`. Document props use
+ * `windowed()`. Neon letterforms are PNG with alpha.
  */
 
 const loader = new TextureLoader()
 const cache = new Map<string, Texture>()
 
-export type TextureName = 'photo-in-frame' | 'diary-page' | 'note' | 'victor-record'
+export type DocTexture =
+  | 'photo-in-frame'
+  | 'diary-page'
+  | 'note'
+  | 'victor-record'
+  | 'map-pins'
+  | 'magazines'
+
+export type TileTexture =
+  | 'wallpaper-floral'
+  | 'carpet-brown'
+  | 'bedspread-rose'
+  | 'render-cream'
+  | 'marble-step'
+  | 'floorboards-oak'
+  | 'timber-dark'
+  | 'crystal-dress'
+
+export type NeonTexture = 'neon-sign' | 'neon-sign-2'
+
+export type TextureName = DocTexture | TileTexture | NeonTexture
 
 /**
- * `images/assets/neon-sign.png` is deliberately not in here.
- *
- * It is a photograph of a whole facade at dusk with the sign on it, and the
- * letterforms sit on a pale rendered wall. There is no way to use it as a sign
- * texture without the wall coming with them: additive blending lifts the board
- * to grey, and an alpha map off luminance cannot separate a mid-grey wall from a
- * mid-bright tube. It is reference for what the sign should look like, not an
- * asset. The neon stays two tubes until there is an isolated letterform image
- * with an alpha channel.
+ * Where the interesting part of each document source is, in fractions of the
+ * image, measured from the top left.
  */
-
-/**
- * Where the interesting part of each source actually is, in fractions of the
- * image, measured from the top left. Read off the pictures by eye.
- */
-export const WINDOWS: Readonly<Record<TextureName, readonly [number, number, number, number]>> = {
-  // The whole print. Crystal and Mark at a pub table, date stamped 12 3 1993,
-  // which is the dust ring's alibi: it lay face down for weeks.
+export const WINDOWS: Readonly<Record<DocTexture, readonly [number, number, number, number]>> = {
   'photo-in-frame': [0.02, 0.02, 0.98, 0.98],
   'diary-page': [0.06, 0.08, 0.94, 0.92],
   note: [0.08, 0.10, 0.92, 0.90],
   'victor-record': [0.04, 0.04, 0.96, 0.96],
+  'map-pins': [0.02, 0.02, 0.98, 0.98],
+  magazines: [0.02, 0.02, 0.98, 0.98],
 }
 
-/** Load once, shared. Nothing here is big enough to want unloading. */
-export function texture(name: TextureName): Texture {
-  const existing = cache.get(name)
+const TILE_EXT: Readonly<Record<TileTexture, 'jpg'>> = {
+  'wallpaper-floral': 'jpg',
+  'carpet-brown': 'jpg',
+  'bedspread-rose': 'jpg',
+  'render-cream': 'jpg',
+  'marble-step': 'jpg',
+  'floorboards-oak': 'jpg',
+  'timber-dark': 'jpg',
+  'crystal-dress': 'jpg',
+}
+
+const DOC_EXT: Readonly<Record<DocTexture, 'jpg'>> = {
+  'photo-in-frame': 'jpg',
+  'diary-page': 'jpg',
+  note: 'jpg',
+  'victor-record': 'jpg',
+  'map-pins': 'jpg',
+  magazines: 'jpg',
+}
+
+function load(path: string): Texture {
+  const existing = cache.get(path)
   if (existing !== undefined) {
     return existing
   }
-  const loaded = loader.load(`/textures/${name}.jpg`)
+  const loaded = loader.load(path)
   loaded.colorSpace = SRGBColorSpace
-  loaded.anisotropy = 4
-  cache.set(name, loaded)
+  loaded.anisotropy = 8
+  cache.set(path, loaded)
   return loaded
+}
+
+/** Document / prop photograph. Shared; clone via `windowed` before UV edits. */
+export function texture(name: DocTexture): Texture {
+  return load(`/textures/${name}.${DOC_EXT[name]}`)
+}
+
+/**
+ * Seamless material tile. Cloned so each surface can set its own repeat
+ * without fighting.
+ */
+export function tiled(name: TileTexture, repeatX: number, repeatY: number): Texture {
+  const tex = load(`/textures/${name}.${TILE_EXT[name]}`).clone()
+  tex.needsUpdate = true
+  tex.wrapS = RepeatWrapping
+  tex.wrapT = RepeatWrapping
+  tex.repeat.set(repeatX, repeatY)
+  tex.anisotropy = 8
+  return tex
+}
+
+/**
+ * Neon letterforms on transparent PNG.
+ *
+ * `neon-sign` is the preferred static plate. `neon-sign-2` is the motion /
+ * flicker alternate (same plate until a second frame is authored).
+ */
+export function neonPlate(name: NeonTexture = 'neon-sign'): Texture {
+  const tex = load(`/textures/${name}.png`).clone()
+  tex.needsUpdate = true
+  tex.wrapS = ClampToEdgeWrapping
+  tex.wrapT = ClampToEdgeWrapping
+  tex.anisotropy = 4
+  return tex
 }
 
 /**
  * A texture windowed to one region of its source.
  *
  * Cloned, because `offset` and `repeat` live on the texture and two props
- * windowing the same source would otherwise fight over them. Clones share the
- * uploaded image, so this costs nothing on the GPU.
+ * windowing the same source would otherwise fight over them.
  */
-export function windowed(name: TextureName): Texture {
+export function windowed(name: DocTexture): Texture {
   const [x0, y0, x1, y1] = WINDOWS[name]
   const tex = texture(name).clone()
   tex.needsUpdate = true
+  tex.wrapS = ClampToEdgeWrapping
+  tex.wrapT = ClampToEdgeWrapping
   tex.repeat.set(x1 - x0, y1 - y0)
-  // Three's V runs up from the bottom, the window is measured down from the top.
   tex.offset.set(x0, 1 - y1)
   return tex
 }

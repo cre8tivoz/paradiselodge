@@ -97,7 +97,7 @@ Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Cloudflare Pages is
 
 | | State |
 |---|---|
-| **Textures** | Waiting on Codex. Prompt pack in `docs/TEXTURE-PROMPTS.md`. Canvas maps in `surfaces.ts` are temporary scaffolding to replace |
+| **Textures** | Wired. Authored tiles on 1A and lodge; neon letterforms; magazines/map. Facade plate kept as `neon-sign-facade.png` |
 | **Gloves going on at the front door** | Done. Trigger on hall threshold, clip + foley |
 | **Light grade** | Done. ACES + afternoon LUT pass (`src/render/grade.ts`) |
 | 14 | Scene manager, save on a scene boundary |

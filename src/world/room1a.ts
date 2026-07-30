@@ -9,16 +9,9 @@ import {
   Object3D,
   Vector3,
 } from 'three'
-import { EXTERIOR, INTERIOR, ROOM_1A } from '../materials/palette.ts'
-import {
-  bedspreadMap,
-  carpetMap,
-  floorboardMap,
-  mapped,
-  plasterMap,
-  timberMap,
-  wallpaperMap,
-} from '../materials/surfaces.ts'
+import { EXTERIOR, ROOM_1A } from '../materials/palette.ts'
+import { plasterMap, mapped } from '../materials/surfaces.ts'
+import { tiled, windowed } from '../materials/textures.ts'
 import { chamferBoxGeometry } from './kit.ts'
 import { CRYSTAL_LENGTH, CRYSTAL_SPINE_OFFSET, buildCrystalProp } from './crystal.ts'
 import type { CrystalProp } from './crystal.ts'
@@ -136,12 +129,27 @@ export async function buildRoom1A(placement: Room1APlacement): Promise<Room1A> {
   group.rotation.y = placement.rotationY
   group.updateMatrixWorld(true)
 
-  const wallpaper = mapped(ROOM_1A.wallpaperFloral, 0.92, wallpaperMap(ROOM_1A.wallpaperFloral))
-  const timber = mapped(INTERIOR.timberDark, 0.78, timberMap(INTERIOR.timberDark))
-  const spread = mapped(ROOM_1A.bedspreadRose, 0.88, bedspreadMap(ROOM_1A.bedspreadRose))
-  const floorMat = mapped(0x8a7358, 0.92, floorboardMap(0x8a7358))
-  // Ceiling stays off the floral: the reference has stained plaster above the
-  // picture rail, not papered.
+  const wallpaper = new MeshStandardMaterial({
+    color: 0xffffff,
+    map: tiled('wallpaper-floral', 2.8, 1.7),
+    roughness: 0.92,
+  })
+  const timber = new MeshStandardMaterial({
+    color: 0xffffff,
+    map: tiled('timber-dark', 1.4, 1.8),
+    roughness: 0.78,
+  })
+  const spread = new MeshStandardMaterial({
+    color: 0xffffff,
+    map: tiled('bedspread-rose', 2.6, 4.0),
+    roughness: 0.88,
+  })
+  const floorMat = new MeshStandardMaterial({
+    color: 0xffffff,
+    map: tiled('floorboards-oak', 2.2, 3.4),
+    roughness: 0.92,
+  })
+  // Ceiling stays off the floral: stained plaster above the picture rail.
   const ceilingMat = mapped(ROOM_1A.wallpaperFloral, 0.95, plasterMap(ROOM_1A.wallpaperFloral))
 
   /*
@@ -483,14 +491,24 @@ export async function buildRoom1A(placement: Room1APlacement): Promise<Room1A> {
   group.add(frame)
 
   // Travel pile: magazines, map with pins, note.
-  const magazines = box(0.28, 0.04, 0.36, mat(ROOM_1A.crystalDress, 0.7))
+  const magazines = box(
+    0.28,
+    0.04,
+    0.36,
+    new MeshStandardMaterial({ color: 0xffffff, map: windowed('magazines'), roughness: 0.7 }),
+  )
   magazines.name = 'magazines'
   magazines.position.set(dresserX + 0.03, 0.875, dresserZ - 0.04)
   magazines.rotation.y = -0.25
   magazines.castShadow = true
   group.add(magazines)
 
-  const map = box(0.28, 0.005, 0.34, mat(0xd2c4a8, 0.85))
+  const map = box(
+    0.28,
+    0.005,
+    0.34,
+    new MeshStandardMaterial({ color: 0xffffff, map: windowed('map-pins'), roughness: 0.85 }),
+  )
   map.name = 'map'
   map.position.set(dresserX + 0.02, 0.855, dresserZ - 0.38)
   map.rotation.y = 0.15
@@ -587,8 +605,17 @@ export async function buildRoom1A(placement: Room1APlacement): Promise<Room1A> {
   lighter.castShadow = true
   group.add(lighter)
 
-  // Floor rug in the sun path. Patterned, dark — stops the carpet reading empty.
-  const rug = box(1.6, 0.015, 2.2, mapped(0x5a3028, 0.95, carpetMap(0x5a3028)))
+  // Floor rug in the sun path.
+  const rug = box(
+    1.6,
+    0.015,
+    2.2,
+    new MeshStandardMaterial({
+      color: 0xffffff,
+      map: tiled('carpet-brown', 1.2, 1.5),
+      roughness: 0.95,
+    }),
+  )
   rug.name = 'rug'
   rug.position.set(0.15, 0.01, 0.1)
   rug.rotation.y = 0.08
