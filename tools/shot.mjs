@@ -104,7 +104,9 @@ try {
   // camera sync land before the PNG is written.
   await page.evaluate(() => {
     const L = window.__lodge
-    if (L?.renderer && L?.scene && L?.camera) {
+    if (L?.grade && L?.scene && L?.camera && L?.renderer) {
+      L.grade.render(L.renderer, L.scene, L.camera)
+    } else if (L?.renderer && L?.scene && L?.camera) {
       L.renderer.render(L.scene, L.camera)
     }
   })

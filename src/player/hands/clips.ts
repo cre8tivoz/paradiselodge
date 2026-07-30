@@ -706,6 +706,75 @@ export const OPEN_LOOK_CLOSE: HandClip = {
   ],
 }
 
+/**
+ * Gloves on at the front door. Both hands in frame briefly. No object — the
+ * target is just a reach point so the clip has somewhere to aim.
+ */
+export const GLOVES_ON: HandClip = {
+  id: 'glovesOn',
+  duration: 1.7,
+  right: [
+    {
+      t: 0,
+      position: [0.18, -0.38, -0.28],
+      rotation: [-0.4, 0.3, 0.2],
+      curl: [...OPEN_CURL],
+      ease: 'out',
+    },
+    {
+      t: 0.35,
+      position: [0.12, -0.22, -0.35],
+      rotation: [-0.8, 0.1, 0.4],
+      curl: [...GRIP_CURL],
+      ease: 'inOut',
+    },
+    {
+      t: 0.85,
+      position: [0.14, -0.18, -0.32],
+      rotation: [-0.5, 0.2, 0.15],
+      curl: [...GRIP_CURL],
+      ease: 'inOut',
+    },
+    {
+      t: 1.5,
+      position: [0.22, -0.42, -0.30],
+      rotation: [-0.20, 0.55, 0],
+      curl: [...REST_CURL],
+      ease: 'in',
+    },
+  ],
+  left: [
+    {
+      t: 0,
+      position: [-0.18, -0.40, -0.28],
+      rotation: [-0.4, -0.3, -0.2],
+      curl: [...OPEN_CURL],
+      ease: 'out',
+    },
+    {
+      t: 0.45,
+      position: [-0.10, -0.20, -0.34],
+      rotation: [-0.75, -0.1, -0.35],
+      curl: [...GRIP_CURL],
+      ease: 'inOut',
+    },
+    {
+      t: 1.0,
+      position: [-0.12, -0.18, -0.30],
+      rotation: [-0.45, -0.15, -0.1],
+      curl: [...GRIP_CURL],
+      ease: 'inOut',
+    },
+    {
+      t: 1.55,
+      position: [-0.22, -0.44, -0.30],
+      rotation: [-0.20, -0.55, 0],
+      curl: [...REST_CURL],
+      ease: 'in',
+    },
+  ],
+}
+
 export const CLIPS = {
   turnOver: TURN_OVER,
   turnHead: TURN_HEAD,
@@ -718,6 +787,7 @@ export const CLIPS = {
   leanMap: LEAN_MAP,
   liftNote: LIFT_NOTE,
   openLookClose: OPEN_LOOK_CLOSE,
+  glovesOn: GLOVES_ON,
 } as const
 
 export type ClipId = keyof typeof CLIPS

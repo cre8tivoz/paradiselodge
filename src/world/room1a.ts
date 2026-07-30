@@ -19,6 +19,7 @@ import {
   timberMap,
   wallpaperMap,
 } from '../materials/surfaces.ts'
+import { chamferBoxGeometry } from './kit.ts'
 import { CRYSTAL_LENGTH, CRYSTAL_SPINE_OFFSET, buildCrystalProp } from './crystal.ts'
 import type { CrystalProp } from './crystal.ts'
 import type { WalkableRegion } from './collision.ts'
@@ -447,7 +448,10 @@ export async function buildRoom1A(placement: Room1APlacement): Promise<Room1A> {
   const dresserZ = (FRONT_WINDOW_Z0 + FRONT_WINDOW_Z1) / 2
   const dresser = new Group()
   dresser.name = 'dresser'
-  dresser.add(placed(box(0.48, 0.85, 1.15, timber), 0, 0.425, 0))
+  const dresserBody = new Mesh(chamferBoxGeometry(0.48, 0.85, 1.15, 0.01), timber)
+  dresserBody.castShadow = true
+  dresserBody.receiveShadow = true
+  dresser.add(placed(dresserBody, 0, 0.425, 0))
   // Drawer fronts and knobs so it reads as furniture, not a timber slab.
   for (const y of [0.22, 0.42, 0.62]) {
     dresser.add(placed(box(0.02, 0.16, 1.05, timber), -0.25, y, 0))
@@ -515,7 +519,10 @@ export async function buildRoom1A(placement: Room1APlacement): Promise<Room1A> {
    */
   const wardrobe = new Group()
   wardrobe.name = 'wardrobe'
-  wardrobe.add(placed(box(1.05, 2.15, 0.55, timber), 0, 1.075, 0))
+  const wardrobeBody = new Mesh(chamferBoxGeometry(1.05, 2.15, 0.55, 0.012), timber)
+  wardrobeBody.castShadow = true
+  wardrobeBody.receiveShadow = true
+  wardrobe.add(placed(wardrobeBody, 0, 1.075, 0))
   wardrobe.add(placed(box(0.03, 0.03, 0.03, timber), -0.28, 1.05, 0))
   wardrobe.position.set(-halfW + WALL / 2 + 0.53, 0, -halfD + WALL / 2 + 0.28)
   addGroupSolid(group, solids, wardrobe)
@@ -556,7 +563,10 @@ export async function buildRoom1A(placement: Room1APlacement): Promise<Room1A> {
   // Side table by the bed head.
   const sideTable = new Group()
   sideTable.name = 'sideTable'
-  sideTable.add(placed(box(0.42, 0.55, 0.42, timber), 0, 0.275, 0))
+  const sideBody = new Mesh(chamferBoxGeometry(0.42, 0.55, 0.42, 0.008), timber)
+  sideBody.castShadow = true
+  sideBody.receiveShadow = true
+  sideTable.add(placed(sideBody, 0, 0.275, 0))
   sideTable.position.set(-0.55, 0, -1.35)
   addGroupSolid(group, solids, sideTable)
 
@@ -621,9 +631,13 @@ export async function buildRoom1A(placement: Room1APlacement): Promise<Room1A> {
   const upperRail = box(WINDOW_WIDTH - 0.08, 0.05, 0.05, timber)
   upperRail.position.set(0, WINDOW_SILL + WINDOW_HEIGHT * 0.78 - paneHeight / 2, -0.03)
   sash.add(upperRail)
-  // Stiles.
+  // Stiles and a deeper outer liner so the cut through the wallpaper is not a knife edge.
   sash.add(placed(box(0.05, WINDOW_HEIGHT, 0.05, timber), -WINDOW_WIDTH / 2 + 0.04, WINDOW_SILL + WINDOW_HEIGHT / 2, 0))
   sash.add(placed(box(0.05, WINDOW_HEIGHT, 0.05, timber), WINDOW_WIDTH / 2 - 0.04, WINDOW_SILL + WINDOW_HEIGHT / 2, 0))
+  sash.add(placed(box(WINDOW_WIDTH, 0.04, 0.08, timber), 0, WINDOW_SILL + 0.02, 0.02))
+  sash.add(placed(box(WINDOW_WIDTH, 0.04, 0.08, timber), 0, WINDOW_SILL + WINDOW_HEIGHT - 0.02, 0.02))
+  sash.add(placed(box(0.04, WINDOW_HEIGHT, 0.08, timber), -WINDOW_WIDTH / 2 + 0.02, WINDOW_SILL + WINDOW_HEIGHT / 2, 0.02))
+  sash.add(placed(box(0.04, WINDOW_HEIGHT, 0.08, timber), WINDOW_WIDTH / 2 - 0.02, WINDOW_SILL + WINDOW_HEIGHT / 2, 0.02))
   sash.position.set(0, 0, sashZ)
   group.add(sash)
 

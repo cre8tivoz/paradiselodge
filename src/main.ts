@@ -5,6 +5,7 @@ import { emit } from './core/events.ts'
 import { Input } from './core/input.ts'
 import { Loop } from './core/loop.ts'
 import { createViewport } from './render/renderer.ts'
+import { GradePass } from './render/grade-pass.ts'
 import { buildSceneLighting } from './render/lighting.ts'
 import { buildLodge } from './world/lodge.ts'
 import { buildVerandah } from './world/verandah.ts'
@@ -97,6 +98,11 @@ async function main(): Promise<void> {
   const lighting = buildSceneLighting()
   scene.add(lighting.group)
   scene.background = lighting.sky
+
+  const grade = new GradePass()
+  const draw = (): void => {
+    grade.render(renderer, scene, camera)
+  }
 
   // The camera has to be in the scene graph or its children never get traversed.
   scene.add(camera)
@@ -501,6 +507,9 @@ async function main(): Promise<void> {
 
   /** Set once the theorise conversation reaches its last node. */
   let sceneComplete = false
+  /** BRIEF.md: gloves go on at the front door. Once per scene entry. */
+  let glovesDone = false
+  const captureMode = new URLSearchParams(window.location.search).get('capture') === '1'
 
   const targetWorld = new Vector3()
   const targetBounds = new Box3()
@@ -517,6 +526,25 @@ async function main(): Promise<void> {
   const locate = (object: Lookable['object'], into: Vector3): Vector3 => {
     targetBounds.setFromObject(object)
     return targetBounds.isEmpty() ? object.getWorldPosition(into) : targetBounds.getCenter(into)
+  }
+
+  /**
+   * Crossing the threshold into the hall. Ground floor, past the open front
+   * door leaf, still in the entry bay. Capture mode skips it so the shot is clean.
+   */
+  const tryGlovesOn = (): void => {
+    if (glovesDone || captureMode || hands.isPlaying) {
+      return
+    }
+    const p = player.position
+    if (p.y > 0.4 || p.z < 2.05 || p.z > 3.4 || Math.abs(p.x) > 1.15) {
+      return
+    }
+    glovesDone = true
+    audio.foley.glovesOn()
+    const clip = getClip('glovesOn')
+    locate(lodge.props.frontDoor, targetWorld)
+    hands.play(clip, 'gloves', targetWorld)
   }
 
   function tryTalk(): boolean {
@@ -769,7 +797,7 @@ async function main(): Promise<void> {
       if (dialogue.isActive) {
         // Notebook waits. Finish or leave the conversation first.
         input.endFrame()
-        renderer.render(scene, camera)
+        draw()
         return
       }
       if (hands.isPlaying) {
@@ -789,12 +817,13 @@ async function main(): Promise<void> {
       }
       // Still render. Do not move, look, or examine under the book or talk.
       hands.update(delta)
-      renderer.render(scene, camera)
+      draw()
       input.endFrame()
       return
     }
 
     player.update(delta)
+    tryGlovesOn()
     look.update()
     gates.update(player.position)
 
@@ -817,7 +846,7 @@ async function main(): Promise<void> {
     }
 
     hands.update(delta)
-    renderer.render(scene, camera)
+    draw()
     input.endFrame()
   })
 
@@ -854,6 +883,7 @@ async function main(): Promise<void> {
       solver,
       lighting,
       audio,
+      grade,
       clips: CLIPS,
       Vector3,
     })
@@ -869,7 +899,7 @@ async function main(): Promise<void> {
       // One frame so the placed camera and the shadow map settle before the
       // harness is allowed to treat the page as ready.
       requestAnimationFrame(() => {
-        renderer.render(scene, camera)
+        draw()
         Reflect.set(window, '__READY__', true)
       })
     } else {

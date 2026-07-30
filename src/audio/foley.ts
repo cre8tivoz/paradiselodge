@@ -157,21 +157,35 @@ const bag: Voice = (mixer, at, bus) => {
 /** Latex over a knuckle. Miller pulling gloves on at the front door. */
 const gloves: Voice = (mixer, at, bus) => {
   const ctx = mixer.context
+  // Two pulls: stretch up the hand, then the wrist snap. Tuned against the
+  // reference cloth() band-pass scrape so it reads as latex, not paper.
   for (let i = 0; i < 2; i += 1) {
-    const start = at + i * 0.34
+    const start = at + i * 0.36
     const source = mixer.noiseSource()
-    const band = mixer.filter('bandpass', 1800, 1.6)
+    const band = mixer.filter('bandpass', 1600 + i * 200, 0.7)
     const gain = ctx.createGain()
     source.connect(band).connect(gain).connect(bus)
-    // The stretch, then the snap of it letting go at the wrist.
     gain.gain.setValueAtTime(0, start)
-    gain.gain.linearRampToValueAtTime(0.05, start + 0.09)
-    gain.gain.linearRampToValueAtTime(0.14, start + 0.19)
-    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.27)
-    band.frequency.setValueAtTime(1300, start)
-    band.frequency.linearRampToValueAtTime(2600, start + 0.2)
-    source.start(start, Math.random(), 0.3)
-    source.stop(start + 0.3)
+    gain.gain.linearRampToValueAtTime(0.045, start + 0.04)
+    gain.gain.linearRampToValueAtTime(0.13, start + 0.14)
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.28)
+    band.frequency.setValueAtTime(1200, start)
+    band.frequency.linearRampToValueAtTime(2800 + i * 400, start + 0.18)
+    source.start(start, Math.random(), 0.32)
+    source.stop(start + 0.32)
+
+    // Wrist snap partial.
+    const tick = ctx.createOscillator()
+    tick.type = 'triangle'
+    tick.frequency.value = 2400 + i * 350
+    const tickGain = ctx.createGain()
+    tick.connect(tickGain).connect(bus)
+    const snap = start + 0.16
+    tickGain.gain.setValueAtTime(0, snap)
+    tickGain.gain.linearRampToValueAtTime(0.035, snap + 0.004)
+    tickGain.gain.exponentialRampToValueAtTime(0.0001, snap + 0.05)
+    tick.start(snap)
+    tick.stop(snap + 0.06)
   }
 }
 

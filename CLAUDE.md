@@ -14,6 +14,43 @@ Standing rules. Read every session. `docs/BRIEF.md` is the design spec, `docs/AS
 - Speak up properly when it actually needs attention: a real bug, a design conflict, an assumption that could be wrong, or a choice only the author can make
 - Do not ask permission to continue an agreed step. Finish it
 
+## Hard rules — do not argue with these
+
+These exist because every session so far has wasted tokens questioning them.
+You will not be the one that gets it right.
+
+1. **The design is locked.** BRIEF.md and ASSETS.md are the single source of
+   truth. Do not suggest alternatives, do not ask if the author is sure, do not
+   propose improvements. Every word in those files was chosen on purpose.
+2. **Decisions taken during the build are settled.** The section at the bottom
+   of this file exists exactly so you do not re-open them. If it is in that
+   list, the answer is no.
+3. **The build order is the build order.** Scene 1 is 80% of the engine.
+   Do not scaffold scene 2. Do not suggest refactoring for reusability.
+   Do not leave hooks for things that do not exist yet.
+4. **One runtime dependency: `three`.** Do not add another. Do not evaluate
+   one. Do not mention one.
+5. **No physics engine.** No Rapier, no Cannon, no Ammo. Miller walks on a
+   navmesh and raycasts at things. That is the whole system.
+6. **No combat.** Not in the lodge, not in the chase, not in the bar.
+   If you find yourself writing a health bar, stop.
+7. **No new events.** The vocabulary in CLAUDE.md is complete. If you need to
+   communicate something that is not in that list, something else is wrong.
+8. **Do not reorder the file structure.** Every subsystem has its directory.
+   Your job is to write code inside it, not move things around.
+9. **Do not add npm scripts, config files, or tooling.** Vite, TypeScript,
+   three. That is the stack. The tsconfig is strict. Done.
+10. **Do not leave TODO comments.** If something cannot be done now, say so
+    in the commit message and move on. A TODO in code is a promise you will
+    not keep.
+11. **You cannot generate image assets.** Codex generates them, on the author's
+    machine, and they are committed separately. If your work needs a texture, a
+    photograph, a sign, or any visual asset that does not exist yet, stop and
+    tell the author exactly what you need: what it is, what size, what it
+    depicts, and where it goes in the file tree. Do not improvise a placeholder
+    and move on. Do not generate one procedurally. The author would rather make
+    the asset than spend a session unpicking a workaround.
+
 ## Output style
 
 Terse. No preamble, no summary, no "I'll now...", no recap of what you just did.
@@ -32,7 +69,7 @@ The player is Detective Graham Miller. You never see him until the last shot of 
 
 ## Status
 
-Last updated 29 July 2026. Update this whenever a step lands.
+Last updated 30 July 2026. Update this whenever a step lands.
 
 Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Cloudflare Pages is deliberately not connected yet. That happens once scene 1 plays end to end.
 
@@ -60,9 +97,9 @@ Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Cloudflare Pages is
 
 | | State |
 |---|---|
-| **Textures** | Started. The photograph and the diary page are in and the case file shows them. Still flat palette colour: carpet, wallpaper, render, marble, and the neon |
-| **Gloves going on at the front door** | BRIEF.md calls it free characterisation. The foley for it is written (`Foley.glovesOn`) and nothing calls it yet |
-| **Light grade** | No post pass. One grade is the difference between correctly lit and photographed |
+| **Textures** | Waiting on Codex. Prompt pack in `docs/TEXTURE-PROMPTS.md`. Canvas maps in `surfaces.ts` are temporary scaffolding to replace |
+| **Gloves going on at the front door** | Done. Trigger on hall threshold, clip + foley |
+| **Light grade** | Done. ACES + afternoon LUT pass (`src/render/grade.ts`) |
 | 14 | Scene manager, save on a scene boundary |
 | 15 | Cold open: Commodore, two uniforms, the tape lift. Title card one |
 

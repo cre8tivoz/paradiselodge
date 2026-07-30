@@ -1,4 +1,14 @@
-import { Box3, BoxGeometry, Mesh, MeshBasicMaterial, MeshStandardMaterial, Object3D, Vector3 } from 'three'
+import {
+  Box3,
+  BoxGeometry,
+  BufferAttribute,
+  BufferGeometry,
+  Mesh,
+  MeshBasicMaterial,
+  MeshStandardMaterial,
+  Object3D,
+  Vector3,
+} from 'three'
 import type { Surface } from '../core/events.ts'
 import type { WalkableRegion } from './collision.ts'
 
@@ -62,6 +72,139 @@ export function raked(
   length: number,
 ): Mesh {
   const mesh = new Mesh(new BoxGeometry(width, height, length), material)
+  mesh.castShadow = true
+  mesh.receiveShadow = true
+  parent.add(mesh)
+  return mesh
+}
+
+/**
+ * Chamfered box geometry. Real edges catch a specular highlight; a stock
+ * BoxGeometry cannot. Adapted from Claude of Duty (MIT, Copyright 2026 mshumer),
+ * stripped of wear/grime vertex colours.
+ */
+export function chamferBoxGeometry(sx: number, sy: number, sz: number, bevel = 0.008): BufferGeometry {
+  const h = [sx * 0.5, sy * 0.5, sz * 0.5]
+  const b = Math.max(0.0005, Math.min(bevel, Math.min(sx, sy, sz) * 0.4))
+  const signs: Array<[number, number, number]> = []
+  for (let i = 0; i < 8; i++) {
+    signs.push([i & 1 ? 1 : -1, i & 2 ? 1 : -1, i & 4 ? 1 : -1])
+  }
+  const vert = (ci: number, axis: number): [number, number, number] => {
+    const s = signs[ci]!
+    return [
+      s[0]! * (axis === 0 ? h[0]! : h[0]! - b),
+      s[1]! * (axis === 1 ? h[1]! : h[1]! - b),
+      s[2]! * (axis === 2 ? h[2]! : h[2]! - b),
+    ]
+  }
+
+  const pos: number[] = []
+  const nrm: number[] = []
+  const uv: number[] = []
+  const v0 = new Vector3()
+  const v1 = new Vector3()
+  const v2 = new Vector3()
+  const n = new Vector3()
+
+  const addPoly = (ptsIn: Array<[number, number, number]>): void => {
+    let pts = ptsIn
+    v0.set(pts[0]![0], pts[0]![1], pts[0]![2])
+    v1.set(pts[1]![0], pts[1]![1], pts[1]![2])
+    v2.set(pts[2]![0], pts[2]![1], pts[2]![2])
+    n.copy(v1).sub(v0).cross(v2.clone().sub(v0))
+    let cx = 0
+    let cy = 0
+    let cz = 0
+    for (const p of pts) {
+      cx += p[0]
+      cy += p[1]
+      cz += p[2]
+    }
+    cx /= pts.length
+    cy /= pts.length
+    cz /= pts.length
+    if (n.x * cx + n.y * cy + n.z * cz < 0) {
+      pts = pts.slice().reverse()
+    }
+    v0.set(pts[0]![0], pts[0]![1], pts[0]![2])
+    v1.set(pts[1]![0], pts[1]![1], pts[1]![2])
+    v2.set(pts[2]![0], pts[2]![1], pts[2]![2])
+    n.copy(v1).sub(v0).cross(v2.clone().sub(v0)).normalize()
+    for (let t = 1; t < pts.length - 1; t++) {
+      const tri = [pts[0]!, pts[t]!, pts[t + 1]!]
+      for (const p of tri) {
+        pos.push(p[0], p[1], p[2])
+        nrm.push(n.x, n.y, n.z)
+        const ax =
+          Math.abs(n.x) > Math.abs(n.y)
+            ? Math.abs(n.x) > Math.abs(n.z)
+              ? 0
+              : 2
+            : Math.abs(n.y) > Math.abs(n.z)
+              ? 1
+              : 2
+        uv.push(ax === 0 ? p[2] : p[0], ax === 1 ? p[2] : p[1])
+      }
+    }
+  }
+
+  for (let axis = 0; axis < 3; axis++) {
+    for (const sa of [-1, 1]) {
+      const corners: number[] = []
+      for (let ci = 0; ci < 8; ci++) {
+        if (signs[ci]![axis] === sa) {
+          corners.push(ci)
+        }
+      }
+      const a1 = (axis + 1) % 3
+      const a2 = (axis + 2) % 3
+      corners.sort((p, q) => {
+        const ap = Math.atan2(signs[p]![a2]!, signs[p]![a1]!)
+        const aq = Math.atan2(signs[q]![a2]!, signs[q]![a1]!)
+        return ap - aq
+      })
+      addPoly(corners.map((ci) => vert(ci, axis)))
+    }
+  }
+
+  for (let a = 0; a < 3; a++) {
+    const a1 = (a + 1) % 3
+    const a2 = (a + 2) % 3
+    for (const s1 of [-1, 1]) {
+      for (const s2 of [-1, 1]) {
+        const c: number[] = []
+        for (let ci = 0; ci < 8; ci++) {
+          if (signs[ci]![a1] === s1 && signs[ci]![a2] === s2) {
+            c.push(ci)
+          }
+        }
+        addPoly([vert(c[0]!, a1), vert(c[0]!, a2), vert(c[1]!, a2), vert(c[1]!, a1)])
+      }
+    }
+  }
+
+  for (let ci = 0; ci < 8; ci++) {
+    addPoly([vert(ci, 0), vert(ci, 1), vert(ci, 2)])
+  }
+
+  const geo = new BufferGeometry()
+  geo.setAttribute('position', new BufferAttribute(new Float32Array(pos), 3))
+  geo.setAttribute('normal', new BufferAttribute(new Float32Array(nrm), 3))
+  geo.setAttribute('uv', new BufferAttribute(new Float32Array(uv), 2))
+  return geo
+}
+
+/** Furniture body with a light chamfer so edges catch the 3pm sun. */
+export function chamfered(
+  parent: Object3D,
+  material: MeshStandardMaterial,
+  sx: number,
+  sy: number,
+  sz: number,
+  bevel = 0.008,
+): Mesh {
+  const mesh = new Mesh(chamferBoxGeometry(sx, sy, sz, bevel), material)
   mesh.castShadow = true
   mesh.receiveShadow = true
   parent.add(mesh)
