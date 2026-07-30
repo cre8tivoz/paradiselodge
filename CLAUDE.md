@@ -71,7 +71,7 @@ The player is Detective Graham Miller. You never see him until the last shot of 
 
 Last updated 30 July 2026. Update this whenever a step lands.
 
-Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Cloudflare Pages is deliberately not connected yet. That happens once scene 1 plays end to end.
+Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Live at `https://paradiselodge-game.pages.dev`. Custom domain `lodge.billyhaddad.au` not wired yet.
 
 | Step | State |
 |---|---|
