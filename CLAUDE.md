@@ -52,8 +52,22 @@ Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Cloudflare Pages is
 | 11. Rosie | Done. Placed, talkable, relocates. Two graphs. See below |
 | 12. Moretti | Done. Breadcrumb follow, the tag verb, bag and hide. Diary is built and both taggables work. See below |
 | 13. Objective gates, scene exit | Done. Eight gates, none of them locks. Theorise with Moretti ends the scene. See below |
+| Audio | Done for scene 1. Four ambience beds, footsteps, foley, the 1A tone. All synthesised. See below |
 
-**Next: step 14, the scene manager and saving on a scene boundary.** Scene 1 plays end to end.
+**Scene 1 plays end to end and it has sound.** What is left before it matches the brief is on the list below, not in the fifteen steps: the fifteen steps are an engine checklist and they deliberately deferred everything that makes it look and sound finished.
+
+### What scene 1 still owes the brief
+
+| | State |
+|---|---|
+| **Crystal as a real mesh** | Still kit primitives, and she is the most looked-at object in the scene. `images/characters/crystal-sheet.png` and `tools/blender/kit.py` both exist, so she is not blocked and never was |
+| **Textures** | `public/textures/` is empty. Five sources are sitting unused in `images/assets/`: diary page, neon sign, note, photo in frame, Victor's record. Then carpet, wallpaper, render and marble off the palette |
+| **Gloves going on at the front door** | BRIEF.md calls it free characterisation. The foley for it is written (`Foley.glovesOn`) and nothing calls it yet |
+| **Light grade** | No post pass. One grade is the difference between correctly lit and photographed |
+| 14 | Scene manager, save on a scene boundary |
+| 15 | Cold open: Commodore, two uniforms, the tape lift. Title card one |
+
+All eight scene 1 evidence IDs file.
 
 All eight scene 1 evidence IDs file.
 
@@ -246,6 +260,35 @@ He has two graphs and the gates pick which:
 It stops where scene 1's evidence stops: two sets of hands in one room, one of them tidying up, and a hammer left at the bottom of the stairs. **No name.** Victor is scene 2 and Sterling is scene 4, and a player handed a name here has been handed the end of the game in the first half hour. The last line is an instruction rather than a conclusion, because scene 2 opens with walking the hammer to forensics.
 
 Moretti is de-registered on completion, so the exit cannot be replayed.
+
+---
+
+## Audio
+
+`src/audio/`. Four files and no assets: **every sound in the game is synthesised through Web Audio and no audio file ships.** ASSETS.md asks for exactly that, and it also means scene 1's whole soundtrack is a few hundred lines with no download and no loading state.
+
+| File | Owns |
+|---|---|
+| `mixer.ts` | One `AudioContext`, three buses, the shared noise buffer |
+| `ambience.ts` | Four beds, crossfaded on where Miller stands. Plus the 1A tone |
+| `footsteps.ts` | One synthesised step per `player:footstep` |
+| `foley.ts` | The verbs. Sash, wardrobe, paper, lighter, bag, gloves |
+
+**It cannot start itself.** A browser refuses to run an `AudioContext` until the user has interacted, and it refuses *silently*: the context exists, its state is `suspended`, and everything you schedule is discarded with no error anywhere. So `audio.unlock()` rides the click that asks for pointer lock, plus the mousedown for the drag-to-look fallback and the first keydown for anyone who reaches for WASD first. Ambience only starts its voices once the context is actually running, and retries every frame until it is.
+
+**A step is two sounds, not one.** The scuff is a few milliseconds of noise shaped by what is underfoot; the weight is a low thump that barely changes, because it is Miller and not the floor. Splitting them is what lets carpet and marble be the same man on different floors. `speed` off the event separates a walk from a run, which is why running never needed an event of its own. Timber gets a creak on some steps, landing *after* the weight, because a board gives way under load and not on contact.
+
+**Foley plays on `examine:start`, not on complete.** The hand animation is the action, and `examine:complete` is when the text lands, by which time the hand has already pushed the sash. Starting with the clip is what makes the hand look like it is touching something.
+
+**Nothing scores a discovery, and nothing ever may.** ASSETS.md: "Never score the discoveries. No sting when Miller finds the temple. The absence is the effect." There is no handler for `evidence:filed` in this directory. The needle and the temple examine in silence.
+
+**Room 1A's bed is nearly empty on purpose.** Distant traffic through the sash and flies, and that is all. BRIEF.md's claim for that room is that it is beautiful and everything in it happened in the dark; filling it with atmosphere argues with the light. The flies are the only sound in the scene that says what has happened, and they are quiet enough to miss.
+
+The 1A tone is three sine waves a few cents apart on a low D through a lowpass, on a bus trimmed to 0.16. ASSETS.md wants "a single sustained low tone you cannot quite identify as music", so if you can name the pitch it is too loud. It fades in with the room and reacts to nothing.
+
+`zoneAt` in `ambience.ts` carries hand-maintained copies of the building bounds, same as the gate box in `gates.ts`. **Move the building, move both.** The verandah is deliberately lumped in with the yard: it is outdoors and it looks at the same street.
+
+No events were added. Footsteps and foley subscribe to the bus themselves; ambience is the only part that needs telling anything, because where Miller is standing is not an event.
 
 ---
 

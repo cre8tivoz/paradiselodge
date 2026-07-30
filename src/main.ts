@@ -19,6 +19,7 @@ import { Hands } from './player/hands/hands.ts'
 import { CLIPS, getClip } from './player/hands/clips.ts'
 import type { ClipId } from './player/hands/clips.ts'
 import { Hud } from './ui/hud.ts'
+import { Audio } from './audio/audio.ts'
 import { CaseFile } from './case/casefile.ts'
 import { Notebook } from './case/notebook.ts'
 import { getEvidence } from './case/evidence.ts'
@@ -98,6 +99,14 @@ async function main(): Promise<void> {
 
   // The camera has to be in the scene graph or its children never get traversed.
   scene.add(camera)
+
+  /*
+   * Audio comes up before the world can emit anything at it. It stays silent
+   * until `unlock()`, which rides the same click as pointer lock, because a
+   * browser will not run an AudioContext before a user gesture and fails
+   * silently when you try.
+   */
+  const audio = new Audio()
 
   const input = new Input(canvas)
   // Rosie's box goes in by reference, not by copy. She relocates, and the
@@ -671,6 +680,21 @@ async function main(): Promise<void> {
       : `<strong>Click to look around</strong><span>${CONTROLS} &middot; Esc release</span>`
   }
 
+  /*
+   * Sound starts on the same gesture that asks for pointer lock.
+   *
+   * All three of these, because the click is the normal path, the mousedown is
+   * the drag-to-look fallback in documents that refuse the lock, and the keydown
+   * catches a player who reaches for WASD before clicking anything. `unlock` is
+   * idempotent.
+   */
+  const unlockAudio = (): void => {
+    audio.unlock()
+  }
+  canvas.addEventListener('click', unlockAudio)
+  canvas.addEventListener('mousedown', unlockAudio)
+  window.addEventListener('keydown', unlockAudio)
+
   input.onLockRefused = updatePrompt
   document.addEventListener('pointerlockchange', updatePrompt)
   updatePrompt()
@@ -730,6 +754,8 @@ async function main(): Promise<void> {
   const loop = new Loop((delta) => {
     elapsed += delta
     lodge.update(elapsed)
+    // Ambience crossfades on where he is standing, which is not an event.
+    audio.update(player.position)
     // Ahead of the notebook and dialogue early-outs. She is on screen for the
     // whole conversation and a figure that freezes the moment you talk to her
     // is worse than one that never moved.
@@ -826,6 +852,7 @@ async function main(): Promise<void> {
       gates,
       solver,
       lighting,
+      audio,
       clips: CLIPS,
       Vector3,
     })
