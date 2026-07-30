@@ -46,6 +46,8 @@ body {
   text-shadow: 0 1px 3px rgb(0 0 0 / 80%);
   opacity: 0;
   transition: opacity 180ms ease;
+  /* Above the pointer-lock hint. The look line is the only feedback look has. */
+  z-index: 5;
 }
 
 .look-line.is-visible {

@@ -333,7 +333,7 @@ async function main(): Promise<void> {
     },
     {
       id: 'lodge.desk',
-      description: 'Reception desk. Nobody behind it.',
+      description: 'Reception desk.',
       object: lodge.props.desk,
     },
     {
@@ -515,7 +515,12 @@ async function main(): Promise<void> {
   // The prompt is appended after so its scrim sits behind the description line.
   // Asks the registry rather than a snapshot map, because Rosie's line changes
   // when she relocates and a map built from the static list would go stale.
-  const hud = new Hud(hudRoot, (id) => registry.get(id)?.description)
+  const hud = new Hud(hudRoot, (id) => {
+    if (id === 'lodge.desk' && rosie.station === 'reception') {
+      return 'Reception desk. A woman behind it.'
+    }
+    return registry.get(id)?.description
+  })
 
   /** Set once the theorise conversation reaches its last node. */
   let sceneComplete = false
@@ -576,7 +581,24 @@ async function main(): Promise<void> {
     if (hands.isPlaying || notebook.isOpen || dialogue.isActive) {
       return false
     }
-    const target = look.target
+    let target = look.target
+    /*
+     * Reception. The desk sits between the doorway and Rosie, so the nearest
+     * hit is almost always timber. Looking at the desk while she is behind it
+     * is looking at her, and F must open her graph.
+     */
+    if (
+      target !== undefined &&
+      target.dialogueId === undefined &&
+      rosie.station === 'reception' &&
+      (target.id === 'lodge.desk' ||
+        target.id === 'lodge.ledger' ||
+        target.id === 'lodge.phone' ||
+        target.id === 'lodge.ashtray' ||
+        target.id === 'lodge.keyRack')
+    ) {
+      target = registry.get('rosie')
+    }
     if (target === undefined || target.dialogueId === undefined) {
       return false
     }
@@ -726,17 +748,18 @@ async function main(): Promise<void> {
       prompt.style.display = 'none'
       return
     }
+    /*
+     * After the cold open, never full-screen scrim. A 45% black overlay was
+     * burying the look line, which is the only feedback look has. Top hint bar
+     * until pointer lock; same treatment as the lock-refused fallback.
+     */
     prompt.style.display = 'flex'
-    // Some documents refuse pointer lock outright. Say so and name the fallback
-    // rather than leaving the player clicking a canvas that will never lock.
-    // Once refused it becomes a quiet bar instead of a full screen scrim, since
-    // it has to stay up the whole time the player is dragging to look.
-    prompt.classList.toggle('is-hint', input.isLockRefused)
+    prompt.classList.add('is-hint')
     prompt.innerHTML = input.isLockRefused
       ? '<strong>Drag to look around</strong>' +
         `<span>${CONTROLS}</span>` +
-        '<span class="prompt-note">This browser refused pointer lock, so hold the left button to turn.</span>'
-      : `<strong>Click to look around</strong><span>${CONTROLS}</span>`
+        '<span class="prompt-note">This browser refused pointer lock, so hold the left button to turn. Hold F to examine.</span>'
+      : `<strong>Click to look around</strong><span>${CONTROLS}</span><span class="prompt-note">Hold F to examine. Press F to talk.</span>`
   }
 
   /*
@@ -812,8 +835,8 @@ async function main(): Promise<void> {
     moretti.update(delta, player.position)
 
     if (input.wasPressed('notebook')) {
-      if (dialogue.isActive) {
-        // Notebook waits. Finish or leave the conversation first.
+      if (!coldOpenDone || dialogue.isActive) {
+        // Cold open: walk, look, listen. Notebook waits with the other verbs.
         input.endFrame()
         draw()
         return
@@ -860,8 +883,10 @@ async function main(): Promise<void> {
 
     // Hold to examine. Press starts it; release before the clip ends cancels.
     // Talkables take the same key as a press, not a hold.
+    // Only cancel an examine. Gloves and any other contextual clip must run out;
+    // treating them as hold-F examines kills them on the next frame.
     if (hands.isPlaying) {
-      if (!input.isHeld('examine')) {
+      if (examiningId !== undefined && !input.isHeld('examine')) {
         hands.cancel()
         examiningId = undefined
       }
