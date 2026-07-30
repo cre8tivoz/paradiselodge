@@ -50,6 +50,11 @@ export class CaseFile {
     return this.filed.size
   }
 
+  /** Filed evidence IDs, catalogue order. For the scene-boundary save. */
+  listIds(): string[] {
+    return this.list().map((def) => def.id)
+  }
+
   clear(): void {
     this.filed.clear()
   }

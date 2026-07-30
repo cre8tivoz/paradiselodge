@@ -90,6 +90,7 @@ Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Cloudflare Pages is
 | 12. Moretti | Done. Breadcrumb follow, the tag verb, bag and hide. Diary is built and both taggables work. See below |
 | 13. Objective gates, scene exit | Done. Eight gates, none of them locks. Theorise with Moretti ends the scene. See below |
 | Audio | Done for scene 1. Four ambience beds, footsteps, foley, the 1A tone. All synthesised. See below |
+| 14. Scene manager, save on boundary | Done. `src/core/scene.ts` + `src/core/save.ts`. Fade + localStorage on `scene:complete`. Scene 2 not built, so complete holds on black |
 
 **Scene 1 plays end to end and it has sound.** What is left before it matches the brief is on the list below, not in the fifteen steps: the fifteen steps are an engine checklist and they deliberately deferred everything that makes it look and sound finished.
 
@@ -100,7 +101,6 @@ Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Cloudflare Pages is
 | **Textures** | Wired. Authored tiles on 1A and lodge; neon letterforms; magazines/map. Facade plate kept as `neon-sign-facade.png` |
 | **Gloves going on at the front door** | Done. Trigger on hall threshold, clip + foley |
 | **Light grade** | Done. ACES + afternoon LUT pass (`src/render/grade.ts`) |
-| 14 | Scene manager, save on a scene boundary |
 | 15 | Cold open: Commodore, two uniforms, the tape lift. Title card one |
 
 All eight scene 1 evidence IDs file.
@@ -188,10 +188,8 @@ The lodge, room 1A, Crystal, and every prop are **primitives** (boxes, capsules,
 |---|---|
 | Kit lodge / room / Crystal / prop primitives | When modelled assets land for each piece. Not a single cutover |
 | The pointer lock prompt and its CSS | When the real HUD lands |
-| Neon as two tubes rather than letterforms | When the sign texture lands |
 | Iron lace as boxes, and the yard's tufts | When cast-lace and grass assets land |
 | `window.__lodge` dev handle | Stays. It is `import.meta.env.DEV` only, and the capture tooling wants it |
-| The scene-exit fade, and `.scene-fade` | Step 14. The scene manager owns what comes after it |
 
 ---
 
@@ -634,8 +632,8 @@ The navmesh landed with step 9, as a set of walkable boxes rather than triangles
 ### Sequencing
 
 13. Objective gates, scene exit — **done**
-14. Scene manager, save on scene boundary — **next**
-15. Cold open sequence, last
+14. Scene manager, save on scene boundary — **done**
+15. Cold open sequence, last — **next**
 
 Verify in the browser between each step. Do not stack three steps in one prompt.
 

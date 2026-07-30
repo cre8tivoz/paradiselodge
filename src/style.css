@@ -269,9 +269,8 @@ body {
 }
 
 /*
- * Scene exit. Scaffolding until the scene manager lands at step 14, which will
- * own what comes after the fade. It is not a title card: ASSETS.md allows two in
- * the whole game and neither of them belongs here.
+ * Scene exit. Owned by SceneManager (`src/core/scene.ts`). Blacks out when
+ * theorise ends; the save is written on that boundary.
  */
 .scene-fade {
   position: absolute;

@@ -35,6 +35,7 @@ import { buildMoretti } from './npc/moretti.ts'
 import { MORETTI_BAG } from './dialogue/graphs/moretti-bag.ts'
 import { MORETTI_STANDBY, MORETTI_THEORISE, THEORISE_LAST_NODE } from './dialogue/graphs/moretti-exit.ts'
 import { applyShot, listShots } from './dev/shots.ts'
+import { SceneManager } from './core/scene.ts'
 
 const canvasEl = document.querySelector<HTMLCanvasElement>('#game')
 const hudRootEl = document.querySelector<HTMLDivElement>('#hud')
@@ -511,6 +512,9 @@ async function main(): Promise<void> {
   let glovesDone = false
   const captureMode = new URLSearchParams(window.location.search).get('capture') === '1'
 
+  const scenes = new SceneManager(hudRoot, caseFile)
+  scenes.start()
+
   const targetWorld = new Vector3()
   const targetBounds = new Box3()
   let examiningId: string | undefined = undefined
@@ -743,15 +747,8 @@ async function main(): Promise<void> {
 
   /*
    * The scene exit. Reaching the last node of the theorise graph ends scene 1.
-   *
-   * Scaffolding: the fade is all there is, and the scene manager at step 14 owns
-   * what comes after it. No title card, because ASSETS.md allows exactly two in
-   * the whole game and neither of them is here.
+   * SceneManager owns the fade and the save written on that boundary.
    */
-  const fade = document.createElement('div')
-  fade.className = 'scene-fade'
-  hudRoot.appendChild(fade)
-
   events.on('dialogue:end', ({ nodeId }) => {
     if (sceneComplete || nodeId !== THEORISE_LAST_NODE) {
       return
@@ -760,12 +757,7 @@ async function main(): Promise<void> {
     registry.remove('moretti')
     hud.clearExamine()
     updatePrompt()
-    fade.classList.add('is-out')
     emit('scene:complete', { id: 'scene1' })
-  })
-
-  events.on('scene:complete', ({ id }) => {
-    console.debug('scene complete', id)
   })
 
   // Esc closes the notebook without going through Input, so we do not
@@ -884,6 +876,7 @@ async function main(): Promise<void> {
       lighting,
       audio,
       grade,
+      scenes,
       clips: CLIPS,
       Vector3,
     })
