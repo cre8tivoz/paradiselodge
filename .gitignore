@@ -32,3 +32,9 @@ dist-ssr
 # textures, and a download cache rather than a source of truth: every uid is in
 # docs/CREDITS.md and re-fetches the same asset. What ships is the baked room.
 assets/sourced/
+
+# room1a.blend packs every sourced texture and lands at ~150MB. It is rebuilt
+# by tools/blender/build_room1a.py out of assets/sourced/, which is itself
+# rebuilt from the uids in docs/CREDITS.md. The character blends stay: they are
+# small and they are the only copy of that geometry.
+assets/blender/room1a.blend
