@@ -137,16 +137,16 @@ export async function buildCrystalProp(): Promise<CrystalProp> {
   const head = requireNode(body, 'head')
   head.rotation.z = HEAD_TURN
   head.rotation.x = HEAD_TIP
-  attachLookPad(head, 0.28, 0.28, 0.28)
+  attachLookPad(head, 0.45, 0.4, 0.4)
 
   const arm = requireNode(body, 'arm_l_0')
-  attachLookPad(arm, 0.18, 0.22, 0.35)
+  attachLookPad(arm, 0.28, 0.35, 0.55)
 
   const needle = requireNode(body, 'needle')
-  attachLookPad(needle, 0.14, 0.14, 0.22)
+  attachLookPad(needle, 0.22, 0.22, 0.35)
 
   const sling = requireNode(body, 'sling')
-  attachLookPad(sling, 0.22, 0.16, 0.22)
+  attachLookPad(sling, 0.35, 0.28, 0.35)
 
   return {
     root,

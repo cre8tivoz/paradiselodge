@@ -741,7 +741,7 @@ async function main(): Promise<void> {
   hudRoot.appendChild(prompt)
 
   const CONTROLS =
-    'WASD move &middot; Shift run &middot; C or Ctrl crouch &middot; Q and E lean &middot; Hold F examine &middot; F talk &middot; G tag &middot; N case file &middot; Esc release mouse'
+    'WASD move &middot; Shift run &middot; C crouch &middot; F examine or talk &middot; G tag &middot; N case file &middot; Esc cancel / release mouse'
 
   const updatePrompt = (): void => {
     // Ask the runner, not the panel. The runner sets its state before it emits
@@ -762,7 +762,7 @@ async function main(): Promise<void> {
       ? '<strong>Drag to look around</strong>' +
         `<span>${CONTROLS}</span>` +
         '<span class="prompt-note">This browser refused pointer lock, so hold the left button to turn. Hold F to examine.</span>'
-      : `<strong>Click to look around</strong><span>${CONTROLS}</span><span class="prompt-note">Hold F to examine. Press F to talk.</span>`
+      : `<strong>Click to look around</strong><span>${CONTROLS}</span><span class="prompt-note">Aim at a thing. Press F. Watch the hands. Then open N for the case file.</span>`
   }
 
   /*
@@ -785,10 +785,17 @@ async function main(): Promise<void> {
   updatePrompt()
 
   events.on('look:exit', ({ objectId }) => {
-    if (examiningId === objectId) {
-      hands.cancel()
-      examiningId = undefined
+    /*
+     * Do not cancel an examine here. Under pointer lock the mouse is always
+     * turning the view, so holding F and wobbling a few pixels used to fire
+     * look:exit and kill the clip before evidence could file. That is why F
+     * looked like a dead key: look text appeared, examine never finished.
+     * Cancel is on F release only (below), and only while examining.
+     */
+    if (examiningId !== undefined) {
+      return
     }
+    void objectId
     hud.clearExamine()
   })
 
@@ -814,8 +821,18 @@ async function main(): Promise<void> {
 
   // Esc closes the notebook without going through Input, so we do not
   // preventDefault on Escape and trap pointer lock. Dialogue handles its own Esc.
+  // Esc also cancels an in-progress examine.
   const onEscape = (event: KeyboardEvent): void => {
-    if (event.code !== 'Escape' || dialoguePanel.isOpen || !notebook.isOpen) {
+    if (event.code !== 'Escape') {
+      return
+    }
+    if (examiningId !== undefined) {
+      hands.cancel()
+      examiningId = undefined
+      hud.clearExamine()
+      return
+    }
+    if (dialoguePanel.isOpen || !notebook.isOpen) {
       return
     }
     notebook.close()
@@ -868,7 +885,11 @@ async function main(): Promise<void> {
 
     player.update(delta)
     tryGlovesOn()
-    look.update()
+    // Freeze the look target while an examine runs. Otherwise pointer-lock
+    // mouse drift swaps the target mid-clip and the look line flickers off.
+    if (examiningId === undefined) {
+      look.update()
+    }
     gates.update(player.position)
 
     /*
@@ -884,15 +905,13 @@ async function main(): Promise<void> {
       return
     }
 
-    // Hold to examine. Press starts it; release before the clip ends cancels.
-    // Talkables take the same key as a press, not a hold.
-    // Only cancel an examine. Gloves and any other contextual clip must run out;
-    // treating them as hold-F examines kills them on the next frame.
-    if (hands.isPlaying) {
-      if (examiningId !== undefined && !input.isHeld('examine')) {
-        hands.cancel()
-        examiningId = undefined
-      }
+    /*
+     * Examine is press F to start, clip runs to the end, evidence files.
+     * BRIEF.md says hold; under pointer lock a hold that cancels on release or
+     * on look-exit made the verb unusable. Cancel with Esc only.
+     */
+    if (hands.isPlaying && examiningId !== undefined) {
+      // Clip owns the frame. Esc cancel is handled below via examiningId.
     } else if (input.wasPressed('examine')) {
       if (!tryTalk()) {
         tryExamine()
