@@ -181,6 +181,9 @@ async function main(): Promise<void> {
     {
       id: '1a.crystal',
       description: 'A woman on the bed. Cream dress.',
+      examine: temple.examine,
+      clipId: 'turnHead',
+      evidenceId: temple.id,
       object: room.crystal.root,
     },
     {
@@ -209,7 +212,7 @@ async function main(): Promise<void> {
     },
     {
       id: '1a.dresser',
-      description: 'Timber dresser. Things on top of it.',
+      description: 'Timber dresser under the street window.',
       object: room.props.dresser,
     },
     {
@@ -233,7 +236,7 @@ async function main(): Promise<void> {
     },
     {
       id: '1a.sideTable',
-      description: 'Small table by the bed head.',
+      description: 'Small table beside the dresser.',
       object: room.props.sideTable,
     },
     {

@@ -481,49 +481,86 @@ export async function buildRoom1A(placement: Room1APlacement): Promise<Room1A> {
   drawer.castShadow = true
   group.add(drawer)
 
-  // Frame on the dresser — face down.
-  const frame = box(0.17, 0.022, 0.125, timber)
-  frame.name = 'frame'
-  frame.position.set(dresserX + 0.04, 0.862, dresserZ + 0.35)
-  frame.rotation.y = 0.18
-  frame.castShadow = true
-  frame.receiveShadow = true
-  group.add(frame)
-
-  // Travel pile: magazines, map with pins, note.
-  const magazines = box(
-    0.28,
-    0.04,
-    0.36,
-    new MeshStandardMaterial({ color: 0xffffff, map: windowed('magazines'), roughness: 0.7 }),
+  /*
+   * Investigation props on the dresser. Spaced along its length so each one
+   * wins the look ray on its own. Flat paper on a timber top loses to the
+   * dresser every time; each prop is a group with a raised invisible hit pad.
+   */
+  const dresserTop = 0.85
+  const frame = propOnDresser(
+    group,
+    'frame',
+    box(0.17, 0.03, 0.13, timber),
+    dresserX - 0.02,
+    dresserTop,
+    dresserZ + 0.42,
+    0.18,
+    0.22,
+    0.1,
+    0.2,
   )
-  magazines.name = 'magazines'
-  magazines.position.set(dresserX + 0.03, 0.875, dresserZ - 0.04)
-  magazines.rotation.y = -0.25
-  magazines.castShadow = true
-  group.add(magazines)
 
-  const map = box(
-    0.28,
-    0.005,
-    0.34,
-    new MeshStandardMaterial({ color: 0xffffff, map: windowed('map-pins'), roughness: 0.85 }),
+  const magazines = propOnDresser(
+    group,
+    'magazines',
+    box(
+      0.22,
+      0.05,
+      0.28,
+      new MeshStandardMaterial({ color: 0xffffff, map: windowed('magazines'), roughness: 0.7 }),
+    ),
+    dresserX - 0.02,
+    dresserTop,
+    dresserZ + 0.12,
+    -0.2,
+    0.26,
+    0.1,
+    0.3,
   )
-  map.name = 'map'
-  map.position.set(dresserX + 0.02, 0.855, dresserZ - 0.38)
-  map.rotation.y = 0.15
-  map.castShadow = true
-  group.add(map)
 
-  const note = box(0.16, 0.002, 0.12, mat(ROOM_1A.crystalDress, 0.85))
-  note.name = 'note'
-  note.position.set(dresserX - 0.11, 0.855, dresserZ + 0.2)
-  note.rotation.y = 0.4
-  group.add(note)
+  const map = propOnDresser(
+    group,
+    'map',
+    box(
+      0.24,
+      0.02,
+      0.28,
+      new MeshStandardMaterial({ color: 0xffffff, map: windowed('map-pins'), roughness: 0.85 }),
+    ),
+    dresserX - 0.02,
+    dresserTop,
+    dresserZ - 0.18,
+    0.12,
+    0.28,
+    0.1,
+    0.3,
+  )
 
-  // Lighter on the side table.
-  const lighter = box(0.025, 0.06, 0.018, mat(0xc0a060, 0.4))
-  lighter.name = 'lighter'
+  const note = propOnDresser(
+    group,
+    'note',
+    box(0.14, 0.01, 0.1, mat(ROOM_1A.crystalDress, 0.85)),
+    dresserX - 0.06,
+    dresserTop,
+    dresserZ - 0.42,
+    0.35,
+    0.2,
+    0.08,
+    0.18,
+  )
+
+  const lighter = propOnDresser(
+    group,
+    'lighter',
+    box(0.04, 0.07, 0.03, mat(0xc0a060, 0.4)),
+    dresserX - 0.12,
+    dresserTop,
+    dresserZ + 0.22,
+    0.5,
+    0.12,
+    0.12,
+    0.12,
+  )
 
   /*
    * Wardrobe, in the corner by the hall door.
@@ -578,14 +615,15 @@ export async function buildRoom1A(placement: Room1APlacement): Promise<Room1A> {
   chair2.rotation.y = -0.4
   addGroupSolid(group, solids, chair2)
 
-  // Side table by the bed head.
+  // Side table beside the dresser on the street wall. Used to sit by the bed
+  // head in the hall-door swing and blocked the lighter from being aimed at.
   const sideTable = new Group()
   sideTable.name = 'sideTable'
   const sideBody = new Mesh(chamferBoxGeometry(0.42, 0.55, 0.42, 0.008), timber)
   sideBody.castShadow = true
   sideBody.receiveShadow = true
   sideTable.add(placed(sideBody, 0, 0.275, 0))
-  sideTable.position.set(-0.55, 0, -1.35)
+  sideTable.position.set(dresserX, 0, dresserZ + 0.95)
   addGroupSolid(group, solids, sideTable)
 
   // Small bedside lamp — the target's nightstand is not empty.
@@ -597,13 +635,8 @@ export async function buildRoom1A(placement: Room1APlacement): Promise<Room1A> {
   lamp.add(placed(cyl(0.012, 0.012, 0.28, brass), 0, 0.18, 0))
   const shade = mat(0xc4a882, 0.9)
   lamp.add(placed(cyl(0.11, 0.08, 0.14, shade), 0, 0.38, 0))
-  lamp.position.set(-0.55, 0.55, -1.35)
+  lamp.position.set(dresserX, 0.55, dresserZ + 0.95)
   group.add(lamp)
-
-  lighter.position.set(-0.38, 0.58, -1.22)
-  lighter.rotation.z = 0.2
-  lighter.castShadow = true
-  group.add(lighter)
 
   // Floor rug in the sun path.
   const rug = box(
@@ -796,6 +829,46 @@ function ironEnd(z: number, height: number): Group {
 function placed(mesh: Mesh, x: number, y: number, z: number): Mesh {
   mesh.position.set(x, y, z)
   return mesh
+}
+
+/**
+ * A dresser-top prop with a raised invisible hit pad so the look ray lands on
+ * the object instead of the timber under it.
+ */
+function propOnDresser(
+  parent: Object3D,
+  name: string,
+  visual: Mesh,
+  x: number,
+  topY: number,
+  z: number,
+  yaw: number,
+  padW: number,
+  padH: number,
+  padD: number,
+): Group {
+  const root = new Group()
+  root.name = name
+  visual.geometry.computeBoundingBox()
+  const bounds = visual.geometry.boundingBox
+  const height = bounds === null ? 0.04 : bounds.max.y - bounds.min.y
+  visual.position.set(0, height / 2, 0)
+  visual.castShadow = true
+  visual.receiveShadow = true
+  root.add(visual)
+
+  const pad = new Mesh(
+    new BoxGeometry(padW, padH, padD),
+    new MeshBasicMaterial({ visible: false, depthWrite: false }),
+  )
+  pad.name = `${name}.lookPad`
+  pad.position.set(0, padH / 2, 0)
+  root.add(pad)
+
+  root.position.set(x, topY, z)
+  root.rotation.y = yaw
+  parent.add(root)
+  return root
 }
 
 function addSolid(group: Group, solids: Box3[], mesh: Mesh, x: number, y: number, z: number): Mesh {

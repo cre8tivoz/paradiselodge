@@ -1,5 +1,5 @@
-import { Group, Object3D } from 'three'
-import type { Mesh, MeshStandardMaterial } from 'three'
+import { Group, Mesh, MeshBasicMaterial, BoxGeometry, Object3D } from 'three'
+import type { MeshStandardMaterial } from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { tiled } from '../materials/textures.ts'
 
@@ -137,16 +137,34 @@ export async function buildCrystalProp(): Promise<CrystalProp> {
   const head = requireNode(body, 'head')
   head.rotation.z = HEAD_TURN
   head.rotation.x = HEAD_TIP
+  attachLookPad(head, 0.28, 0.28, 0.28)
+
+  const arm = requireNode(body, 'arm_l_0')
+  attachLookPad(arm, 0.18, 0.22, 0.35)
+
+  const needle = requireNode(body, 'needle')
+  attachLookPad(needle, 0.14, 0.14, 0.22)
+
+  const sling = requireNode(body, 'sling')
+  attachLookPad(sling, 0.22, 0.16, 0.22)
 
   return {
     root,
     head,
-    // The arm the tie and the needle are on. `arm_l_0` is the shoulder, so the
-    // lookable covers the whole limb, which is what the player aims at.
-    arm: requireNode(body, 'arm_l_0'),
-    needle: requireNode(body, 'needle'),
-    sling: requireNode(body, 'sling'),
+    arm,
+    needle,
+    sling,
   }
+}
+
+/** Invisible volume so a small mesh still wins the look ray. */
+function attachLookPad(parent: Object3D, sx: number, sy: number, sz: number): void {
+  const pad = new Mesh(
+    new BoxGeometry(sx, sy, sz),
+    new MeshBasicMaterial({ visible: false, depthWrite: false }),
+  )
+  pad.name = `${parent.name}.lookPad`
+  parent.add(pad)
 }
 
 function requireNode(root: Object3D, name: string): Object3D {
