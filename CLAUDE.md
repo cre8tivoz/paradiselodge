@@ -61,13 +61,11 @@ Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Cloudflare Pages is
 | | State |
 |---|---|
 | **Crystal as a real mesh** | Still kit primitives, and she is the most looked-at object in the scene. `images/characters/crystal-sheet.png` and `tools/blender/kit.py` both exist, so she is not blocked and never was |
-| **Textures** | `public/textures/` is empty. Five sources are sitting unused in `images/assets/`: diary page, neon sign, note, photo in frame, Victor's record. Then carpet, wallpaper, render and marble off the palette |
+| **Textures** | Started. The photograph and the diary page are in and the case file shows them. Still flat palette colour: carpet, wallpaper, render, marble, and the neon |
 | **Gloves going on at the front door** | BRIEF.md calls it free characterisation. The foley for it is written (`Foley.glovesOn`) and nothing calls it yet |
 | **Light grade** | No post pass. One grade is the difference between correctly lit and photographed |
 | 14 | Scene manager, save on a scene boundary |
 | 15 | Cold open: Commodore, two uniforms, the tape lift. Title card one |
-
-All eight scene 1 evidence IDs file.
 
 All eight scene 1 evidence IDs file.
 
@@ -260,6 +258,30 @@ He has two graphs and the gates pick which:
 It stops where scene 1's evidence stops: two sets of hands in one room, one of them tidying up, and a hammer left at the bottom of the stairs. **No name.** Victor is scene 2 and Sterling is scene 4, and a player handed a name here has been handed the end of the game in the first half hour. The last line is an instruction rather than a conclusion, because scene 2 opens with walking the hammer to forensics.
 
 Moretti is de-registered on completion, so the exit cannot be replayed.
+
+---
+
+## Textures
+
+`public/textures/`, loaded through `src/materials/textures.ts`. Processed out of `images/assets/` with `sips`, resized to power-of-two and saved as JPEG, which took 6.5 MB of PNG down to 1 MB.
+
+**Windows, not crops.** Every source is a photograph of a whole thing rather than a tidy asset, so each use takes a sub-rectangle through `offset` and `repeat` instead of the region being cut out and baked into the file. The numbers are read off the picture by eye and can be nudged in code. `windowed()` clones the texture, because `offset` lives on the texture and two props windowing the same source would otherwise fight over it; clones share the upload so it costs nothing.
+
+**`colorSpace = SRGBColorSpace` is not optional.** Three has needed it on every colour map since r152, and without it a photograph comes back pale and chalky, which reads as a bug in the lighting rather than in the texture.
+
+Windows are measured from the **top**, because that is how you read them off an image. `windowed` flips into three's bottom-left origin so no call site has to think about it.
+
+### The documents live in the case file
+
+The photograph, the diary page and the note are the three things in scene 1 Miller actually reads, so `EvidenceDef.image` names a texture and the notebook renders it.
+
+**The case file is the only place the photo can be seen.** ASSETS.md has Miller set the frame back down face down, exactly as found, so the print is never face up in the room. Putting it in the notebook is not a workaround: the case file holds knowledge, and a print of a photograph is knowledge a 1994 detective would be carrying. It also leans on the period rule that makes the clue work at all, that photographs are prints, which is why the frame can lie face down and leave a dust ring.
+
+The notebook uses an `<img>` and not the three.js texture. It is DOM over the canvas like the rest of the HUD, and the browser already has the file. The same window the props use is reproduced with an oversized child in an `overflow: hidden` box.
+
+### The neon is deliberately not textured
+
+`images/assets/neon-sign.png` is a photograph of a whole facade at dusk with the sign on it, and the letterforms sit on a pale rendered wall. There is no way to use it as a sign texture without the wall coming too: additive blending lifts the board to grey, and an alpha map off luminance cannot separate a mid-grey wall from a mid-bright tube. **It is reference for what the sign should look like, not an asset.** The neon stays two tubes until there is an isolated letterform image with an alpha channel.
 
 ---
 

@@ -15,6 +15,19 @@ export interface EvidenceDef {
   readonly examine: string
   /** Later scenes this clue feeds. Recorded now, used when those scenes land. */
   readonly landsIn: readonly string[]
+  /**
+   * A shipped texture, for the clues that are documents.
+   *
+   * The photograph, the diary page and the note are the three things in scene 1
+   * Miller actually reads, and a case file that holds knowledge is exactly where
+   * a print of one belongs. It is also the only place the photo can be seen:
+   * ASSETS.md has him set the frame back down face down, exactly as found, so
+   * the print is never face up in the room.
+   *
+   * Period rule from ASSETS.md, and it is load-bearing: photographs are prints.
+   * That is why the frame can lie face down and leave a dust ring at all.
+   */
+  readonly image?: 'photo-in-frame' | 'diary-page' | 'note'
 }
 
 /**
@@ -51,6 +64,7 @@ export const SCENE1_EVIDENCE: readonly EvidenceDef[] = [
     examine:
       'Crystal and a man, black shirt, ponytail. Dust ring shows it lay face down for weeks.',
     landsIn: ['S2', 'S4'],
+    image: 'photo-in-frame',
   },
   {
     id: 'sill',
@@ -72,6 +86,7 @@ export const SCENE1_EVIDENCE: readonly EvidenceDef[] = [
     look: 'Notebook on the parlour table.',
     examine: 'meeting M for lunch - mahoneys 3pm Tuesday',
     landsIn: ['S2'],
+    image: 'diary-page',
   },
   {
     id: 'hammer',

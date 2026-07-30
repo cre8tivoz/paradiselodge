@@ -1,4 +1,5 @@
 import { emit, on } from '../core/events.ts'
+import { WINDOWS } from '../materials/textures.ts'
 import type { CaseFile } from './casefile.ts'
 import type { EvidenceDef } from './evidence.ts'
 
@@ -160,6 +161,31 @@ export class Notebook {
     examine.textContent = entry.examine
 
     this.detail.append(label, look, examine)
+
+    /*
+     * The document itself, for the clues that are one.
+     *
+     * An <img> rather than the three.js texture, because this is DOM over the
+     * canvas like the rest of the HUD and the browser already has the file
+     * cached from the world loading it. The same window the props use is applied
+     * with object-position, so the notebook and the world agree on which part of
+     * the source is the thing.
+     */
+    if (entry.image !== undefined) {
+      const [x0, y0, x1, y1] = WINDOWS[entry.image]
+      const shot = document.createElement('div')
+      shot.className = 'notebook-image'
+      const img = document.createElement('img')
+      img.src = `/textures/${entry.image}.jpg`
+      img.alt = ''
+      // Scale the source up so the window fills the frame, then slide it.
+      img.style.width = `${100 / (x1 - x0)}%`
+      img.style.height = `${100 / (y1 - y0)}%`
+      img.style.marginLeft = `${(-x0 * 100) / (x1 - x0)}%`
+      img.style.marginTop = `${(-y0 * 100) / (y1 - y0)}%`
+      shot.appendChild(img)
+      this.detail.append(shot)
+    }
   }
 
   dispose(): void {

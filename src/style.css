@@ -288,3 +288,26 @@ body {
 .scene-fade.is-out {
   opacity: 1;
 }
+
+/*
+ * A document in the case file. The photograph, the diary page, the note.
+ *
+ * Overflow hidden with an oversized child is how the UV window the props use is
+ * applied in DOM: scale the source so the window fills the frame, then slide it.
+ */
+.notebook-image {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  max-width: 26rem;
+  aspect-ratio: 4 / 3;
+  margin-top: 1.1rem;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  background: #14110e;
+}
+
+.notebook-image img {
+  display: block;
+  /* Prints, not screens. Slightly warm and slightly soft. */
+  filter: saturate(0.92) contrast(1.04);
+}
