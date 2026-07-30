@@ -45,7 +45,7 @@ Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Cloudflare Pages is
 | 4. Examine tier two, held input | Done. Hold F; release cancels |
 | 5. Case file, evidence IDs, notebook UI | Done. N opens. Examine files. Idempotent |
 | 6. Room 1A, geometry, fixed 3pm sun | Done. Kit furniture, sash, sun across the bed |
-| 7. Crystal + examine set | Done. Kit Crystal. Twelve room 1A clips. Six evidence IDs file here; diary and hammer wait for parlour and yard |
+| 7. Crystal + examine set | Done. Modelled Crystal. Twelve room 1A clips. Six evidence IDs file here; diary and hammer wait for parlour and yard |
 | 8. Dialogue system | Done. Node graph, runner, DOM panel. Rosie is its first real user |
 | 9. Approach and ground floor | Done. Street, steps, neon, facade, hall, reception, parlour, staircase, first-floor hall. 1A is placed in it. See below |
 | 10. Verandah and back yard | Done. Iron lace off 1A, external stairs, yard, Hills hoist, shed, hammer. See below |
@@ -60,7 +60,6 @@ Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Cloudflare Pages is
 
 | | State |
 |---|---|
-| **Crystal as a real mesh** | Still kit primitives, and she is the most looked-at object in the scene. `images/characters/crystal-sheet.png` and `tools/blender/kit.py` both exist, so she is not blocked and never was |
 | **Textures** | Started. The photograph and the diary page are in and the case file shows them. Still flat palette colour: carpet, wallpaper, render, marble, and the neon |
 | **Gloves going on at the front door** | BRIEF.md calls it free characterisation. The foley for it is written (`Foley.glovesOn`) and nothing calls it yet |
 | **Light grade** | No post pass. One grade is the difference between correctly lit and photographed |
@@ -258,6 +257,44 @@ He has two graphs and the gates pick which:
 It stops where scene 1's evidence stops: two sets of hands in one room, one of them tidying up, and a hammer left at the bottom of the stairs. **No name.** Victor is scene 2 and Sterling is scene 4, and a player handed a name here has been handed the end of the game in the first half hour. The last line is an instruction rather than a conclusion, because scene 2 opens with walking the hammer to forensics.
 
 Moretti is de-registered on completion, so the exit cannot be replayed.
+
+---
+
+## Crystal mesh
+
+| Role | Path |
+|---|---|
+| **Original Blender file** | `assets/blender/crystal.blend` |
+| Build script | `tools/blender/build_crystal.py` |
+| Shipped runtime mesh | `public/models/crystal.glb` |
+| Modelling reference | `images/characters/crystal-sheet.png` |
+
+ASSETS.md rates her **"full, very close"**, the only character in the game rated that high, because the player crouches over her and turns her head.
+
+**She is modelled standing and laid down by the runtime.** Every helper in `kit.py` lathes around Z and runs limbs down -Z, so modelling her horizontal would mean fighting the toolkit for nothing. The pose is baked into the joints in Blender and `crystal.ts` carries the transform.
+
+That transform is **two nested groups on purpose.** Euler order makes a combined lay-down and turn-along-the-bed ambiguous to read and easy to get 90 degrees wrong. `root` carries the yaw along the bed, `tilt` lays her on her back. After the tilt her standing up axis runs +Z and her standing forward becomes +Y, so a point at standing height `h` sits at `z = h`, and **her back is 0.13 below the root** — which is why the root goes at spine height and not on the mattress. `CRYSTAL_SPINE_OFFSET` and `CRYSTAL_LENGTH` are exported so `room1a.ts` places her against the headboard without repeating the arithmetic.
+
+She has no update. No breath, no tracking, no clip. Head, arm, needle and sling are named nodes so an examine lands on each, and that is the whole runtime.
+
+### What the passes cost
+
+- **The arms were mirrored.** `R_y` on a limb hanging down -Z gives `(-sin, 0, -cos)`, so a *negative* Y rotation swings it toward +X, which on her left arm is inward across her chest. The first build had both arms folded over her. Every other script writes `-side * radians(...)` for exactly this reason
+- **The skirt is flattened to 0.58 along her front-to-back axis, and that is the most important number on her.** A lathed cone is a lampshade. Standing you forgive it; lying on her back it was holding a perfect bell forty centimetres off the mattress. Squashing it is what turns a solid of revolution into cloth that has given up
+- **The hair was a yellow helmet.** Far too saturated, and it read worst from directly above, which is exactly where the player looks at her from
+- **Her left arm was abducted far enough to hang off the mattress.** 34 degrees standing is 34 degrees off a bed that is only 1.35 wide
+
+### Rigor, lividity, and what of it is visible
+
+Rigor is why the pose is not slack: the limbs are set, the fingers are not curled, nothing sags.
+
+Lividity is the part that is easy to get wrong. Blood settles to the lowest point and she is on her back, so the pooling is against the bedspread where **nobody can ever see it**. What the player can see from above is her hands, so the skin is waxy and pale everywhere and the hands and lower forearms carry the colour. Nothing about her is gory.
+
+**Her eyes are closed.** Truthful at twelve hours, and the kinder choice: a corpse staring up at a player crouched over her turns the scene into a horror beat, and BRIEF.md wants the room beautiful and the violence already over.
+
+**The temple is meant to be nearly invisible.** BRIEF.md puts it under the hair. The head turn is what earns it: turned, the 3pm sun rakes across the left temple and the fringe still half hides it. If it reads from the doorway it is too big or too dark, and the examine has nothing left to tell you.
+
+The dress is flat cream. **The floral is a texture and it is not made yet.**
 
 ---
 

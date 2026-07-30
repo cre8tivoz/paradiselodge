@@ -74,7 +74,7 @@ async function main(): Promise<void> {
    * which is the side the verandah wraps onto and where the 3pm sun comes from.
    * Front and side corner, per BRIEF.md.
    */
-  const room = buildRoom1A({
+  const room = await buildRoom1A({
     position: new Vector3(4.0, 3.45, 2.6),
     rotationY: Math.PI / 2,
   })

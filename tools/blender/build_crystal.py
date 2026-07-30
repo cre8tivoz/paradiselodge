@@ -60,8 +60,8 @@ from kit import arc_shell, blob, clear_scene, empty, joint, lathe, limb, link, m
 SKIN = (0.612, 0.549, 0.494, 1.0)
 # Hands and the lower forearms, where the blood has gone.
 LIVID = (0.435, 0.376, 0.400, 1.0)
-HAIR = (0.612, 0.478, 0.267, 1.0)
-HAIR_DEEP = (0.478, 0.353, 0.184, 1.0)
+HAIR = (0.541, 0.475, 0.361, 1.0)
+HAIR_DEEP = (0.435, 0.372, 0.271, 1.0)
 # ROOM_1A.crystalDress, #E8E2D6. The floral is a texture and it is not here yet.
 DRESS = (0.910, 0.886, 0.839, 1.0)
 DRESS_SHADE = (0.839, 0.808, 0.753, 1.0)
@@ -109,7 +109,7 @@ def build_export() -> None:
         hip = empty(f"leg_{tag}_0", hips, (side * 0.072, 0.0, -0.05))
         hip.rotation_euler = (0.0, -side * math.radians(3.5), 0.0)
         link(f"thigh_{tag}", limb(f"thigh_{tag}_m", 0.072, 0.055, THIGH), hip, m_skin)
-        joint(f"knee_{tag}", 0.055, hip, m_skin, (0.0, 0.0, -THIGH + 0.01))
+        joint(f"knee_{tag}", 0.050, hip, m_skin, (0.0, 0.0, -THIGH + 0.01))
 
         knee = empty(f"leg_{tag}_1", hip, (0.0, 0.0, -THIGH))
         link(f"shin_{tag}", limb(f"shin_{tag}_m", 0.055, 0.038, SHIN), knee, m_skin)
@@ -130,25 +130,35 @@ def build_export() -> None:
         shoe.scale = (1.0, 1.75, 1.0)
         heel = link(f"heel_{tag}", blob(f"heel_{tag}_m", 0.020, 8), ankle, m_shoe, (0.0, -0.032, -0.070))
         heel.scale = (1.0, 0.9, 1.5)
-        bow = link(f"bow_{tag}", blob(f"bow_{tag}_m", 0.013, 8), ankle, m_shoe, (0.0, 0.082, -0.030))
-        bow.scale = (1.5, 0.5, 0.6)
+        bow = link(f"bow_{tag}", blob(f"bow_{tag}_m", 0.012, 8), ankle, m_shoe, (0.0, 0.058, -0.018))
+        bow.scale = (1.6, 0.55, 0.45)
 
     # === Dress ===
     # A tea dress is a fitted bodice and a flared skirt, and the flare is the
     # whole silhouette. One lathe, because it is a body of revolution.
 
-    link(
+    """
+    The skirt is flattened, and that is the single most important number on her.
+
+    A lathed cone is a lampshade. Standing that reads as a stiff A line and you
+    forgive it; lying on her back it is unmistakable, because fabric on a bed
+    collapses onto the bed and hers was holding a perfect bell forty centimetres
+    off the mattress. Squashing it along her front-to-back axis is what turns a
+    solid of revolution into cloth that has given up.
+    """
+    skirt = link(
         "skirt",
         lathe(
             "skirt_m",
             [
                 (0.0, 0.0),
-                (0.238, 0.004),
-                (0.232, 0.024),
-                (0.196, 0.130),
-                (0.162, 0.220),
-                (0.140, 0.290),
-                (0.132, 0.330),
+                (0.226, 0.002),
+                (0.234, 0.020),
+                (0.228, 0.046),
+                (0.186, 0.148),
+                (0.158, 0.236),
+                (0.141, 0.300),
+                (0.134, 0.336),
             ],
             22,
             close_bottom=False,
@@ -157,6 +167,7 @@ def build_export() -> None:
         m_dress,
         (0.0, 0.0, 0.58),
     )
+    skirt.scale = (1.06, 0.58, 1.0)
 
     # Bodice. Narrow at the waist and it is the waist that says petite.
     torso = link(
@@ -191,12 +202,12 @@ def build_export() -> None:
     """
     vee = link(
         "neckline",
-        lathe("neckline_m", [(0.0, -0.10), (0.052, -0.045), (0.070, 0.0), (0.074, 0.030)], 10, close_top=False),
+        lathe("neckline_m", [(0.0, -0.075), (0.044, -0.030), (0.058, 0.010), (0.060, 0.028)], 12, close_top=False),
         chest,
         m_skin,
-        (0.0, 0.086, 0.300),
+        (0.0, 0.070, 0.302),
     )
-    vee.scale = (1.25, 0.5, 1.0)
+    vee.scale = (1.30, 0.32, 1.0)
 
     # Cap sleeves. Short, and they sit on the shoulder rather than round the arm.
     for side, tag in ((-1, "l"), (1, "r")):
@@ -219,15 +230,25 @@ def build_export() -> None:
     and BRIEF.md's `sling` line is that nobody ties one that neatly one-handed
     either.
     """
-    arm_pose = {
-        "l": (math.radians(4.0), math.radians(-38.0), math.radians(-26.0)),
-        "r": (math.radians(2.0), math.radians(9.0), math.radians(0.0)),
-    }
-    elbow_pose = {"l": math.radians(-22.0), "r": math.radians(-4.0)}
+    """
+    Out is -side, not a hardcoded sign.
+
+    R_y on a limb hanging down -Z gives (-sin, 0, -cos), so a negative Y
+    rotation swings it toward +X. On her left arm that is inward across the
+    chest, which is how the first pass ended up with both arms folded over her.
+    Every other build script writes `-side * radians(...)` for this reason.
+    """
+    arm_swing = {"l": 25.0, "r": 6.0}
+    arm_forward = {"l": 8.0, "r": 2.0}
+    elbow_pose = {"l": math.radians(-26.0), "r": math.radians(-5.0)}
 
     for side, tag in ((-1, "l"), (1, "r")):
         shoulder = empty(f"arm_{tag}_0", chest, (side * 0.148, 0.0, HEIGHT_SHOULDER - HEIGHT_HIP - 0.02))
-        shoulder.rotation_euler = arm_pose[tag]
+        shoulder.rotation_euler = (
+            math.radians(arm_forward[tag]),
+            -side * math.radians(arm_swing[tag]),
+            0.0,
+        )
         joint(f"deltoid_{tag}", 0.062, shoulder, m_skin, (0.0, 0.0, 0.004), 12)
         link(f"upperarm_{tag}", limb(f"upperarm_{tag}_m", 0.050, 0.040, UPPER_ARM), shoulder, m_skin)
         joint(f"elbow_{tag}", 0.041, shoulder, m_skin, (0.0, 0.0, -UPPER_ARM + 0.008))
@@ -301,21 +322,21 @@ def build_export() -> None:
         lathe(
             "skull_m",
             [
-                (0.0, -0.098),
-                (0.050, -0.086),
-                (0.070, -0.056),
-                (0.082, -0.018),
-                (0.086, 0.020),
-                (0.076, 0.058),
-                (0.048, 0.086),
-                (0.0, 0.097),
+                (0.0, -0.104),
+                (0.054, -0.092),
+                (0.076, -0.060),
+                (0.089, -0.019),
+                (0.094, 0.021),
+                (0.083, 0.061),
+                (0.052, 0.090),
+                (0.0, 0.102),
             ],
             18,
         ),
         head,
         m_skin,
     )
-    skull.scale = (0.96, 1.12, 1.0)
+    skull.scale = (0.97, 1.10, 1.0)
 
     """
     Hair. Three pieces, same reasoning as Rosie's two.
@@ -328,21 +349,21 @@ def build_export() -> None:
     """
     cap = link(
         "hair_crown",
-        lathe("hair_crown_m", [(0.086, 0.030), (0.082, 0.058), (0.052, 0.086), (0.0, 0.100)], 18, close_bottom=False),
+        lathe("hair_crown_m", [(0.096, 0.028), (0.091, 0.058), (0.058, 0.090), (0.0, 0.106)], 18, close_bottom=False),
         head,
         m_hair,
     )
-    cap.scale = (1.04, 1.13, 1.0)
+    cap.scale = (1.03, 1.10, 1.0)
 
-    face_gap = math.radians(104.0)
+    face_gap = math.radians(122.0)
     h0 = math.pi / 2 + face_gap / 2
     h1 = math.pi / 2 + 2 * math.pi - face_gap / 2
     falls = link(
         "hair_length",
         arc_shell(
             "hair_length_m",
-            [(0.078, -0.190), (0.090, -0.140), (0.096, -0.078), (0.098, -0.012), (0.096, 0.036), (0.088, 0.068)],
-            0.022,
+            [(0.072, -0.150), (0.086, -0.110), (0.096, -0.060), (0.101, -0.008), (0.099, 0.036), (0.092, 0.066)],
+            0.020,
             h0,
             h1,
             20,
@@ -350,15 +371,15 @@ def build_export() -> None:
         head,
         m_hair,
     )
-    falls.scale = (1.05, 1.14, 1.0)
+    falls.scale = (1.04, 1.11, 1.0)
 
     # The fringe. A short arc across the front, under the crown.
     fringe = link(
         "hair_fringe",
         arc_shell(
             "hair_fringe_m",
-            [(0.080, 0.014), (0.086, 0.042), (0.084, 0.062)],
-            0.016,
+            [(0.090, 0.010), (0.096, 0.040), (0.092, 0.064)],
+            0.014,
             math.pi / 2 - math.radians(62.0),
             math.pi / 2 + math.radians(62.0),
             12,
@@ -366,14 +387,14 @@ def build_export() -> None:
         head,
         m_hair_deep,
     )
-    fringe.scale = (1.05, 1.14, 1.0)
+    fringe.scale = (1.04, 1.11, 1.0)
 
     nose = link(
         "nose",
         lathe("nose_m", [(0.0, -0.026), (0.011, -0.015), (0.013, 0.0), (0.009, 0.014), (0.0, 0.020)], 8),
         head,
         m_skin,
-        (0.0, 0.088, -0.006),
+        (0.0, 0.095, -0.008),
     )
     nose.scale = (1.0, 1.45, 1.0)
 
@@ -389,13 +410,13 @@ def build_export() -> None:
     barely parted.
     """
     for name, material, loc, radius, scale in (
-        ("lid_l", m_skin, (-0.036, 0.082, 0.016), 0.015, (1.30, 0.55, 0.52)),
-        ("lid_r", m_skin, (0.036, 0.082, 0.016), 0.015, (1.30, 0.55, 0.52)),
-        ("lash_l", m_lash, (-0.036, 0.084, 0.008), 0.014, (1.30, 0.40, 0.16)),
-        ("lash_r", m_lash, (0.036, 0.084, 0.008), 0.014, (1.30, 0.40, 0.16)),
-        ("brow_l", m_hair_deep, (-0.036, 0.082, 0.038), 0.014, (1.85, 0.30, 0.20)),
-        ("brow_r", m_hair_deep, (0.036, 0.082, 0.038), 0.014, (1.85, 0.30, 0.20)),
-        ("mouth", m_lip, (0.0, 0.082, -0.042), 0.012, (1.90, 0.34, 0.34)),
+        ("lid_l", m_skin, (-0.040, 0.090, 0.014), 0.016, (1.30, 0.50, 0.50)),
+        ("lid_r", m_skin, (0.040, 0.090, 0.014), 0.016, (1.30, 0.50, 0.50)),
+        ("lash_l", m_lash, (-0.040, 0.091, 0.005), 0.015, (1.25, 0.36, 0.14)),
+        ("lash_r", m_lash, (0.040, 0.091, 0.005), 0.015, (1.25, 0.36, 0.14)),
+        ("brow_l", m_hair_deep, (-0.040, 0.089, 0.036), 0.015, (1.70, 0.26, 0.17)),
+        ("brow_r", m_hair_deep, (0.040, 0.089, 0.036), 0.015, (1.70, 0.26, 0.17)),
+        ("mouth", m_lip, (0.0, 0.089, -0.046), 0.013, (1.75, 0.30, 0.30)),
     ):
         obj = link(name, blob(f"{name}_m", radius), head, material, loc)
         obj.scale = scale
@@ -408,12 +429,12 @@ def build_export() -> None:
     something the room does not advertise. If you can see this from the doorway
     it is too big or too dark.
     """
-    temple = link("temple_wound", blob("temple_wound_m", 0.019, 10), head, m_bruise, (-0.070, 0.038, 0.026))
+    temple = link("temple_wound", blob("temple_wound_m", 0.019, 10), head, m_bruise, (-0.077, 0.040, 0.026))
     temple.scale = (0.5, 1.15, 1.05)
 
     # Small gold studs, per the sheet.
     for side, tag in ((-1, "l"), (1, "r")):
-        stud = link(f"earring_{tag}", blob(f"earring_{tag}_m", 0.008, 6), head, m_gold, (side * 0.084, 0.010, -0.048))
+        stud = link(f"earring_{tag}", blob(f"earring_{tag}_m", 0.008, 6), head, m_gold, (side * 0.091, 0.010, -0.050))
         stud.scale = (0.7, 1.0, 1.0)
 
     # Thin chain, per the sheet. A ring at the base of the throat.

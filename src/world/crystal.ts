@@ -1,21 +1,40 @@
-import {
-  CapsuleGeometry,
-  CylinderGeometry,
-  Group,
-  Mesh,
-  MeshStandardMaterial,
-  Object3D,
-  SphereGeometry,
-} from 'three'
-import { ROOM_1A } from '../materials/palette.ts'
+import { Group, Object3D } from 'three'
+import type { Mesh } from 'three'
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 
 /**
- * Crystal as a prop. Twelve hours dead. Segmented kit geometry against
- * images/characters/crystal-sheet.png — petite, cream dress, blonde.
+ * Crystal. Twelve hours dead, on the bed in room 1A.
  *
- * She is not a character controller. She does not move. Head, arm, needle and
- * sling are separate lookables so examine can land on each.
+ * Geometry comes from public/models/crystal.glb. This file is the only one that
+ * knows about the glTF. See the Crystal mesh section of CLAUDE.md.
+ *
+ * She is not a character controller and she has no update. She does not breathe,
+ * she does not track, and nothing about her moves. Head, arm, needle and sling
+ * are separate named nodes so an examine can land on each, and that is the whole
+ * runtime.
+ *
+ * ## She is modelled standing and laid down here
+ *
+ * Every helper in `tools/blender/kit.py` lathes around Z and runs limbs down -Z,
+ * so modelling her already horizontal would mean fighting the toolkit for no
+ * gain. The pose is baked into the joints in Blender and the transform that puts
+ * her on her back is here.
+ *
+ * **It is two nested groups on purpose.** Euler order makes a combined lay-down
+ * and turn-along-the-bed ambiguous to read and easy to get wrong by 90 degrees.
+ * `root` carries the yaw along the bed, `tilt` lays her on her back, and neither
+ * rotation has to be reasoned about in terms of the other.
+ *
+ * After the tilt:
+ *
+ * - her standing up axis runs along **+Z**, so she lies down the bed
+ * - her standing forward axis becomes **+Y**, so she is on her back
+ * - a point at standing height `h` sits at `z = h` from the root
+ * - her back is 0.13 **below** the root, which is why the root sits at spine
+ *   height and not at the mattress
  */
+
+const MODEL_URL = '/models/crystal.glb'
 
 export interface CrystalProp {
   readonly root: Group
@@ -25,117 +44,79 @@ export interface CrystalProp {
   readonly sling: Object3D
 }
 
-const SKIN = 0xc4a484
-const HAIR = 0xc9a86c
-const DRESS = ROOM_1A.crystalDress
-const RUBBER = 0x2a2a2a
-const STEEL = 0xb0b0b0
+/**
+ * Half her body depth. The root lands on her spine, so this is how far the root
+ * has to sit above whatever she is lying on.
+ */
+export const CRYSTAL_SPINE_OFFSET = 0.13
 
-export function buildCrystalProp(): CrystalProp {
-  const dress = mat(DRESS, 0.75)
-  const skin = mat(SKIN, 0.65)
-  const hair = mat(HAIR, 0.7)
-  const rubber = mat(RUBBER, 0.55)
-  const steel = mat(STEEL, 0.35)
+/** Head to heel, for placing her against the head of the bed. */
+export const CRYSTAL_LENGTH = 1.62
+
+/**
+ * Her head, turned toward the sash so the left temple faces the light.
+ *
+ * BRIEF.md: the room is beautifully lit and everything in it happened at 2am in
+ * the dark, and the one wound is on the left temple under the hair. If her head
+ * were straight the wound would face the ceiling and the sun would do nothing
+ * with it. Turned, the light rakes across it and the fringe still half hides it,
+ * which is exactly the amount of help the player should get.
+ *
+ * In her own frame this is a yaw about her spine, which after the tilt is a roll
+ * about Z.
+ */
+const HEAD_TURN = 0.62
+const HEAD_TIP = 0.12
+
+let templatePromise: Promise<Object3D> | undefined
+
+export function loadCrystalTemplate(): Promise<Object3D> {
+  if (templatePromise === undefined) {
+    templatePromise = new GLTFLoader().loadAsync(MODEL_URL).then((gltf) => gltf.scene)
+  }
+  return templatePromise
+}
+
+export async function buildCrystalProp(): Promise<CrystalProp> {
+  const template = await loadCrystalTemplate()
+  const body = template
+
+  body.traverse((object) => {
+    const mesh = object as Mesh
+    if (mesh.isMesh === true) {
+      mesh.castShadow = true
+      mesh.receiveShadow = true
+    }
+  })
 
   const root = new Group()
   root.name = 'crystal'
 
-  // Lying on her back along +Z (toward the sash). Head at -Z (headboard).
-  const torso = new Mesh(new CapsuleGeometry(0.14, 0.32, 4, 8), dress)
-  torso.rotation.z = Math.PI / 2
-  torso.position.set(0, 0.14, 0.05)
-  torso.castShadow = true
-  root.add(torso)
+  const tilt = new Group()
+  tilt.name = 'crystal.tilt'
+  tilt.rotation.x = Math.PI / 2
+  tilt.add(body)
+  root.add(tilt)
 
-  const hips = new Mesh(new CapsuleGeometry(0.13, 0.12, 4, 8), dress)
-  hips.rotation.z = Math.PI / 2
-  hips.position.set(0, 0.12, 0.38)
-  hips.castShadow = true
-  root.add(hips)
+  const head = requireNode(body, 'head')
+  head.rotation.z = HEAD_TURN
+  head.rotation.x = HEAD_TIP
 
-  // Legs toward the foot of the bed (+Z).
-  for (const side of [-1, 1]) {
-    const thigh = new Mesh(new CapsuleGeometry(0.055, 0.28, 3, 8), skin)
-    thigh.rotation.z = Math.PI / 2
-    thigh.position.set(side * 0.07, 0.09, 0.72)
-    thigh.castShadow = true
-    root.add(thigh)
-    const shin = new Mesh(new CapsuleGeometry(0.045, 0.26, 3, 8), skin)
-    shin.rotation.z = Math.PI / 2
-    shin.position.set(side * 0.07, 0.08, 1.05)
-    shin.castShadow = true
-    root.add(shin)
+  return {
+    root,
+    head,
+    // The arm the tie and the needle are on. `arm_l_0` is the shoulder, so the
+    // lookable covers the whole limb, which is what the player aims at.
+    arm: requireNode(body, 'arm_l_0'),
+    needle: requireNode(body, 'needle'),
+    sling: requireNode(body, 'sling'),
   }
-
-  // Left arm (her left, -X) across the torso — sling and needle land here.
-  const arm = new Group()
-  arm.name = 'crystal.arm'
-  const upper = new Mesh(new CapsuleGeometry(0.04, 0.18, 3, 8), skin)
-  upper.rotation.z = Math.PI / 2
-  upper.position.set(-0.22, 0.16, 0.02)
-  upper.rotation.y = 0.35
-  upper.castShadow = true
-  arm.add(upper)
-  const forearm = new Mesh(new CapsuleGeometry(0.035, 0.16, 3, 8), skin)
-  forearm.rotation.z = Math.PI / 2
-  forearm.position.set(-0.38, 0.14, 0.12)
-  forearm.rotation.y = 0.55
-  forearm.castShadow = true
-  arm.add(forearm)
-  root.add(arm)
-
-  // Right arm by her side.
-  const rightArm = new Mesh(new CapsuleGeometry(0.038, 0.34, 3, 8), skin)
-  rightArm.rotation.z = Math.PI / 2
-  rightArm.position.set(0.22, 0.12, 0.15)
-  rightArm.castShadow = true
-  root.add(rightArm)
-
-  // Head, turned toward the window (+Z / +X a little) so the left temple faces the light.
-  const head = new Group()
-  head.name = 'crystal.head'
-  const skull = new Mesh(new SphereGeometry(0.105, 12, 10), skin)
-  skull.scale.set(0.92, 1.05, 1.0)
-  skull.castShadow = true
-  head.add(skull)
-  const hairMesh = new Mesh(new SphereGeometry(0.112, 12, 10), hair)
-  hairMesh.scale.set(0.95, 0.7, 1.05)
-  hairMesh.position.set(0, 0.04, -0.02)
-  hairMesh.castShadow = true
-  head.add(hairMesh)
-  head.position.set(0.02, 0.22, -0.28)
-  head.rotation.set(0.15, 0.55, 0.1)
-  root.add(head)
-
-  // Rubber tie on the upper left arm.
-  const sling = new Mesh(new CylinderGeometry(0.048, 0.048, 0.025, 12), rubber)
-  sling.name = 'crystal.sling'
-  sling.rotation.z = Math.PI / 2
-  sling.position.set(-0.22, 0.16, -0.02)
-  sling.castShadow = true
-  root.add(sling)
-
-  // Syringe in the crook — seated, wrong angle. Do not make it look careful.
-  const needle = new Group()
-  needle.name = 'crystal.needle'
-  const barrel = new Mesh(new CylinderGeometry(0.008, 0.008, 0.07, 8), steel)
-  barrel.position.set(0, 0.02, 0)
-  needle.add(barrel)
-  const plunger = new Mesh(new CylinderGeometry(0.012, 0.012, 0.015, 8), mat(0xd8d8d8, 0.5))
-  plunger.position.set(0, 0.055, 0)
-  needle.add(plunger)
-  const tip = new Mesh(new CylinderGeometry(0.0015, 0.004, 0.035, 6), steel)
-  tip.position.set(0, -0.045, 0)
-  needle.add(tip)
-  needle.position.set(-0.34, 0.15, 0.1)
-  needle.rotation.set(0.9, 0.4, 1.1)
-  needle.castShadow = true
-  root.add(needle)
-
-  return { root, head, arm, needle, sling }
 }
 
-function mat(color: number, roughness: number): MeshStandardMaterial {
-  return new MeshStandardMaterial({ color, roughness })
+function requireNode(root: Object3D, name: string): Object3D {
+  const found = root.getObjectByName(name)
+  if (found === undefined) {
+    throw new Error(`Crystal glTF is missing node "${name}"`)
+  }
+  return found
 }

@@ -9,7 +9,7 @@ import {
   Vector3,
 } from 'three'
 import { INTERIOR, ROOM_1A } from '../materials/palette.ts'
-import { buildCrystalProp } from './crystal.ts'
+import { CRYSTAL_LENGTH, CRYSTAL_SPINE_OFFSET, buildCrystalProp } from './crystal.ts'
 import type { CrystalProp } from './crystal.ts'
 import type { WalkableRegion } from './collision.ts'
 
@@ -113,7 +113,7 @@ const VERANDAH_DOOR_X0 = 1.1
 const VERANDAH_DOOR_X1 = 2.0
 const VERANDAH_DOOR_HEIGHT = 2.15
 
-export function buildRoom1A(placement: Room1APlacement): Room1A {
+export async function buildRoom1A(placement: Room1APlacement): Promise<Room1A> {
   const group = new Group()
   const solids: Box3[] = []
   const floors: WalkableRegion[] = []
@@ -371,9 +371,21 @@ export function buildRoom1A(placement: Room1APlacement): Room1A {
   bed.position.set(-1.45, 0, 0.15)
   addGroupSolid(group, solids, bed)
 
-  // Crystal on the bed. Head to the headboard, face turned toward the sash.
-  const crystal = buildCrystalProp()
-  crystal.root.position.set(-1.45, 0.58, 0.05)
+  /*
+   * Crystal on the bed, head to the headboard.
+   *
+   * The mattress top is 0.56 and her root lands on her spine rather than her
+   * back, so it sits `CRYSTAL_SPINE_OFFSET` above that. The yaw of pi is what
+   * puts her head at -Z: she is modelled standing and the tilt lays her out
+   * along +Z, so without it she would be head to the foot of the bed.
+   *
+   * Her root is therefore at her heels, and the head end works out at
+   * mattressFoot - CRYSTAL_LENGTH.
+   */
+  const MATTRESS_TOP = 0.56
+  const HEAD_END = -0.75
+  const crystal = await buildCrystalProp()
+  crystal.root.position.set(-1.45, MATTRESS_TOP + CRYSTAL_SPINE_OFFSET, HEAD_END + CRYSTAL_LENGTH)
   crystal.root.rotation.y = Math.PI
   group.add(crystal.root)
 
