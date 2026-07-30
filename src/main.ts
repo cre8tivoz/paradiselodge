@@ -5,7 +5,7 @@ import { emit } from './core/events.ts'
 import { Input } from './core/input.ts'
 import { Loop } from './core/loop.ts'
 import { createViewport } from './render/renderer.ts'
-import { GradePass } from './render/grade-pass.ts'
+import { loadEnvironment } from './render/environment.ts'
 import { buildSceneLighting } from './render/lighting.ts'
 import { buildLodge } from './world/lodge.ts'
 import { buildVerandah } from './world/verandah.ts'
@@ -99,11 +99,21 @@ async function main(): Promise<void> {
 
   const lighting = buildSceneLighting()
   scene.add(lighting.group)
-  scene.background = lighting.sky
 
-  const grade = new GradePass()
+  /*
+   * The HDRI is both the fill and the backdrop. It replaces the flat sky colour
+   * that used to sit behind the building and the ambient lights that used to
+   * stand in for bounce.
+   *
+   * The procedural LUT grade pass that used to run here is gone with them. It
+   * was built to correct ACES on a scene lit by ambient; over AgX and an
+   * environment map it was correcting a problem that no longer exists.
+   */
+  const environment = await loadEnvironment(renderer)
+  environment.apply(scene)
+
   const draw = (): void => {
-    grade.render(renderer, scene, camera)
+    renderer.render(scene, camera)
   }
 
   // The camera has to be in the scene graph or its children never get traversed.
@@ -960,7 +970,7 @@ async function main(): Promise<void> {
       solver,
       lighting,
       audio,
-      grade,
+      environment,
       scenes,
       clips: CLIPS,
       Vector3,

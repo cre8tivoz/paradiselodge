@@ -1,18 +1,22 @@
-import { AmbientLight, Color, DirectionalLight, Group, HemisphereLight, Vector3 } from 'three'
-import { EXTERIOR, INTERIOR, ROOM_1A } from '../materials/palette.ts'
+import { DirectionalLight, Group, Vector3 } from 'three'
+import { ROOM_1A } from '../materials/palette.ts'
 
 /**
- * Scene 1's light rig. One fixed 3pm sun and the fill that stands in for bounce.
+ * Scene 1's light rig. One fixed 3pm sun. That is the whole file now.
  *
- * This used to live inside room1a.ts, which was right while room 1A was the
- * whole world and wrong the moment there was a building around it. A
- * DirectionalLight lights everything regardless of where it sits; only its
- * shadow camera is local. So the room-scoped rig was already lighting the
- * street, and its shadow volume was a seven metre box around one bedroom.
+ * There used to be two AmbientLights and a HemisphereLight in here standing in
+ * for bounce. They are gone: `render/environment.ts` loads an HDRI and every
+ * surface in the scene now takes its fill from that instead. Flat ambient has
+ * no direction, so a wall facing the window and a wall facing away from it were
+ * lit identically and the room had no shape in it anywhere the sun did not
+ * reach. An environment map has both direction and colour, which is most of the
+ * difference between a render and a photograph.
  *
- * One sun, one shadow camera over the lot.
+ * Do not add an AmbientLight back to lift the shade. If the shade is too dark
+ * that is `scene.environmentIntensity`, and if it is the wrong colour that is
+ * the wrong HDRI.
  *
- * The direction is unchanged: it is the vector that put the beam across
+ * The sun direction is unchanged: it is the vector that put the beam across
  * Crystal's bed, carried into world space now that 1A is rotated into the
  * building. Room 1A's sash faces +X, so the sun comes from the front right.
  */
@@ -38,8 +42,6 @@ const SHADOW_EXTENT = 16
 export interface SceneLighting {
   readonly group: Group
   readonly sun: DirectionalLight
-  /** 3pm February, blown on purpose. Assign to `scene.background`. */
-  readonly sky: Color
 }
 
 export function buildSceneLighting(): SceneLighting {
@@ -47,11 +49,13 @@ export function buildSceneLighting(): SceneLighting {
   group.name = 'lighting'
 
   /*
-   * Strong. A sash only lets a small patch in, and everything it does not touch
-   * is carried by fill, so the beam has to sit well clear of the fill or there
-   * is no beam, only a warm room.
+   * Direct sun only. The environment carries everything it does not touch, so
+   * this no longer has to be loud enough to out-shout a pile of ambient: it has
+   * to be the right stop above the sky, which is roughly the ratio a real
+   * afternoon has between a sunlit patch of floor and the shaded floor beside
+   * it.
    */
-  const sun = new DirectionalLight(ROOM_1A.sunWarm, 8.0)
+  const sun = new DirectionalLight(ROOM_1A.sunWarm, 4.2)
   sun.position.copy(FOCUS).addScaledVector(DIRECTION, -DISTANCE)
   sun.target.position.copy(FOCUS)
   sun.castShadow = true
@@ -64,26 +68,8 @@ export function buildSceneLighting(): SceneLighting {
   sun.shadow.camera.far = DISTANCE + SHADOW_EXTENT * 2
   sun.shadow.bias = -0.00035
   sun.shadow.normalBias = 0.04
-  // Softer read than a full black cutout — still directional, less prototype.
-  sun.shadow.intensity = 0.72
   group.add(sun)
   group.add(sun.target)
 
-  /*
-   * Baked-feel fill, standing in for the bounce we do not compute. Nicotine
-   * keeps the walls alive in shade, a little sun-warm on top so the afternoon
-   * carries.
-   *
-   * Left high on purpose. Cutting fill to make the beam stand out is the wrong
-   * instinct and was tried: it buys contrast and spends the whole room, and a
-   * real sunlit interior is bright everywhere because light bounces. Raise the
-   * sun to separate the beam, do not lower this.
-   */
-  group.add(new AmbientLight(INTERIOR.nicotine, 0.62))
-  group.add(new AmbientLight(ROOM_1A.sunWarm, 0.22))
-  // Soft sky/ground bounce so shade is not a flat cutout.
-  const hemi = new HemisphereLight(ROOM_1A.sunWarm, INTERIOR.carpetBrown, 0.35)
-  group.add(hemi)
-
-  return { group, sun, sky: new Color(EXTERIOR.sky) }
+  return { group, sun }
 }
