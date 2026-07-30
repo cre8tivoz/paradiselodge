@@ -69,9 +69,9 @@ The player is Detective Graham Miller. You never see him until the last shot of 
 
 ## Status
 
-Last updated 30 July 2026. Update this whenever a step lands.
+Last updated 30 July 2026. **Development paused** after Scene 1 engine + play fixes. Update this whenever work resumes.
 
-Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Live at `https://paradiselodge-game.pages.dev`. Custom domain `lodge.billyhaddad.au` not wired yet.
+Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Live at `https://paradiselodge-game.pages.dev` (Cloudflare Pages project `paradiselodge-game`). Custom domain `lodge.billyhaddad.au` not wired yet. Deploys are manual: `npm run build && wrangler pages deploy dist --project-name paradiselodge-game --branch main`.
 
 | Step | State |
 |---|---|
@@ -79,39 +79,55 @@ Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Live at `https://pa
 | 2. Look raycast, one-line description | Done |
 | 3. Hand rig, gloves, one examine animation | Done |
 | 3b. Hand mesh | Done. Blender source + shipped glTF. See Hand mesh below |
-| 4. Examine tier two, held input | Done. Hold F; release cancels |
+| 4. Examine tier two | Done. **Press F** starts the clip; it runs to the end and files evidence. Esc cancels. (Was hold-to-cancel; that made the verb unusable under pointer lock — see Play fixes below) |
 | 5. Case file, evidence IDs, notebook UI | Done. N opens. Examine files. Idempotent |
-| 6. Room 1A, geometry, fixed 3pm sun | Done. Kit furniture, sash, sun across the bed |
-| 7. Crystal + examine set | Done. Modelled Crystal. Twelve room 1A clips. Six evidence IDs file here; diary and hammer wait for parlour and yard |
+| 6. Room 1A, geometry, fixed 3pm sun | Done. Kit furniture, sash, sun across the bed. Prop layout revised — see Room 1A layout below |
+| 7. Crystal + examine set | Done. Modelled Crystal glTF. Body/head/needle/sling examinable (look pads). Dress texture wired. Diary and hammer wait for parlour and yard |
 | 8. Dialogue system | Done. Node graph, runner, DOM panel. Rosie is its first real user |
-| 9. Approach and ground floor | Done. Street, steps, neon, facade, hall, reception, parlour, staircase, first-floor hall. 1A is placed in it. See below |
+| 9. Approach and ground floor | Done. Street, steps, neon letterforms, facade, hall, reception, parlour, staircase, first-floor hall. 1A is placed in it. See below |
 | 10. Verandah and back yard | Done. Iron lace off 1A, external stairs, yard, Hills hoist, shed, hammer. See below |
-| 11. Rosie | Done. Placed, talkable, relocates. Two graphs. See below |
+| 11. Rosie | Done. Placed, talkable, relocates on gate `body`. Two graphs. See below |
 | 12. Moretti | Done. Breadcrumb follow, the tag verb, bag and hide. Diary is built and both taggables work. See below |
 | 13. Objective gates, scene exit | Done. Eight gates, none of them locks. Theorise with Moretti ends the scene. See below |
 | Audio | Done for scene 1. Four ambience beds, footsteps, foley, the 1A tone. All synthesised. See below |
 | 14. Scene manager, save on boundary | Done. `src/core/scene.ts` + `src/core/save.ts`. Fade + localStorage on `scene:complete`. Scene 2 not built, so complete holds on black |
-| 15. Cold open | Done. Title card, Commodore, two uniforms, tape lift, verb gating until hall |
+| 15. Cold open | Done. Title card (`src/ui/title-card.ts`), kit Commodore, two uniforms, tape lift, verbs locked until hall gate `entry` |
 
-**Scene 1 plays end to end and it has sound.** What is left before it matches the brief is on the list below, not in the fifteen steps: the fifteen steps are an engine checklist and they deliberately deferred everything that makes it look and sound finished.
+**Scene 1 engine checklist is complete.** Play bugs found in live testing were patched (navigation, examine, reception talk). What still owes the *look* of the brief is modelled geometry, not more textures.
 
 ### What scene 1 still owes the brief
 
 | | State |
 |---|---|
-| **Textures** | Wired. Authored tiles on 1A and lodge; neon letterforms; magazines/map. Facade plate kept as `neon-sign-facade.png` |
+| **Textures** | Done for scene 1. Authored tiles on 1A and lodge; neon letterforms (+ motion plate); magazines/map; Crystal dress. Facade photo kept as `neon-sign-facade.png` (reference only). `victor-record` waits for scene 2 |
 | **Gloves going on at the front door** | Done. Trigger on hall threshold, clip + foley |
 | **Light grade** | Done. ACES + afternoon LUT pass (`src/render/grade.ts`) |
+| **Play verification** | Examine → case file → Rosie parlour → tag → Moretti theorise needs a clean pass on the live build after the press-F fix. Pause before that was fully signed off |
+| **Visual fidelity** | **Not done.** Lodge, furniture, Commodore, uniforms, iron lace are still **kit boxes**. Hand, Crystal, Rosie, Moretti are glTF. More seamless PNGs will not fix this — needs sourced/commissioned glTF. Do not ask the author for more image-gen tiles |
 
-All eight scene 1 evidence IDs file.
+### Play fixes (30 July, post step 15)
+
+Landed after the cold open and first Cloudflare deploy. Settled — do not reintroduce the old behaviour.
+
+- **Examine is press F, not hold-to-cancel.** `look:exit` must not cancel an in-progress examine (pointer-lock mouse drift was killing every clip before evidence filed). Look target freezes while a clip plays. Esc cancels. Evidence still files only on `examine:complete`
+- **Pointer lock.** Esc calls `exitPointerLock()` and is never `preventDefault`ed. Prompt after cold open is a top hint bar, never a full-screen scrim over the look line
+- **Stairs / first-floor hall.** Banister collision and rail stop three treads short of the back wall so the landing is walkable. Waist-height rail along the open stairwell on the first floor
+- **Reception circulation.** Desk pulled clear of the hall opening (was &lt; player diameter). Looking at desk/ledger/phone/ashtray/keyRack while Rosie is at reception starts her graph. Desk look line says she is there
+- **Room 1A layout.** Side table beside the dresser (was in the hall-door swing). Investigation props (frame, magazines, map, note, lighter) spaced on the dresser with raised invisible look pads. Crystal body files temple; head/needle/sling have look pads
+
+### Cold open (step 15)
+
+`src/ui/title-card.ts` — ST KILDA / 26 FEBRUARY 1994, white on black, fades then removes. Verbs (examine, talk, tag, notebook) stay locked until gate `entry` (hall box). Look still runs. Kit Commodore on the street; two VicPol kit uniforms at the tape; tape halves raise when Miller approaches.
 
 ### The lodge, and what step 9 left out
 
 The route plays: footpath, marble steps, front door, hall, up the flight, turn at the top, 1A is the first door on the right. Down works as well as up.
 
-Deliberately not built:
+Cold open street staging (Commodore, uniforms, tape lift) is in. Authored textures are on render, carpet, marble, neon letterforms.
 
-- **Texture on any of it.** Rendered facade, carpet, marble and neon are flat palette colours. The neon is two tubes, not letterforms, because letterforms are a texture
+Still scaffolding:
+
+- **Kit geometry** for the building, furniture, car, uniforms, iron lace, yard tufts — until modelled glTF lands
 
 Plan, so the numbers in `lodge.ts` mean something: **-Z is the street, +X is the side the verandah wraps onto.** The building runs x -6.5 to 6.4 and z 0 to 10.5. Ground floor at y 0, first floor at y 3.45. The flight climbs the -X half of the hall toward the back, so the passage runs *beside* it, not under it, and the stairwell above it is open on that side.
 
@@ -172,9 +188,15 @@ A window has to have something bright behind it or the eye reads the black recta
 
 ### What is kit vs modelled
 
-The lodge, room 1A, Crystal, and every prop are **primitives** (boxes, capsules, cylinders, spheres) against the locked palette. That is deliberate scaffolding. Only Miller's hand is a real mesh.
+| Modelled glTF | Still kit primitives |
+|---|---|
+| Miller's hand, Crystal, Rosie, Moretti | Lodge shell, furniture, Commodore, uniforms, iron lace, yard, most props |
 
-`world/kit.ts` builds boxes from **extents**, not centre and size. A building is a list of edges and converting each one by hand is where the mistakes live. `slab`, `wall`, `walk`, `elevation` and `raked` live there; the lodge, the verandah and the yard all use them.
+Kit is deliberate scaffolding. `world/kit.ts` builds boxes from **extents**. Replacing kit needs **sourced glTF**, not more image-gen tiles. Image generation is for textures and reference sheets; it does not produce game-ready meshes.
+
+### Room 1A layout (revised)
+
+Dresser under the street window. Side table beside it on the same wall (not by the bed head — that sat in the hall-door swing). Frame, magazines, map, note, and lighter are spaced along the dresser top; each is a group with a raised invisible look pad so the ray hits the prop, not the timber. Twelve room 1A examine clips still apply.
 
 ### Added outside the build order
 
@@ -185,7 +207,7 @@ The lodge, room 1A, Crystal, and every prop are **primitives** (boxes, capsules,
 
 | Thing | Goes at |
 |---|---|
-| Kit lodge / room / Crystal / prop primitives | When modelled assets land for each piece. Not a single cutover |
+| Kit lodge / furniture / Commodore / uniforms / lace | When modelled glTF lands for each piece. Not a single cutover. Not more PNGs |
 | The pointer lock prompt and its CSS | When the real HUD lands |
 | Iron lace as boxes, and the yard's tufts | When cast-lace and grass assets land |
 | `window.__lodge` dev handle | Stays. It is `import.meta.env.DEV` only, and the capture tooling wants it |
@@ -205,7 +227,7 @@ The lodge, room 1A, Crystal, and every prop are **primitives** (boxes, capsules,
 
 Her collision box goes into the solver **by reference**. The solver reads `min` and `max` every frame and precomputes nothing, so she rewrites that one `Box3` in place and it follows her.
 
-**She relocates when Miller gets to the first floor.** That is the earliest moment the move cannot be seen: the stairwell is open on the -X side and reception is behind a wall on the +X side. It is a stand-in for gate 0 and it goes at step 13.
+**She relocates on gate `body` (needle + temple filed), not on reaching the first floor.** Gate 1 is Miller working the body in 1A with his back to the door, so the move cannot be seen. It also matches what she told him at the desk. An older note said first-floor; that was a stand-in and it is wrong — do not restore it.
 
 The parlour has her standing at the street window rather than in an armchair. There is no seated pose on this mesh, and an armchair would put her below Miller's eyeline for the one conversation in scene 1 that carries information.
 
@@ -328,7 +350,7 @@ Lividity is the part that is easy to get wrong. Blood settles to the lowest poin
 
 **The temple is meant to be nearly invisible.** BRIEF.md puts it under the hair. The head turn is what earns it: turned, the 3pm sun rakes across the left temple and the fringe still half hides it. If it reads from the doorway it is too big or too dark, and the examine has nothing left to tell you.
 
-The dress is flat cream. **The floral is a texture and it is not made yet.**
+The dress uses `crystal-dress` from `public/textures/`. Look pads on head, arm, needle and sling make close examines aimable. The body itself is examinable and files temple (same clip as the head).
 
 ---
 
@@ -350,9 +372,9 @@ The photograph, the diary page and the note are the three things in scene 1 Mill
 
 The notebook uses an `<img>` and not the three.js texture. It is DOM over the canvas like the rest of the HUD, and the browser already has the file. The same window the props use is reproduced with an oversized child in an `overflow: hidden` box.
 
-### The neon is deliberately not textured
+### The neon is letterform plates
 
-`images/assets/neon-sign.png` is a photograph of a whole facade at dusk with the sign on it, and the letterforms sit on a pale rendered wall. There is no way to use it as a sign texture without the wall coming too: additive blending lifts the board to grey, and an alpha map off luminance cannot separate a mid-grey wall from a mid-bright tube. **It is reference for what the sign should look like, not an asset.** The neon stays two tubes until there is an isolated letterform image with an alpha channel.
+`neon-sign.png` and `neon-sign-2.png` are isolated letterforms on black (keyed to alpha in `neonPlate()`). Additive plane over the board; flicker swaps A/B. `neon-sign-facade.png` is the old whole-facade photograph — **reference only**, not wired as a material.
 
 ---
 
@@ -408,6 +430,8 @@ Assumptions, flagged, cheap to change:
 - **`EXTERIOR.bitumen`, `sky`, `signBoard`, `grassDry`, `weed`, `paling`, `corrugate`, `rust`.** Same class again, none of them in ASSETS.md. `sky` is near white rather than postcard blue, and it went brighter still once the `daylight` card came out of 1A: it is what you see through the sash now, and a window in a room exposed for its interior blows. `grassDry` is khaki because it is the end of February
 - **The stair is 18 risers at 0.19.** Steepish for a grand staircase, and it is what fits a 3.45 floor-to-floor in a hall this deep. `RISE` is fenced by `stepUp` and `stepDown` at both ends
 - **Overlays own their own hiding.** The look line hides itself on `casefile:open` and `dialogue:start`. The pointer lock prompt asks `dialogue.isActive`, not `dialoguePanel.isOpen`, because the runner sets its state *before* it emits and the panel opens on the callback *after*, so a panel check runs one step too early
+- **Examine is press F, run to completion.** Hold-to-cancel and cancel-on-`look:exit` made the verb dead under pointer lock. Esc cancels. BRIEF.md still says hold; the implementation that ships is press-to-start
+- **Visual upgrades need glTF.** Do not spend sessions on more image-gen material tiles. Hand, Crystal, Rosie, Moretti are already meshes; the lodge and furniture are not
 
 ---
 
@@ -633,6 +657,8 @@ The navmesh landed with step 9, as a set of walkable boxes rather than triangles
 13. Objective gates, scene exit — **done**
 14. Scene manager, save on scene boundary — **done**
 15. Cold open sequence, last — **done**
+
+**Paused 30 July 2026** after deploy + play fixes above. Next session: verify the examine → case file → Rosie → Moretti path on production, or wire sourced glTF over kit. Do not generate more material tiles unless a specific map is missing.
 
 Verify in the browser between each step. Do not stack three steps in one prompt.
 
