@@ -310,3 +310,36 @@ body {
   /* Prints, not screens. Slightly warm and slightly soft. */
   filter: saturate(0.92) contrast(1.04);
 }
+
+/*
+ * Title card one. ASSETS.md: two only, same typeface, white on black.
+ * Fades in from black, holds, fades out. The world renders underneath.
+ */
+.title-card {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: #000;
+  color: #fff;
+  font-size: 1.4rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  opacity: 0;
+  transition: opacity 1.5s ease;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.title-card.is-visible {
+  opacity: 1;
+}
+
+.title-card span:last-child {
+  font-size: 0.9rem;
+  letter-spacing: 0.15em;
+  opacity: 0.7;
+}

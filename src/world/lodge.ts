@@ -13,7 +13,7 @@ import {
 import { EXTERIOR, INTERIOR } from '../materials/palette.ts'
 import { neonPlate, tiled } from '../materials/textures.ts'
 import type { WalkableRegion } from './collision.ts'
-import { aabb, elevation, mat, raked, slab, walk, wall } from './kit.ts'
+import { aabb, elevation, mat, raked, slab, unlit, walk, wall } from './kit.ts'
 
 /**
  * The Paradise Lodge: the approach and the ground floor, plus the staircase and
@@ -72,9 +72,11 @@ export interface Lodge {
     readonly diary: Object3D
     readonly television: Object3D
     readonly standardLamp: Object3D
+    readonly commodore: Object3D
+    readonly uniforms: Object3D
   }
   /** One tube in the sign is crook. Called once a frame with elapsed seconds. */
-  update(elapsed: number): void
+  update(elapsed: number, playerPos: Vector3): void
 }
 
 // --- Plan ---
@@ -192,21 +194,29 @@ export function buildLodge(): Lodge {
   wall(group, solids, marble, 1.68, 2.05, PATH - 0.1, GROUND + 0.55, -1.75, FRONT - 0.35)
 
   // === Police tape ===
-  // Already parted at the centre. Two uniforms lifted it and the cold open at
-  // step 15 will animate that; until then the gap is the staging.
+  // Two halves, each parented to a pivot at its outer post so the cold open
+  // can rotate them upward. The uniforms at the inner posts hold the raised
+  // ends. Until the player approaches the tape hangs at waist height, already
+  // parted at the centre.
 
   const tape = new Group()
   tape.name = 'tape'
   group.add(tape)
-  for (const [x0, x1] of [
-    [-4.6, -0.95],
-    [0.95, 4.6],
-  ] as const) {
-    slab(tape, tapeBlue, x0, x1, PATH + 0.94, PATH + 1.02, -2.35, -2.32)
-    for (const x of [x0, x1]) {
-      slab(tape, iron, x - 0.03, x + 0.03, PATH, PATH + 1.15, -2.36, -2.3)
-    }
-  }
+
+  const tapeLeftPivot = new Group()
+  tapeLeftPivot.position.set(-4.6, 0, -2.335)
+  tape.add(tapeLeftPivot)
+  const tapeRightPivot = new Group()
+  tapeRightPivot.position.set(4.6, 0, -2.335)
+  tape.add(tapeRightPivot)
+
+  slab(tapeLeftPivot, tapeBlue, 0, 3.65, PATH + 0.94, PATH + 1.02, -0.015, 0.015)
+  slab(tapeLeftPivot, iron, -0.03, 0.03, PATH, PATH + 1.15, -0.06, 0)
+  slab(tapeLeftPivot, iron, 3.62, 3.68, PATH, PATH + 1.15, -0.06, 0)
+
+  slab(tapeRightPivot, tapeBlue, -3.65, 0, PATH + 0.94, PATH + 1.02, -0.015, 0.015)
+  slab(tapeRightPivot, iron, -0.03, 0.03, PATH, PATH + 1.15, -0.06, 0)
+  slab(tapeRightPivot, iron, -3.68, -3.62, PATH, PATH + 1.15, -0.06, 0)
 
   // === Exterior shell ===
   // Rendered Victorian, sun-bleached, damp rising up the front.
@@ -594,15 +604,103 @@ export function buildLodge(): Lodge {
   slab(standardLamp, mat(0xbfa87e, 0.9), -5.55, -5.05, 1.5, 1.86, 3.75, 4.25)
   slab(standardLamp, timber, -5.5, -5.1, GROUND, 0.03, 3.8, 4.2)
 
+  // === Commodore ===
+  // Beige 1993 VP Holden, unmarked, fleet spec. Parked parallel to the kerb,
+  // off to the left so it does not block the approach. Kit boxes: body, cabin,
+  // glass, four wheels. No personality, per ASSETS.md.
+
+  const commodore = new Group()
+  commodore.name = 'commodore'
+  group.add(commodore)
+
+  const carBody = mat(0xc8b88a, 0.72)
+  const carGlass = new MeshBasicMaterial({
+    color: 0x1a2030,
+    transparent: true,
+    opacity: 0.6,
+  })
+  const carTyre = mat(0x1a1a1a, 0.9)
+  const carTrim = mat(0x2a2a2a, 0.5, 0.3)
+
+  const CX = -3.8
+  const CZ = -5.2
+  const CY = ROAD
+
+  slab(commodore, carBody, CX - 2.2, CX + 2.2, CY + 0.3, CY + 0.82, CZ - 0.82, CZ + 0.82)
+  slab(commodore, carBody, CX - 1.3, CX + 0.9, CY + 0.82, CY + 1.32, CZ - 0.76, CZ + 0.76)
+  unlit(commodore, carGlass, CX - 1.24, CX - 0.6, CY + 0.86, CY + 1.26, CZ - 0.72, CZ + 0.72)
+  unlit(commodore, carGlass, CX - 0.5, CX + 0.1, CY + 0.86, CY + 1.26, CZ - 0.72, CZ + 0.72)
+  unlit(commodore, carGlass, CX + 0.2, CX + 0.84, CY + 0.86, CY + 1.26, CZ - 0.72, CZ + 0.72)
+  slab(commodore, carTrim, CX - 2.22, CX + 2.22, CY + 0.52, CY + 0.58, CZ - 0.84, CZ + 0.84)
+  for (const wx of [CX - 1.5, CX + 1.5]) {
+    for (const wz of [CZ - 0.78, CZ + 0.78]) {
+      slab(commodore, carTyre, wx - 0.28, wx + 0.28, CY, CY + 0.32, wz - 0.1, wz + 0.1)
+    }
+  }
+  slab(commodore, carTrim, CX - 2.22, CX - 2.18, CY + 0.36, CY + 0.72, CZ - 0.6, CZ + 0.6)
+  slab(commodore, carTrim, CX + 2.18, CX + 2.22, CY + 0.36, CY + 0.72, CZ - 0.6, CZ + 0.6)
+  solids.push(aabb(CX - 2.3, CX + 2.3, CY, CY + 1.35, CZ - 0.9, CZ + 0.9))
+
+  // === Uniforms ===
+  // Two constables at the inner tape posts. VicPol summer blues, checked cap
+  // bands. Low fidelity, never examined. Arms raise with the tape.
+
+  const uniforms = new Group()
+  uniforms.name = 'uniforms'
+  group.add(uniforms)
+
+  const uniShirt = mat(0x4a6a8a, 0.85)
+  const uniPants = mat(0x1a2a3a, 0.8)
+  const uniSkin = mat(0xc4a882, 0.8)
+  const uniCap = mat(0x1a2a3a, 0.7)
+  const uniBand = mat(0x8a8a7a, 0.6)
+
+  interface UniformParts {
+    readonly armL: Group
+    readonly armR: Group
+  }
+
+  const uniformParts: UniformParts[] = []
+
+  for (const ux of [-0.95, 0.95]) {
+    const fig = new Group()
+    fig.position.set(ux, 0, -2.55)
+    uniforms.add(fig)
+
+    slab(fig, uniPants, -0.14, -0.02, PATH, PATH + 0.82, -0.1, 0.1)
+    slab(fig, uniPants, 0.02, 0.14, PATH, PATH + 0.82, -0.1, 0.1)
+    slab(fig, uniShirt, -0.18, 0.18, PATH + 0.82, PATH + 1.38, -0.12, 0.12)
+    slab(fig, uniSkin, -0.08, 0.08, PATH + 1.38, PATH + 1.58, -0.08, 0.08)
+    slab(fig, uniCap, -0.1, 0.1, PATH + 1.56, PATH + 1.64, -0.1, 0.1)
+    slab(fig, uniBand, -0.11, 0.11, PATH + 1.54, PATH + 1.57, -0.11, 0.11)
+
+    const armL = new Group()
+    armL.position.set(-0.2, PATH + 1.32, 0)
+    fig.add(armL)
+    slab(armL, uniShirt, -0.06, 0.06, -0.52, 0, -0.05, 0.05)
+    slab(armL, uniSkin, -0.05, 0.05, -0.62, -0.52, -0.04, 0.04)
+
+    const armR = new Group()
+    armR.position.set(0.2, PATH + 1.32, 0)
+    fig.add(armR)
+    slab(armR, uniShirt, -0.06, 0.06, -0.52, 0, -0.05, 0.05)
+    slab(armR, uniSkin, -0.05, 0.05, -0.62, -0.52, -0.04, 0.04)
+
+    uniformParts.push({ armL, armR })
+    solids.push(aabb(ux - 0.25, ux + 0.25, PATH, PATH + 1.7, -2.7, -2.4))
+  }
+
+  // Tape lift state. The cold open raises both halves when Miller approaches.
+  let tapeLiftT = 0
+  let tapeLifting = false
+  let tapeLifted = false
+  const TAPE_LIFT_SPEED = 1.2
+
   return {
     group,
     solids,
     floors,
-    // Out on the footpath, back far enough that the neon and the parapet are in
-    // frame. BRIEF.md's cold open is Miller getting out of the car and looking
-    // up, so the first thing he can see has to be the whole building.
     spawn: new Vector3(0.6, ROAD, -7.4),
-    // Yaw 0 looks down -Z. π turns him round to face the lodge.
     spawnYaw: Math.PI,
     props: {
       frontDoor,
@@ -620,17 +718,37 @@ export function buildLodge(): Lodge {
       diary,
       television,
       standardLamp,
+      commodore,
+      uniforms,
     },
-    update(elapsed: number): void {
-      /*
-       * ASSETS.md: one tube flickering. Swap to neon-sign-2 on the dip so
-       * motion has a second plate when it differs; opacity covers the fail.
-       */
+    update(elapsed: number, playerPos: Vector3): void {
       const beat = Math.sin(elapsed * 11.3) + Math.sin(elapsed * 4.1)
       const failing = beat < -1.72
       neonMat.map = failing ? neonTexB : neonTexA
       neonMat.opacity = failing ? 0.35 : 1
       neonMat.needsUpdate = true
+
+      if (!tapeLifted) {
+        const dz = Math.abs(playerPos.z - (-2.335))
+        const dx = Math.abs(playerPos.x)
+        if (!tapeLifting && dz < 3.5 && dx < 3) {
+          tapeLifting = true
+        }
+        if (tapeLifting) {
+          tapeLiftT = Math.min(tapeLiftT + TAPE_LIFT_SPEED * 0.016, 1)
+          const ease = tapeLiftT * tapeLiftT * (3 - 2 * tapeLiftT)
+          const angle = ease * 1.1
+          tapeLeftPivot.rotation.z = -angle
+          tapeRightPivot.rotation.z = angle
+          for (const parts of uniformParts) {
+            parts.armL.rotation.z = ease * 1.8
+            parts.armR.rotation.z = -ease * 1.8
+          }
+          if (tapeLiftT >= 1) {
+            tapeLifted = true
+          }
+        }
+      }
     },
   }
 }

@@ -91,6 +91,7 @@ Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Cloudflare Pages is
 | 13. Objective gates, scene exit | Done. Eight gates, none of them locks. Theorise with Moretti ends the scene. See below |
 | Audio | Done for scene 1. Four ambience beds, footsteps, foley, the 1A tone. All synthesised. See below |
 | 14. Scene manager, save on boundary | Done. `src/core/scene.ts` + `src/core/save.ts`. Fade + localStorage on `scene:complete`. Scene 2 not built, so complete holds on black |
+| 15. Cold open | Done. Title card, Commodore, two uniforms, tape lift, verb gating until hall |
 
 **Scene 1 plays end to end and it has sound.** What is left before it matches the brief is on the list below, not in the fifteen steps: the fifteen steps are an engine checklist and they deliberately deferred everything that makes it look and sound finished.
 
@@ -101,7 +102,6 @@ Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Cloudflare Pages is
 | **Textures** | Wired. Authored tiles on 1A and lodge; neon letterforms; magazines/map. Facade plate kept as `neon-sign-facade.png` |
 | **Gloves going on at the front door** | Done. Trigger on hall threshold, clip + foley |
 | **Light grade** | Done. ACES + afternoon LUT pass (`src/render/grade.ts`) |
-| 15 | Cold open: Commodore, two uniforms, the tape lift. Title card one |
 
 All eight scene 1 evidence IDs file.
 
@@ -111,7 +111,6 @@ The route plays: footpath, marble steps, front door, hall, up the flight, turn a
 
 Deliberately not built:
 
-- **The Commodore, the two uniforms, and the tape lift.** ASSETS.md files them under street and entry, but they are all cold-open staging and the cold open is step 15. The tape is already parted in the middle so the lift has somewhere to land
 - **Texture on any of it.** Rendered facade, carpet, marble and neon are flat palette colours. The neon is two tubes, not letterforms, because letterforms are a texture
 
 Plan, so the numbers in `lodge.ts` mean something: **-Z is the street, +X is the side the verandah wraps onto.** The building runs x -6.5 to 6.4 and z 0 to 10.5. Ground floor at y 0, first floor at y 3.45. The flight climbs the -X half of the hall toward the back, so the passage runs *beside* it, not under it, and the stairwell above it is open on that side.
@@ -633,7 +632,7 @@ The navmesh landed with step 9, as a set of walkable boxes rather than triangles
 
 13. Objective gates, scene exit — **done**
 14. Scene manager, save on scene boundary — **done**
-15. Cold open sequence, last — **next**
+15. Cold open sequence, last — **done**
 
 Verify in the browser between each step. Do not stack three steps in one prompt.
 

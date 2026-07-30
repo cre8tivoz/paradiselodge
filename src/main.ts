@@ -36,6 +36,7 @@ import { MORETTI_BAG } from './dialogue/graphs/moretti-bag.ts'
 import { MORETTI_STANDBY, MORETTI_THEORISE, THEORISE_LAST_NODE } from './dialogue/graphs/moretti-exit.ts'
 import { applyShot, listShots } from './dev/shots.ts'
 import { SceneManager } from './core/scene.ts'
+import { TitleCard } from './ui/title-card.ts'
 
 const canvasEl = document.querySelector<HTMLCanvasElement>('#game')
 const hudRootEl = document.querySelector<HTMLDivElement>('#hud')
@@ -391,6 +392,16 @@ async function main(): Promise<void> {
       description: 'Standard lamp. Shade gone yellow.',
       object: lodge.props.standardLamp,
     },
+    {
+      id: 'lodge.commodore',
+      description: 'Beige Commodore. Unmarked, fleet spec.',
+      object: lodge.props.commodore,
+    },
+    {
+      id: 'lodge.uniforms',
+      description: 'Two uniforms at the tape. Summer blues.',
+      object: lodge.props.uniforms,
+    },
 
     // The verandah and the yard.
     {
@@ -514,6 +525,16 @@ async function main(): Promise<void> {
 
   const scenes = new SceneManager(hudRoot, caseFile)
   scenes.start()
+
+  new TitleCard(hudRoot)
+
+  /**
+   * Cold open. BRIEF.md: no interaction, walk, look, listen. The verbs stay
+   * locked until Miller crosses the hall threshold (gate 0's box). The prompt
+   * is hidden too, because a "click to look around" scrim over a title card is
+   * the wrong first impression.
+   */
+  let coldOpenDone = false
 
   const targetWorld = new Vector3()
   const targetBounds = new Box3()
@@ -666,6 +687,11 @@ async function main(): Promise<void> {
   gates.onUnlocked = (gateId) => {
     console.debug('gate', gateId)
 
+    if (gateId === 'entry' && !coldOpenDone) {
+      coldOpenDone = true
+      updatePrompt()
+    }
+
     /*
      * Rosie moves on gate 1, not on a position check.
      *
@@ -696,7 +722,7 @@ async function main(): Promise<void> {
     // Ask the runner, not the panel. The runner sets its state before it emits
     // dialogue:start, and the panel opens on the callback after it, so a panel
     // check here runs one step too early and leaves the prompt over the scene.
-    if (input.isLocked || notebook.isOpen || dialogue.isActive || sceneComplete) {
+    if (input.isLocked || notebook.isOpen || dialogue.isActive || sceneComplete || !coldOpenDone) {
       prompt.style.display = 'none'
       return
     }
@@ -774,7 +800,7 @@ async function main(): Promise<void> {
 
   const loop = new Loop((delta) => {
     elapsed += delta
-    lodge.update(elapsed)
+    lodge.update(elapsed, player.position)
     // Ambience crossfades on where he is standing, which is not an event.
     audio.update(player.position)
     // Ahead of the notebook and dialogue early-outs. She is on screen for the
@@ -819,6 +845,18 @@ async function main(): Promise<void> {
     look.update()
     gates.update(player.position)
 
+    /*
+     * Cold open. Walk, look, listen. No verbs until Miller is inside the hall.
+     * The look raycast still runs so the player can see descriptions of the
+     * tape, the neon, the car, but nothing can be examined, talked to, or
+     * tagged, and the notebook stays shut.
+     */
+    if (!coldOpenDone) {
+      hands.update(delta)
+      draw()
+      input.endFrame()
+      return
+    }
 
     // Hold to examine. Press starts it; release before the clip ends cancels.
     // Talkables take the same key as a press, not a hold.
