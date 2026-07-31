@@ -521,6 +521,56 @@ FURNITURE = {
 }
 
 
+def _place_mattress(lo, hi, springs, top, ticking):
+    """
+    The mattress, sourced.
+
+    It was a box. A box under a draped spread is a box under a draped spread,
+    and worse, Crystal lies on this bed at runtime: a grey slab with a hard edge
+    is the thing she would be staged against, and every centimetre of it would
+    be wrong forever once the room is baked and exported.
+
+    Sketchfab's quilted single, retextured to ticking. Scaled to the frame's
+    interior on both axes independently, because a mattress is cut to fit a bed
+    and this one came off a wider one. Its top lands exactly where the box's did,
+    so the spread and the pillow anchor off the same number as before.
+    """
+    before = {o.name for o in bpy.data.objects}
+    bpy.ops.import_scene.gltf(filepath=f"{SOURCED}/mattress.glb")
+    new = [o for o in bpy.data.objects if o.name not in before]
+
+    holder = bpy.data.objects.new("mattress", None)
+    bpy.context.scene.collection.objects.link(holder)
+    for r in [o for o in new if o.parent is None]:
+        r.parent = holder
+    bpy.context.view_layer.update()
+
+    want_x = (hi.x - lo.x) - 0.20
+    want_y = (hi.y - lo.y) - 0.28
+    want_z = top - springs
+    size = world_bounds(new)[1] - world_bounds(new)[0]
+    holder.scale = (
+        want_x / size.x if size.x > 1e-6 else 1.0,
+        want_y / size.y if size.y > 1e-6 else 1.0,
+        want_z / size.z if size.z > 1e-6 else 1.0,
+    )
+    bpy.context.view_layer.update()
+
+    mlo, mhi = world_bounds(new)
+    mid = (mlo + mhi) / 2
+    holder.location = (
+        holder.location.x + ((lo.x + hi.x) / 2 - mid.x),
+        holder.location.y + ((lo.y + hi.y) / 2 - mid.y),
+        holder.location.z + (springs - mlo.z),
+    )
+    bpy.context.view_layer.update()
+
+    for ob in new:
+        if ob.type == "MESH":
+            assign(ob, ticking)
+    return holder
+
+
 def build_bedding(bed_holder, spread, linen, ticking):
     """
     The mattress, the spread and the pillow, measured rather than eyeballed.
@@ -555,13 +605,8 @@ def build_bedding(bed_holder, spread, linen, ticking):
     springs = lo.z + (hi.z - lo.z) * 0.42
     top = springs + 0.185
 
-    mattress = cube(
-        "mattress",
-        (lo.x + 0.10, lo.y + 0.14, springs),
-        (hi.x - 0.10, hi.y - 0.14, top),
-    )
-    assign(mattress, ticking)
-    mlo, mhi = world_bounds([mattress])
+    mattress = _place_mattress(lo, hi, springs, top, ticking)
+    mlo, mhi = world_bounds(mattress.children_recursive)
 
     before = {o.name for o in bpy.data.objects}
     bpy.ops.import_scene.gltf(filepath=f"{SOURCED}/bedding.glb")
