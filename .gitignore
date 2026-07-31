@@ -38,3 +38,7 @@ assets/sourced/
 # rebuilt from the uids in docs/CREDITS.md. The character blends stay: they are
 # small and they are the only copy of that geometry.
 assets/blender/room1a.blend
+
+# Baked lightmaps. 50MB of float EXR each and rebuilt by
+# tools/blender/bake_room1a.py. What ships is the KTX2 out of step 6.
+assets/bake/
