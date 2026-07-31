@@ -54,15 +54,15 @@ LIGHTMAP_UV = "Lightmap"
 # and anything unmatched is left out of the bake on purpose.
 GROUPS = (
     ("shell", ("floor", "ceiling", "wall_", "skirt_", "rail_", "cornice_"), ()),
-    ("joinery", ("sash_", "front_", "sill", "door", "verandahDoor"), ()),
+    ("joinery", ("sash", "front", "sill", "door", "verandahDoor"), ()),
     (
         "furniture",
         ("rug",),
         # Sourced imports keep whatever the author called their meshes, so they
         # are collected through the empty each one is parented to and not by
         # name. `Loft037__0` is a chair leg and nothing about it says so.
-        ("wardrobe", "bed", "dresser", "bedside", "chair", "chair2", "bedding",
-         "mattress", "frame", "magazines", "lighter", "syringe"),
+        ("wardrobe", "bed", "dresser", "sideTable", "chair", "chair2", "bedding",
+         "mattress", "frame", "magazines", "map", "note", "lighter", "syringe"),
     ),
 )
 

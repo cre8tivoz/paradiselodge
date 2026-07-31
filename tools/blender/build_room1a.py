@@ -242,6 +242,27 @@ def tiled_material(name: str, path: str, rough: float, metres: float, value: flo
     return m
 
 
+def sheet_material(name: str, path: str):
+    """
+    One image, mapped through the mesh's own UVs, filling it once.
+
+    Everything else in this room is box projected off world position, which is
+    right for a surface that tiles and wrong for a document. The map and the
+    note are things Miller reads: the whole image has to land on the sheet, the
+    right way up, exactly once.
+    """
+    m = bpy.data.materials.new(name)
+    m.use_nodes = True
+    nt = m.node_tree
+    bsdf = nt.nodes["Principled BSDF"]
+    tex = nt.nodes.new("ShaderNodeTexImage")
+    tex.image = _image(path, True)
+    tex.extension = "CLIP"
+    nt.links.new(tex.outputs["Color"], bsdf.inputs["Base Color"])
+    bsdf.inputs["Roughness"].default_value = 0.88
+    return m
+
+
 def pbr_material(name: str, set_id: str, metres: float):
     """A full Poly Haven set: albedo, OpenGL normal, roughness, occlusion."""
     m = bpy.data.materials.new(name)
@@ -471,6 +492,22 @@ def _window(timber, glass, axis, inside, outward, u0, u1, z0, z1, lift, name):
     return parts
 
 
+def _group(name: str, parts):
+    """
+    Parent a run of loose parts to an empty so the runtime has one node to name.
+
+    Both windows are two dozen boxes. `src/interact` raycasts and then resolves
+    what it hit by object id, and "the sash" has to be one id, not twenty four.
+    The empty exports as a node and the parts arrive under it.
+    """
+    holder = bpy.data.objects.new(name, None)
+    bpy.context.scene.collection.objects.link(holder)
+    for part in parts:
+        part.parent = holder
+    bpy.context.view_layer.update()
+    return holder
+
+
 def build_sash(timber, glass):
     """
     Both windows, built here rather than sourced.
@@ -487,14 +524,18 @@ def build_sash(timber, glass):
         -SASH_WIDTH / 2, SASH_WIDTH / 2, SASH_SILL, SASH_TOP, 0.11, "sash",
     )
     # The verandah sill is a lookable in room1a.ts and the `sill` evidence hangs
-    # off it, so it keeps that exact name through the export.
+    # off it, so it keeps that exact name through the export. It also stays out
+    # of the sash group, because the sash is a thing you push and the sill is a
+    # thing you look at, and they are two different examines.
     bpy.data.objects["sash_sill"].name = "sill"
+    _group("sash", [p for p in parts if p.name != "sill"])
 
-    parts += _window(
+    front = _window(
         timber, glass, "y", HW, 1.0,
         FRONT_Y0, FRONT_Y1, FRONT_SILL, FRONT_TOP, 0.0, "front",
     )
-    return parts
+    _group("frontWindow", front)
+    return parts + front
 
 
 # ---------------------------------------------------------------------------
@@ -510,14 +551,32 @@ FURNITURE = {
     # wall. Furniture goes where its back lands, not where its middle does.
     "wardrobe": {"fit": ("z", 2.05), "rot": math.pi, "at": (-2.0, 1.86)},
     "bed": {"fit": ("y", 2.0), "rot": math.pi, "at": (-1.45, -0.15)},
-    "dresser": {"fit": ("z", 1.42), "rot": -math.pi / 2, "at": (2.15, 0.90)},
-    "bedside": {"fit": ("z", 0.62), "rot": 0.0, "at": (2.20, -0.10)},
+    # Back to the street wall, long side along it. At a quarter turn it stood
+    # with its 1.25 into the room and 0.18 of it through the wall.
+    "dresser": {"fit": ("z", 1.42), "rot": math.pi, "at": (2.26, 0.90)},
+    # Named for the runtime, sourced from the `bedside` slot. Node names are
+    # the interface `src/interact` resolves by, so they win over the slot name.
+    "sideTable": {"src": "bedside", "fit": ("z", 0.62), "rot": 0.0, "at": (2.20, -0.10)},
     "chair": {"fit": ("z", 0.92), "rot": 2.6, "at": (-0.15, -1.55)},
     "chair2": {"src": "chair", "fit": ("z", 0.92), "rot": -2.2, "at": (0.85, -1.35)},
-    "frame": {"fit": ("z", 0.19), "rot": 0.5, "at": (2.13, 0.46), "on": 0.86},
-    "magazines": {"fit": ("y", 0.30), "rot": -0.2, "at": (2.13, 0.16), "on": 0.86},
-    "lighter": {"fit": ("z", 0.08), "rot": 0.9, "at": (2.13, -0.40), "on": 0.86},
+    # The five things on the dresser top. `on` is the bench, measured off the
+    # sourced dresser rather than carried over from the kit one, and they run
+    # along its length in front of the mirror.
+    "frame": {"fit": ("z", 0.19), "rot": 0.5, "at": (2.28, 0.50), "on": 0.66},
+    "magazines": {"fit": ("y", 0.30), "rot": -0.2, "at": (2.25, 0.80), "on": 0.66},
+    "lighter": {"fit": ("z", 0.08), "rot": 0.9, "at": (2.38, 0.62), "on": 0.66},
     "syringe": {"fit": ("y", 0.115), "rot": 1.2, "at": (-1.05, 0.10), "on": 0.60},
+    # Two sheets of the same sourced paper, retextured. The map and the note are
+    # things Miller reads, so what matters is the authored image on them; the
+    # geometry is a sheet of paper and a sheet of paper is a sheet of paper.
+    "map": {
+        "src": "paper", "fit": ("y", 0.30), "rot": 0.35, "at": (2.28, 1.08),
+        "on": 0.66, "lay": 2.0, "texture": "map-pins",
+    },
+    "note": {
+        "src": "paper", "fit": ("y", 0.17), "rot": -0.6, "at": (2.24, 1.34),
+        "on": 0.66, "lay": -1.5, "texture": "note",
+    },
 }
 
 
@@ -728,7 +787,15 @@ def place(slot: str, spec: dict):
     for r in [o for o in new if o.parent is None]:
         r.parent = holder
 
-    holder.rotation_euler = (0, 0, spec["rot"])
+    # `lay` tips a sheet onto the surface it is lying on.
+    #
+    # The sourced paper is modelled as a quad in Blender's XZ plane, so it wants
+    # a quarter turn about X. It does not get one: `assets/sourced/paper.glb`
+    # was exported Y-up and comes back through the same conversion, which has
+    # already laid it flat. Turning it again stood both sheets on edge against
+    # the wall.
+    tilt = math.radians(spec.get("lay", 0.0))
+    holder.rotation_euler = (tilt, 0, spec["rot"])
     bpy.context.view_layer.update()
 
     axis, target = spec["fit"]
@@ -747,6 +814,13 @@ def place(slot: str, spec: dict):
         holder.location.z + (spec.get("on", 0.0) - lo.z),
     )
     bpy.context.view_layer.update()
+
+    texture = spec.get("texture")
+    if texture is not None:
+        paper = sheet_material(f"paper_{slot}", f"{TEXTURES}/{texture}.jpg")
+        for ob in new:
+            if ob.type == "MESH":
+                assign(ob, paper)
     return holder
 
 

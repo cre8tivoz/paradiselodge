@@ -48,6 +48,7 @@ asset. What the game ships is the baked, Meshopt-compressed room out of step 6.
 | `syringe` | [Disposable Syringe 2ml Set](https://sketchfab.com/models/4cdb3198b4284144b9722fe4cde5462b) | joezeffdesign | CC-BY 4.0 | `4cdb3198b4284144b9722fe4cde5462b` |
 | `bedding` | [Messy Bed](https://sketchfab.com/models/aebc9bae5a4d459494d1e5de76658d5a) | lucaboechat | CC-BY 4.0 | `aebc9bae5a4d459494d1e5de76658d5a` |
 | `mattress` | [Mattress](https://sketchfab.com/models/6a526b42e6a34a4ba12136a40d9a686b) | Miguel Ángel | CC-BY 4.0 | `6a526b42e6a34a4ba12136a40d9a686b` |
+| `paper` | [Low-poly Papers Set](https://sketchfab.com/models/2edf57ce2e6c4475bd4897b9c91b0a77) | Hox_Lira | CC-BY 4.0 | `2edf57ce2e6c4475bd4897b9c91b0a77` |
 
 ### What each one is, and what it is for
 
@@ -66,6 +67,7 @@ asset. What the game ships is the baked, Meshopt-compressed room out of step 6.
 | `syringe` | 15.5k | centimetres | Disposable plastic, not a glass and steel antique. 1994 |
 | `bedding` | 33k | source units | The blanket and the pillow only. Its timber frame was thrown away and it goes on the sourced iron one. Retextured to dusty rose |
 | `mattress` | 34k | centimetres | Quilted, rounded edges. Scaled to the frame's interior on both axes and retextured to ticking. It replaced a grey box |
+| `paper` | 2 | source units | One sheet, separated out of a set of loose papers. Used twice, for the `map` and the `note`, each carrying its own authored image through the sheet's own UVs |
 
 **Nothing is at a consistent scale and that is normal for Sketchfab.** Three of
 them are in metres, the rest are in inches, centimetres or millimetres. Every

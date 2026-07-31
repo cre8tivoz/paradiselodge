@@ -60,6 +60,13 @@ GROUPS = ("shell", "joinery", "furniture")
 # third of that and nothing in it is closer than a metre from the camera.
 MAX_TEXTURE = 1024
 
+# Normal and roughness maps get half that. They are the bulk of the room: a 4k
+# normal is high frequency noise, which is the worst thing you can hand a JPEG
+# encoder, and one of them came out at 6MB on its own. At 512 on furniture the
+# player never leans on, none of it reads as lost.
+MAX_DATA_TEXTURE = 512
+DATA_SUFFIXES = ("_normal", "_metallicRoughness", "_orm", "_occlusion")
+
 
 def _override():
     win = bpy.context.window_manager.windows[0]
@@ -96,14 +103,30 @@ def shrink_textures() -> int:
     """
     touched = 0
     for image in bpy.data.images:
-        if image.users == 0 or not image.has_data:
+        if image.type != "IMAGE" or image.users == 0:
             continue
+        # Not `has_data`. A packed image reports False until something decodes
+        # it, and which ones happen to be decoded depends on what ran before
+        # this: the same export capped 33 textures standalone and 13 straight
+        # after a bake, and the room came back at 28MB both times it was 13.
         w, h = image.size
-        longest = max(w, h)
-        if longest <= MAX_TEXTURE:
+        if w == 0 or h == 0:
             continue
-        factor = MAX_TEXTURE / longest
-        image.scale(max(1, int(w * factor)), max(1, int(h * factor)))
+        longest = max(w, h)
+        cap = MAX_DATA_TEXTURE if image.name.endswith(DATA_SUFFIXES) else MAX_TEXTURE
+        if longest <= cap:
+            continue
+        factor = cap / longest
+        try:
+            image.scale(max(1, int(w * factor)), max(1, int(h * factor)))
+            # Re-pack. Every texture off a sourced glb arrives packed, and the
+            # exporter hands the packed bytes straight through: scaling the
+            # buffer without re-packing changed nothing and the room came back
+            # at 28MB with 4k normal maps still in it.
+            if image.packed_file is not None:
+                image.pack()
+        except RuntimeError:
+            continue
         touched += 1
     return touched
 
