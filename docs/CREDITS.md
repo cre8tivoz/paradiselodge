@@ -46,6 +46,7 @@ asset. What the game ships is the baked, Meshopt-compressed room out of step 6.
 | `lighter` | [Lighter (Game Model)](https://sketchfab.com/models/d593d46b2ad240d5a482ad6944bc3db3) | Michael Makivic | CC-BY 4.0 | `d593d46b2ad240d5a482ad6944bc3db3` |
 | `magazines` | [Newspaper Stack](https://sketchfab.com/models/c4311a0b918643af97904e10c7a34efc) | karlwirbelwind | CC-BY 4.0 | `c4311a0b918643af97904e10c7a34efc` |
 | `syringe` | [Disposable Syringe 2ml Set](https://sketchfab.com/models/4cdb3198b4284144b9722fe4cde5462b) | joezeffdesign | CC-BY 4.0 | `4cdb3198b4284144b9722fe4cde5462b` |
+| `bedding` | [Messy Bed](https://sketchfab.com/models/aebc9bae5a4d459494d1e5de76658d5a) | lucaboechat | CC-BY 4.0 | `aebc9bae5a4d459494d1e5de76658d5a` |
 
 ### What each one is, and what it is for
 
@@ -62,6 +63,7 @@ asset. What the game ships is the baked, Meshopt-compressed room out of step 6.
 | `lighter` | 0.5k | centimetres | Disposable plastic. Period correct, a Zippo would not be |
 | `magazines` | 2.1k | millimetres | Stack of printed matter. Carries the authored `magazines` texture |
 | `syringe` | 15.5k | centimetres | Disposable plastic, not a glass and steel antique. 1994 |
+| `bedding` | 33k | source units | The blanket and the pillow only. Its timber frame was thrown away and it goes on the sourced iron one. Retextured to dusty rose |
 
 **Nothing is at a consistent scale and that is normal for Sketchfab.** Three of
 them are in metres, the rest are in inches, centimetres or millimetres. Every

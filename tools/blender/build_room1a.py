@@ -455,44 +455,87 @@ FURNITURE = {
 }
 
 
-def build_bedding(bed_holder, spread):
+def build_bedding(bed_holder, spread, linen, ticking):
     """
-    Mattress and spread, sized off the sourced frame rather than off a number.
+    The spread and the pillow, sourced, sized off the frame rather than a number.
 
-    The frame came in as bare bedsprings and the room needs what is on them:
-    a dusty rose chenille spread is most of the colour in this photograph, and
-    it is what bounces warm light back onto the wall behind the bed. Leaving the
-    bed empty would bake a room with a hole in the middle of it.
+    The first pass at this was three boxes and the bed read as a slab with a
+    pink lid, which is the one thing in the room the eye goes to. Bedding is
+    cloth and cloth is folds; a box has no folds and no amount of texture buys
+    them.
+
+    So it is `bedding.glb`, which is the blanket and the pillow lifted out of a
+    sourced messy bed and the timber frame it came on thrown away. It drapes
+    over the sides, which is why it is measured against the frame and not given
+    a size: the frame is the sourced iron single and the drop has to clear it.
+
+    Both meshes are retextured. The source blanket is blue and the room's is
+    dusty rose chenille, which is most of the colour in the target photograph
+    and most of what bounces warm light back onto the wall behind the bed.
 
     Crystal still comes from `crystal.ts` at runtime and is deliberately not
     here. She is not part of the room and she must not be baked into it.
     """
     lo, hi = world_bounds(bed_holder.children_recursive)
-    inset = 0.03
-    # The springs sit a little under half way up the frame and the mattress goes
-    # on top of them, not through them. Thin: a mattress and a chenille drop at
-    # 0.22 each is 0.44 of pink and the bed reads as a slab.
+    # The springs sit a little under half way up the frame. Bedding goes on top
+    # of them, not through them.
     springs = lo.z + (hi.z - lo.z) * 0.42
-    top = springs + 0.17
+
+    before = {o.name for o in bpy.data.objects}
+    bpy.ops.import_scene.gltf(filepath=f"{SOURCED}/bedding.glb")
+    new = [o for o in bpy.data.objects if o.name not in before]
+
+    holder = bpy.data.objects.new("bedding", None)
+    bpy.context.scene.collection.objects.link(holder)
+    for r in [o for o in new if o.parent is None]:
+        r.parent = holder
+    bpy.context.view_layer.update()
+
+    # Scale on whichever of length or width binds first. Length alone put the
+    # spread a hand's width wider than the frame on both sides and the pillow
+    # hanging off the head.
+    blo, bhi = world_bounds(new)
+    size = bhi - blo
+    fits = []
+    if size.y > 1e-6:
+        fits.append((hi.y - lo.y - 0.16) / size.y)
+    if size.x > 1e-6:
+        fits.append((hi.x - lo.x + 0.16) / size.x)
+    if fits:
+        holder.scale = (min(fits),) * 3
+    bpy.context.view_layer.update()
+
+    # A mattress under it, because the sourced blanket came off a bed that had
+    # one and drapes as though it still does. On bare springs it sags into the
+    # frame and the bed reads as a hammock.
     mattress = cube(
         "mattress",
-        (lo.x + inset, lo.y + 0.08, springs),
-        (hi.x - inset, hi.y - 0.08, top),
+        (lo.x + 0.10, lo.y + 0.08, springs),
+        (hi.x - 0.10, hi.y - 0.08, springs + 0.13),
     )
-    assign(mattress, spread)
-    drop = cube(
-        "spread",
-        (lo.x + inset - 0.015, lo.y + 0.08, springs - 0.13),
-        (hi.x - inset + 0.015, hi.y - 0.08, springs + 0.01),
+    assign(mattress, ticking)
+
+    blo, bhi = world_bounds(new)
+    mid = (blo + bhi) / 2
+    holder.location = (
+        # Over toward the room, not centred. The sourced spread is off a messy
+        # bed and it is thrown rather than made, so centring it leaves a bare
+        # strip of ticking down the side the player walks past.
+        holder.location.x + ((lo.x + hi.x) / 2 - mid.x) + 0.10,
+        # Back off the head end so the pillow sits on the bed and not past it.
+        holder.location.y + ((lo.y + hi.y) / 2 - mid.y) - 0.07,
+        holder.location.z + (springs + 0.12 - blo.z),
     )
-    assign(drop, spread)
-    pillow = cube(
-        "pillow",
-        (lo.x + 0.14, hi.y - 0.60, top),
-        (hi.x - 0.14, hi.y - 0.26, top + 0.09),
+    bpy.context.view_layer.update()
+
+    # Sorted by size: the blanket is the big one, the pillow is not.
+    meshes = sorted(
+        (o for o in new if o.type == "MESH"),
+        key=lambda o: -(o.dimensions.x * o.dimensions.y * o.dimensions.z),
     )
-    assign(pillow, spread)
-    return [mattress, drop, pillow]
+    for i, o in enumerate(meshes):
+        assign(o, spread if i == 0 else linen)
+    return holder
 
 
 def build_rug(carpet):
@@ -755,13 +798,15 @@ def build() -> None:
     boards = pbr_material("floorboards", "wood_planks", 1.5)
     carpet = tiled_material("carpet", f"{TEXTURES}/carpet-brown.jpg", 0.95, 1.4)
     spread = tiled_material("spread", f"{TEXTURES}/bedspread-rose.jpg", 0.9, 0.55, 1.15)
+    linen = flat_material("linen", (0.74, 0.70, 0.62), 0.88)
+    ticking = flat_material("ticking", (0.42, 0.38, 0.32), 0.94)
     glass = glass_material()
 
     build_shell(wallpaper, plaster, boards, timber)
     build_doors(timber)
     build_sash(timber, glass)
     placed = {slot: place(slot, spec) for slot, spec in FURNITURE.items()}
-    build_bedding(placed["bed"], spread)
+    build_bedding(placed["bed"], spread, linen, ticking)
     build_rug(carpet)
     build_verandah_proxy(timber)
 
