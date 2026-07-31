@@ -105,6 +105,12 @@ def shrink_textures() -> int:
     for image in bpy.data.images:
         if image.type != "IMAGE" or image.users == 0:
             continue
+        # The bake atlases are not textures in this sense. They were baked at
+        # 2048 on purpose and they were being quietly halved along with the
+        # furniture sheets, which is a decision, not a side effect of a size cap
+        # meant for sourced albedo.
+        if image.name.startswith("bake_"):
+            continue
         # Not `has_data`. A packed image reports False until something decodes
         # it, and which ones happen to be decoded depends on what ran before
         # this: the same export capped 33 textures standalone and 13 straight
@@ -211,12 +217,14 @@ def export_lightmaps() -> dict[str, int]:
 
     sizes = {}
     for name in GROUPS:
-        image = bpy.data.images.get(f"bake_{name}")
-        if image is None:
-            image = bpy.data.images.load(f"{BAKE_SRC}/room1a_{name}.exr")
+        # Always off disk, never the datablock the bake left in the session.
+        # That one has been through `shrink_textures` in an earlier export and
+        # comes back half size; assets/bake is the 2048 the bake actually wrote.
+        image = bpy.data.images.load(f"{BAKE_SRC}/room1a_{name}.exr", check_existing=False)
         path = f"{BAKE_OUT}/room1a_{name}.exr"
         image.save_render(filepath=path, scene=scn)
         sizes[name] = os.path.getsize(path)
+        bpy.data.images.remove(image)
 
     (
         scn.render.image_settings.file_format,

@@ -33,6 +33,17 @@ const SHOTS: Record<string, ShotFn> = {
     // Yaw 0 = −Z; π + a bit looks past +Z toward the bed wall.
     player.place(new Vector3(3.55, 3.45, 1.05), Math.PI + 0.55, -0.1)
   },
+
+  /**
+   * Close on the bed, because Crystal resting on the spread is a centimetre
+   * question and the doorway camera is three metres away. Not a shot the game
+   * ever takes.
+   */
+  '1a-bed': ({ player, hands, hudRoot }) => {
+    hudRoot.style.display = 'none'
+    hands.setVisible(false)
+    player.place(new Vector3(2.35, 3.45, 1.85), Math.PI + 1.05, -0.34)
+  },
 }
 
 export function listShots(): string[] {

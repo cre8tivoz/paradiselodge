@@ -111,14 +111,21 @@ const FURNITURE = [
 const SOLID = ['wall_', 'wardrobe', 'bed', 'dresser', 'sideTable', 'chair', 'chair2', 'mattress']
 
 /**
- * Where Crystal lies.
+ * What Crystal lies on.
  *
- * Measured off the built room rather than assumed: the spread's median height
- * over the mattress is 0.4831, and she is on the spread and not on the mattress
- * under it. This used to be 0.56, which was the kit bed's mattress top and is
- * six centimetres of daylight under her now.
+ * Measured off the loaded room, not off the Blender scene and not off the kit
+ * bed. Three different numbers were in play and only one of them is the one she
+ * touches:
+ *
+ *     0.56    the kit bed's mattress top. What this used to say, and wrong by
+ *             twelve centimetres now
+ *     0.4831  the spread's median over the mattress, measured in Blender
+ *     0.438   the sourced mattress's top as it arrives in the .glb
+ *
+ * She is on the spread, which lies on the mattress crown, so it is the last of
+ * those plus the thickness of a chenille bedspread.
  */
-const SPREAD_TOP = 0.4831
+const SPREAD_TOP = 0.452
 
 /** Head end of the bed, in room local z. The sourced frame runs -0.85 to 1.15. */
 const BED_HEAD_Z = -0.8
@@ -156,10 +163,12 @@ async function loadLightmaps(): Promise<Record<BakeGroup, Texture>> {
      * Not a colour map. This is irradiance with the albedo deliberately left
      * out of it, so the sRGB decode would bend every value in it.
      *
-     * `flipY` false to match glTF's UV origin. Blender writes the atlas in its
-     * own bottom-left convention and the exporter already flipped V on the way
-     * out, so flipping the texture as well would put the ceiling's light on the
-     * floor.
+     * `flipY` true, and it was worth two renders to be sure. glTF UVs are
+     * top-left and three turns flipY off for every texture that arrives inside
+     * a .glb, but this one does not arrive inside it: it is an EXR Blender
+     * wrote in its own bottom-left convention, so it needs the flip the glTF
+     * textures do not. Left false, the ceiling came back black and the bounce
+     * off the floor landed on the wall behind the bed.
      */
     tex.colorSpace = NoColorSpace
     /*
@@ -171,7 +180,7 @@ async function loadLightmaps(): Promise<Record<BakeGroup, Texture>> {
      * Channel 1 is `uv1`, which is what the exporter wrote TEXCOORD_1 into.
      */
     tex.channel = 1
-    tex.flipY = false
+    tex.flipY = true
     tex.needsUpdate = true
     out[name] = tex
   })
