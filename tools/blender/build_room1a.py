@@ -476,7 +476,10 @@ def build_sash(timber, glass):
 # rot: yaw applied before measuring. at: footprint centre. on: what the base
 # sits on, floor unless it is standing on the dresser.
 FURNITURE = {
-    "wardrobe": {"fit": ("z", 2.05), "rot": math.pi, "at": (-2.0, 2.0)},
+    # 1.86, not room1a.ts's 2.02. The kit wardrobe was 0.55 deep and the
+    # sourced one is 0.82, so the old centre put its back 0.11 through the hall
+    # wall. Furniture goes where its back lands, not where its middle does.
+    "wardrobe": {"fit": ("z", 2.05), "rot": math.pi, "at": (-2.0, 1.86)},
     "bed": {"fit": ("y", 2.0), "rot": math.pi, "at": (-1.45, -0.15)},
     "dresser": {"fit": ("z", 1.42), "rot": -math.pi / 2, "at": (2.15, 0.90)},
     "bedside": {"fit": ("z", 0.62), "rot": 0.0, "at": (2.20, -0.10)},

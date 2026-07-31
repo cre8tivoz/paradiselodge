@@ -122,9 +122,62 @@ def _select(objects):
     bpy.context.view_layer.objects.active = objects[0]
 
 
+def _world_area(ob) -> float:
+    """Surface area in square metres, near enough for handing out texels."""
+    local = sum(p.area for p in ob.data.polygons)
+    sx, sy, sz = ob.matrix_world.to_scale()
+    return local * abs(sx * sy * sz) ** (2 / 3)
+
+
+def _shelf(sides, fill=0.72):
+    """
+    Lay squares out in rows, biggest first, and return a cell per square.
+
+    A shelf packer wastes the ragged end of every row and that is fine. What it
+    does not do is fail quietly, which is the whole reason it is here.
+    """
+    order = sorted(range(len(sides)), key=lambda i: -sides[i])
+    scale = (fill / max(sum(s * s for s in sides), 1e-9)) ** 0.5
+
+    while True:
+        cells = {}
+        x = y = row_h = 0.0
+        ok = True
+        for i in order:
+            s = min(sides[i] * scale, 1.0)
+            if x + s > 1.0:
+                x, y = 0.0, y + row_h
+                row_h = 0.0
+            if y + s > 1.0:
+                ok = False
+                break
+            cells[i] = (x, y, s)
+            x += s
+            row_h = max(row_h, s)
+        if ok:
+            return cells
+        scale *= 0.9
+
+
 def unwrap(objects) -> None:
     """
-    A second UV set per group, packed as one atlas.
+    A second UV set per group, packed into one atlas by hand.
+
+    This used to be `smart_project` and `pack_islands` over the whole group in
+    multi object edit mode, which is the documented way to build a shared atlas
+    and which silently did not do it. Most objects packed; the bed and the
+    wardrobe came out still holding the whole 0-1 square each, landed on top of
+    everything else, and baked to pure black. Nothing reported an error.
+
+    So the pack is done here instead, and it is arithmetic rather than an
+    operator. Each object is unwrapped on its own, which is the reliable path,
+    and then its UVs are squeezed into a cell of the atlas.
+
+    Cells are handed out by **square root of world surface area**, so texel
+    density comes out roughly even: the floor gets a large cell because it is
+    four and a half square metres, a drawer knob gets a small one because it is
+    not. A fixed grid would give both the same and waste most of the map on the
+    knob.
 
     `active_render` stays on the original UV map, because that is what the
     wallpaper and the boards are mapped through. `active` moves to the lightmap,
@@ -137,16 +190,38 @@ def unwrap(objects) -> None:
             layer.active_render = layer.name != LIGHTMAP_UV
         uvs.active = lm
 
-    _select(objects)
-    with bpy.context.temp_override(**_override()):
-        bpy.ops.object.mode_set(mode="EDIT")
-        bpy.ops.mesh.select_all(action="SELECT")
-        # Angle based, then packed across every object in the group at once.
-        # Per object packing would give each of them the whole 0-1 square and
-        # they would land on top of each other in the atlas.
-        bpy.ops.uv.smart_project(angle_limit=1.15, island_margin=0.012)
-        bpy.ops.uv.pack_islands(margin=0.006)
-        bpy.ops.object.mode_set(mode="OBJECT")
+    # One object at a time. Per object is the case that works.
+    for ob in objects:
+        _select([ob])
+        with bpy.context.temp_override(**_override()):
+            bpy.ops.object.mode_set(mode="EDIT")
+            bpy.ops.mesh.select_all(action="SELECT")
+            bpy.ops.uv.smart_project(angle_limit=1.15, island_margin=0.02)
+            bpy.ops.object.mode_set(mode="OBJECT")
+
+    sides = [max(_world_area(ob), 1e-6) ** 0.5 for ob in objects]
+    cells = _shelf(sides)
+
+    # A texel of inset per cell, so a filtered sample near an edge cannot reach
+    # into the neighbour. The bake margin bleeds outward inside the cell; this
+    # is what stops it bleeding into somebody else's.
+    inset = 2.0 / SIZE
+    for i, ob in enumerate(objects):
+        x, y, s = cells[i]
+        lm = ob.data.uv_layers[LIGHTMAP_UV]
+        n = len(lm.uv)
+        buf = np.empty(n * 2, dtype=np.float32)
+        lm.uv.foreach_get("vector", buf)
+        uv = buf.reshape(-1, 2)
+        # Whatever smart_project gave back, normalise it to 0-1 first: it packs
+        # to the square but does not promise to fill it.
+        lo = uv.min(axis=0)
+        span = np.maximum(uv.max(axis=0) - lo, 1e-6)
+        uv = (uv - lo) / span
+        span_s = max(s - 2 * inset, 1e-6)
+        uv = uv * span_s + np.array([x + inset, y + inset], dtype=np.float32)
+        lm.uv.foreach_set("vector", uv.ravel())
+        ob.data.update()
 
 
 def bake_target(objects, image):
