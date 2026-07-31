@@ -139,14 +139,40 @@ export async function buildCrystalProp(): Promise<CrystalProp> {
   head.rotation.x = HEAD_TIP
   attachLookPad(head, 0.45, 0.4, 0.4)
 
+  /*
+   * The arm carries no pad.
+   *
+   * It used to have the biggest one on her, 0.28 by 0.35 by 0.55 hung off the
+   * shoulder, and the arm is not a registered lookable: every hit on it walked
+   * up to the root and came back as the generic body. So it sat over the needle
+   * and the sling, which are the two things actually worth aiming at down there,
+   * and answered for both of them with "a woman on the bed".
+   *
+   * Measured over three stances beside the bed, sweeping yaw and pitch: taking
+   * it out moved the temple from 71 aim cells to 132 and the sling from 29 to
+   * 46, and cost nothing, because the body is a whole person and needs no help
+   * being hit.
+   */
   const arm = requireNode(body, 'arm_l_0')
-  attachLookPad(arm, 0.28, 0.35, 0.55)
 
+  /*
+   * The needle and the sling are about fifteen centimetres apart on the same
+   * forearm, so their pads are sized against each other rather than separately.
+   * Grow one and it eats the other: at 2x the needle took the sling to zero.
+   *
+   * These two are 1.35x and 1.2x of what they were, which came out of a grid
+   * sweep as the pair that lifts both without either winning. Needle 30 cells
+   * to 54, sling 29 to 51.
+   *
+   * The needle is the one that had to move. Gate 1 needs it filed, and a target
+   * you can only hit from 1% of where you might be looking is a fail state for
+   * anybody who does not already know it is there.
+   */
   const needle = requireNode(body, 'needle')
-  attachLookPad(needle, 0.22, 0.22, 0.35)
+  attachLookPad(needle, 0.30, 0.30, 0.47)
 
   const sling = requireNode(body, 'sling')
-  attachLookPad(sling, 0.35, 0.28, 0.35)
+  attachLookPad(sling, 0.42, 0.34, 0.42)
 
   return {
     root,

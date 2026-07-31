@@ -122,10 +122,18 @@ const SOLID = ['wall_', 'wardrobe', 'bed', 'dresser', 'sideTable', 'chair', 'cha
  *     0.4831  the spread's median over the mattress, measured in Blender
  *     0.438   the sourced mattress's top as it arrives in the .glb
  *
- * She is on the spread, which lies on the mattress crown, so it is the last of
- * those plus the thickness of a chenille bedspread.
+ * All three are the wrong surface. She is on the spread, and the spread is
+ * seventeen centimetres of chenille, not a sheet: raycast down onto it in the
+ * running game and its crown over her comes back at 0.635 local while the
+ * mattress under it is at 0.461. Set to the mattress, which is what 0.452 was,
+ * she lay inside the bedspread with the folds coming through her.
+ *
+ * 0.62 puts her back a centimetre and a half under the crown, so the spread
+ * gives where she is on it. The map of that surface is not flat — it dips to
+ * 0.535 in one fold beside her ribs — and a body does not follow a fold, so
+ * this is the crown minus a compression rather than an average.
  */
-const SPREAD_TOP = 0.452
+const SPREAD_TOP = 0.62
 
 /** Head end of the bed, in room local z. The sourced frame runs -0.85 to 1.15. */
 const BED_HEAD_Z = -0.8

@@ -559,23 +559,37 @@ FURNITURE = {
     "sideTable": {"src": "bedside", "fit": ("z", 0.62), "rot": 0.0, "at": (2.20, -0.10)},
     "chair": {"fit": ("z", 0.92), "rot": 2.6, "at": (-0.15, -1.55)},
     "chair2": {"src": "chair", "fit": ("z", 0.92), "rot": -2.2, "at": (0.85, -1.35)},
-    # The five things on the dresser top. `on` is the bench, measured off the
-    # sourced dresser rather than carried over from the kit one, and they run
-    # along its length in front of the mirror.
-    "frame": {"fit": ("z", 0.19), "rot": 0.5, "at": (2.28, 0.50), "on": 0.66},
-    "magazines": {"fit": ("y", 0.30), "rot": -0.2, "at": (2.25, 0.80), "on": 0.66},
-    "lighter": {"fit": ("z", 0.08), "rot": 0.9, "at": (2.38, 0.62), "on": 0.66},
+    # What stands on the dresser, and what stands on the side table.
+    #
+    # `on` was 0.66 for all five and the deck is at **0.554**. Raycast straight
+    # down onto the sourced dresser and every square centimetre of its top comes
+    # back 0.554, with a back lip at 0.588 where the mirror sits. So the whole
+    # arrangement was floating ten and a half centimetres in the air, which is
+    # what put the note off the front corner with daylight under it.
+    #
+    # There were five of them on a deck with 1.03 metres of usable run, and they
+    # measure 1.04 laid end to end: the lighter's footprint was inside the
+    # picture frame's. Three stay, spaced, and the two smallest move to the side
+    # table, which was empty and is right beside it. A lighter three centimetres
+    # across needs clear air round it or the look ray cannot tell it from the
+    # timber it is lying on.
+    #
+    # Deck measured: z 0.554, x 2.06..2.44, y 0.39..1.42.
+    "frame": {"fit": ("z", 0.19), "rot": 0.5, "at": (2.33, 0.55), "on": 0.554},
+    "magazines": {"fit": ("y", 0.30), "rot": -0.2, "at": (2.22, 0.92), "on": 0.554},
+    "lighter": {"fit": ("z", 0.08), "rot": 0.9, "at": (2.10, -0.22), "on": 0.620},
     "syringe": {"fit": ("y", 0.115), "rot": 1.2, "at": (-1.05, 0.10), "on": 0.60},
     # Two sheets of the same sourced paper, retextured. The map and the note are
     # things Miller reads, so what matters is the authored image on them; the
     # geometry is a sheet of paper and a sheet of paper is a sheet of paper.
     "map": {
-        "src": "paper", "fit": ("y", 0.30), "rot": 0.35, "at": (2.28, 1.08),
-        "on": 0.66, "lay": 2.0, "texture": "map-pins",
+        "src": "paper", "fit": ("y", 0.30), "rot": 0.35, "at": (2.24, 1.26),
+        "on": 0.554, "lay": 2.0, "texture": "map-pins",
     },
+    # On the side table with the lighter. Its top is a clean round 0.620.
     "note": {
-        "src": "paper", "fit": ("y", 0.17), "rot": -0.6, "at": (2.24, 1.34),
-        "on": 0.66, "lay": -1.5, "texture": "note",
+        "src": "paper", "fit": ("y", 0.17), "rot": -0.6, "at": (2.27, -0.02),
+        "on": 0.620, "lay": -1.5, "texture": "note",
     },
 }
 
@@ -593,6 +607,12 @@ def _place_mattress(lo, hi, springs, top, ticking):
     interior on both axes independently, because a mattress is cut to fit a bed
     and this one came off a wider one. Its top lands exactly where the box's did,
     so the spread and the pillow anchor off the same number as before.
+
+    **The insets are 0.075 and 0.10, not 0.20 and 0.28.** At the old numbers it
+    came out 0.625 by 1.72 inside a frame measuring 0.825 by 2.00, so there was
+    ten centimetres of bare iron down each side and fourteen at each end, and it
+    read as a mattress belonging to a different bed. A mattress is cut to the
+    frame and the gap round one is a finger, not a hand.
     """
     before = {o.name for o in bpy.data.objects}
     bpy.ops.import_scene.gltf(filepath=f"{SOURCED}/mattress.glb")
@@ -604,8 +624,8 @@ def _place_mattress(lo, hi, springs, top, ticking):
         r.parent = holder
     bpy.context.view_layer.update()
 
-    want_x = (hi.x - lo.x) - 0.20
-    want_y = (hi.y - lo.y) - 0.28
+    want_x = (hi.x - lo.x) - 0.075
+    want_y = (hi.y - lo.y) - 0.100
     want_z = top - springs
     size = world_bounds(new)[1] - world_bounds(new)[0]
     holder.scale = (
@@ -701,11 +721,37 @@ def build_bedding(bed_holder, spread, linen, ticking):
     mid = (blo + bhi) / 2
     holder.location = (
         holder.location.x + ((lo.x + hi.x) / 2 - mid.x),
-        # Down the bed toward the foot. The spread is thrown rather than
-        # made, and the head end is where the pillow goes anyway.
-        holder.location.y + ((lo.y + hi.y) / 2 - mid.y) - 0.10,
+        holder.location.y + ((lo.y + hi.y) / 2 - mid.y),
         holder.location.z,
     )
+    bpy.context.view_layer.update()
+
+    """
+    Then half a turn about the bed centre.
+
+    This is a throw, not a bedspread. Raycast down over the mattress and it
+    covers a band about forty centimetres wide out of seventy five: the rest of
+    what the bounding box calls "bedding" is the hem, hanging past the frame
+    thirty centimetres lower down. The band was on the room side of the bed,
+    which is the only side anybody ever sees, so the bare ticking was the first
+    thing you looked at and the spread was the thing behind it.
+
+    Turned, the band faces the room and the bare strip goes against the wall.
+
+    It does not make the bed and it cannot: **this asset is the wrong shape for
+    the job and wants replacing with a sourced bedspread.** Scaling it wider is
+    not the answer either, that was measured too. At 1.35x the covered band
+    reaches the mattress edges and the hem is 1.07 wide against a frame of 0.825,
+    so the drape hangs straight through the iron side rails.
+    """
+    centre = mathutils.Vector(((lo.x + hi.x) / 2, (lo.y + hi.y) / 2, 0.0))
+    turn = (
+        mathutils.Matrix.Translation(centre)
+        @ mathutils.Matrix.Rotation(math.pi, 4, "Z")
+        @ mathutils.Matrix.Translation(-centre)
+    )
+    for o in [c for c in holder.children_recursive if c.type == "MESH"]:
+        o.matrix_world = turn @ o.matrix_world
     bpy.context.view_layer.update()
 
     meshes = sorted(
