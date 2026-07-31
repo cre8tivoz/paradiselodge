@@ -93,9 +93,38 @@ CORNICE = 0.15
 # ---------------------------------------------------------------------------
 
 
+# BlenderMCP keeps its own settings on the scene, including the Sketchfab API
+# key. `read_homefile` throws the scene away, so they have to be carried across
+# by hand. Losing them silently switched the asset sourcing off mid session and
+# the key had to be typed in again, because it lives in the scene and nowhere
+# else.
+MCP_SETTINGS = (
+    "blendermcp_use_polyhaven",
+    "blendermcp_use_sketchfab",
+    "blendermcp_sketchfab_api_key",
+    "blendermcp_use_hyper3d",
+    "blendermcp_hyper3d_mode",
+    "blendermcp_hyper3d_api_key",
+    "blendermcp_port",
+    "blendermcp_server_running",
+)
+
+
 def clear() -> None:
+    kept = {}
+    old = bpy.context.scene
+    for key in MCP_SETTINGS:
+        if hasattr(old, key):
+            kept[key] = getattr(old, key)
+
     bpy.ops.wm.read_homefile(use_empty=True)
+
     scn = bpy.context.scene
+    for key, value in kept.items():
+        try:
+            setattr(scn, key, value)
+        except (AttributeError, TypeError):
+            pass
     scn.unit_settings.system = "METRIC"
     scn.unit_settings.scale_length = 1.0
 
