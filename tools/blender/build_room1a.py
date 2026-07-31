@@ -374,6 +374,74 @@ def build_doors(timber):
     return parts
 
 
+def _window(timber, glass, axis, inside, outward, u0, u1, z0, z1, lift, name):
+    """
+    One double hung sash, with the joinery a Victorian one actually has.
+
+    The first pass was a rectangle of square boxes and it read as a hole with a
+    black border. What makes a window read is the surround, not the glass:
+    a moulded architrave standing proud of the wall, a sill that projects into
+    the room with an apron under it, and two sashes of different depths so the
+    meeting rails overlap. All of that is still boxes, but they are the right
+    boxes and they step.
+
+    `axis` is which way the opening runs. `inside` is the room face of the wall
+    and `outward` is +1 or -1 along the depth axis, so the same code builds the
+    verandah sash in the -Y wall and the street one in the +X wall.
+
+    `lift` is how far the lower sash is pushed up. The verandah one is open a
+    hand's width and that gap is the whole reason the `sill` evidence exists.
+    The street one is shut and stays shut.
+    """
+    parts = []
+
+    def bx(tag, ua, ub, da, db, za, zb, mat):
+        """Box in window space: u along the wall, d into it, z up."""
+        a = inside + outward * da
+        b = inside + outward * db
+        lo_d, hi_d = min(a, b), max(a, b)
+        if axis == "x":
+            ob = cube(f"{name}_{tag}", (ua, lo_d, za), (ub, hi_d, zb))
+        else:
+            ob = cube(f"{name}_{tag}", (lo_d, ua, za), (hi_d, ub, zb))
+        assign(ob, mat)
+        parts.append(ob)
+        return ob
+
+    # Architrave: a wide flat board round the opening with a bead standing proud
+    # of it. Two steps is the difference between moulding and a picture frame.
+    arch, bead = 0.105, 0.042
+    for tag, w, d0, d1 in (("arch", arch, -0.024, 0.0), ("bead", bead, -0.038, -0.024)):
+        bx(f"{tag}_l", u0 - w, u0, d0, d1, z0 - 0.02, z1 + w, timber)
+        bx(f"{tag}_r", u1, u1 + w, d0, d1, z0 - 0.02, z1 + w, timber)
+        bx(f"{tag}_head", u0 - w, u1 + w, d0, d1, z1, z1 + w, timber)
+
+    # Sill and apron. The sill runs past the architrave at both ends, because a
+    # sill that stops flush with the reveal is a shelf and not a sill.
+    bx("sill", u0 - arch - 0.035, u1 + arch + 0.035, -0.085, WALL, z0 - 0.055, z0, timber)
+    bx("apron", u0 - arch, u1 + arch, -0.020, 0.0, z0 - 0.155, z0 - 0.055, timber)
+
+    def leaf(tag, za, zb, da, bottom, top):
+        db = da + 0.042
+        stile, meet = 0.038, 0.048
+        ua, ub = u0 + 0.010, u1 - 0.010
+        bx(f"{tag}_stile_l", ua, ua + stile, da, db, za, zb, timber)
+        bx(f"{tag}_stile_r", ub - stile, ub, da, db, za, zb, timber)
+        bx(f"{tag}_rail_b", ua, ub, da, db, za, za + bottom, timber)
+        bx(f"{tag}_rail_t", ua, ub, da, db, zb - top, zb, timber)
+        # Glass sits in the middle of the section, not on the front of it.
+        gd = da + 0.019
+        bx(f"{tag}_glass", ua + stile, ub - stile, gd, gd + 0.004,
+           za + bottom, zb - top, glass)
+        return meet
+
+    pane = (z1 - z0) / 2
+    # Two depths, so the sashes pass each other the way they really do.
+    leaf("lower", z0 + lift, z0 + lift + pane, 0.055, 0.058, 0.048)
+    leaf("upper", z1 - pane, z1, 0.108, 0.048, 0.042)
+    return parts
+
+
 def build_sash(timber, glass):
     """
     Both windows, built here rather than sourced.
@@ -383,54 +451,20 @@ def build_sash(timber, glass):
     cuts across the view out. The sourced window pack stays in assets/sourced as
     a reference for the mouldings.
 
-    The verandah sash is open a hand's width. That gap is the whole reason the
-    `sill` evidence exists. The street one is shut and stays shut.
+    One over one, no glazing bars, because that is what 1a-target.png has.
     """
-    parts = []
-    w = SASH_WIDTH
-    h = SASH_TOP - SASH_SILL
-    y = -HD + 0.05
-    s = 0.045
-    lift = 0.11
-    pane = h / 2
+    parts = _window(
+        timber, glass, "x", -HD, -1.0,
+        -SASH_WIDTH / 2, SASH_WIDTH / 2, SASH_SILL, SASH_TOP, 0.11, "sash",
+    )
+    # The verandah sill is a lookable in room1a.ts and the `sill` evidence hangs
+    # off it, so it keeps that exact name through the export.
+    bpy.data.objects["sash_sill"].name = "sill"
 
-    for name, lo, hi in (
-        ("sash_stile_l", (-w / 2, y - 0.04, SASH_SILL), (-w / 2 + s, y + 0.04, SASH_TOP)),
-        ("sash_stile_r", (w / 2 - s, y - 0.04, SASH_SILL), (w / 2, y + 0.04, SASH_TOP)),
-        ("sash_head", (-w / 2, y - 0.04, SASH_TOP - s), (w / 2, y + 0.04, SASH_TOP)),
-        ("sill", (-w / 2 - 0.07, y - 0.02, SASH_SILL - 0.05), (w / 2 + 0.07, -HD + 0.18, SASH_SILL)),
-        ("sash_lower_rail", (-w / 2, y - 0.02, SASH_SILL + lift), (w / 2, y + 0.02, SASH_SILL + lift + s)),
-        ("sash_meeting_rail", (-w / 2, y - 0.02, SASH_SILL + lift + pane - s), (w / 2, y + 0.02, SASH_SILL + lift + pane)),
-        ("sash_upper_rail", (-w / 2, y - 0.07, SASH_TOP - pane), (w / 2, y - 0.03, SASH_TOP - pane + s)),
-    ):
-        p = cube(name, lo, hi)
-        assign(p, timber)
-        parts.append(p)
-
-    for name, lo, hi in (
-        ("glass_lower", (-w / 2 + s, y - 0.004, SASH_SILL + lift + s), (w / 2 - s, y + 0.004, SASH_SILL + lift + pane - s)),
-        ("glass_upper", (-w / 2 + s, y - 0.054, SASH_TOP - pane + s), (w / 2 - s, y - 0.046, SASH_TOP - s)),
-    ):
-        g = cube(name, lo, hi)
-        assign(g, glass)
-        parts.append(g)
-
-    fh = FRONT_TOP - FRONT_SILL
-    fx = HW - 0.05
-    for name, lo, hi in (
-        ("front_stile_l", (fx - 0.04, FRONT_Y0, FRONT_SILL), (fx + 0.04, FRONT_Y0 + s, FRONT_TOP)),
-        ("front_stile_r", (fx - 0.04, FRONT_Y1 - s, FRONT_SILL), (fx + 0.04, FRONT_Y1, FRONT_TOP)),
-        ("front_head", (fx - 0.04, FRONT_Y0, FRONT_TOP - s), (fx + 0.04, FRONT_Y1, FRONT_TOP)),
-        ("front_sill", (HW - 0.18, FRONT_Y0 - 0.07, FRONT_SILL - 0.05), (fx + 0.02, FRONT_Y1 + 0.07, FRONT_SILL)),
-        ("front_meeting", (fx - 0.02, FRONT_Y0, FRONT_SILL + fh / 2), (fx + 0.02, FRONT_Y1, FRONT_SILL + fh / 2 + s)),
-    ):
-        p = cube(name, lo, hi)
-        assign(p, timber)
-        parts.append(p)
-
-    fg = cube("glass_front", (fx - 0.004, FRONT_Y0 + s, FRONT_SILL + s), (fx + 0.004, FRONT_Y1 - s, FRONT_TOP - s))
-    assign(fg, glass)
-    parts.append(fg)
+    parts += _window(
+        timber, glass, "y", HW, 1.0,
+        FRONT_Y0, FRONT_Y1, FRONT_SILL, FRONT_TOP, 0.0, "front",
+    )
     return parts
 
 
@@ -496,13 +530,18 @@ def build_bedding(bed_holder, spread, linen, ticking):
     # hanging off the head.
     blo, bhi = world_bounds(new)
     size = bhi - blo
-    fits = []
     if size.y > 1e-6:
-        fits.append((hi.y - lo.y - 0.16) / size.y)
-    if size.x > 1e-6:
-        fits.append((hi.x - lo.x + 0.16) / size.x)
-    if fits:
-        holder.scale = (min(fits),) * 3
+        holder.scale = ((hi.y - lo.y - 0.16) / size.y,) * 3
+    bpy.context.view_layer.update()
+
+    # Then widen it on its own. Length is what sets the scale, because a spread
+    # that is short reads as a towel, and at that scale this one came up narrow
+    # enough to leave a bare strip of ticking down one side whichever way it was
+    # thrown. Stretching cloth across its width by a sixth is not visible; a bed
+    # half made is.
+    blo, bhi = world_bounds(new)
+    if (bhi - blo).x > 1e-6:
+        holder.scale.x *= ((hi.x - lo.x) + 0.34) / (bhi - blo).x
     bpy.context.view_layer.update()
 
     # A mattress under it, because the sourced blanket came off a bed that had
@@ -515,16 +554,32 @@ def build_bedding(bed_holder, spread, linen, ticking):
     )
     assign(mattress, ticking)
 
+    # Anchor on the flat of the blanket, and find the flat by asking the mesh.
+    #
+    # Neither end of the bounding box is the right anchor. The bottom of it is
+    # the hem of the drape, which in the source hangs most of the way to the
+    # floor, and sitting that on the mattress lifted the whole spread half a
+    # metre and it floated over the bed like a tent. The top of it is the crest
+    # of a fold, and sitting that on the mattress dropped the spread through the
+    # bed and left it puddled on the boards.
+    #
+    # What has to touch the mattress is the flat, and most of a spread is flat,
+    # so the median vertex height is the flat. That is what gets anchored, and
+    # the drape is left to hang past the frame.
+    blanket = max(
+        (o for o in new if o.type == "MESH"),
+        key=lambda o: o.dimensions.x * o.dimensions.y * o.dimensions.z,
+    )
+    heights = sorted((blanket.matrix_world @ v.co).z for v in blanket.data.vertices)
+    flat = heights[len(heights) // 2]
+
     blo, bhi = world_bounds(new)
     mid = (blo + bhi) / 2
     holder.location = (
-        # Over toward the room, not centred. The sourced spread is off a messy
-        # bed and it is thrown rather than made, so centring it leaves a bare
-        # strip of ticking down the side the player walks past.
-        holder.location.x + ((lo.x + hi.x) / 2 - mid.x) + 0.10,
+        holder.location.x + ((lo.x + hi.x) / 2 - mid.x),
         # Back off the head end so the pillow sits on the bed and not past it.
         holder.location.y + ((lo.y + hi.y) / 2 - mid.y) - 0.07,
-        holder.location.z + (springs + 0.12 - blo.z),
+        holder.location.z + (springs + 0.13 + 0.02 - flat),
     )
     bpy.context.view_layer.update()
 
