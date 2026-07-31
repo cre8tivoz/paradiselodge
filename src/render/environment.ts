@@ -41,7 +41,7 @@ const HDRI_URL = 'env/balcony_2k.hdr'
  * indirect map, because at that point the bake is what says how much of the sky
  * each surface can actually see.
  */
-const INTENSITY = 0.45
+const INTENSITY = 0.3
 
 /**
  * Yaw applied to both the lighting and the backdrop.
