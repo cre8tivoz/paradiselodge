@@ -23,15 +23,31 @@ Full sets under `public/textures/pbr/<id>/`, 2k jpg, named as shipped: albedo
 |---|---|---|---|---|
 | `wood_planks` | Room 1A floor | [Poly Haven — Wood Planks](https://polyhaven.com/a/wood_planks) | Amal Kumar | CC0 |
 
+Unit A adds the rest of the interior's surfaces — nicotine plaster, carpet
+runner, stained timber, entry tile — into a shared `materials.blend` that every
+space links rather than copies. **Each one gets a row here as it is sourced**,
+in the same commit as the asset.
+
 ## Models
 
 Sourced from Sketchfab, filtered to downloadable and CC-BY. Fetched through the
 Blender MCP and exported to `assets/sourced/<slot>.glb`.
 
-**`assets/sourced/` is not in git.** It is 208MB of uncompressed source textures
+**`assets/sourced/` is not in git.** It is 232MB of uncompressed source textures
 and it is a download cache, not a source of truth. The uid column is what
 reproduces it: `download_sketchfab_model` with that uid gives back the same
-asset. What the game ships is the baked, Meshopt-compressed room out of step 6.
+asset. What the game ships is `public/models/room1a.glb`, 7.2MB, geometry
+uncompressed and every texture capped and re-encoded to JPEG on the way out.
+Meshopt is allowed and was not needed: geometry is a rounding error next to
+textures in a room like this.
+
+**Two of the fourteen are not in the shipped room.** `window` was sourced,
+evaluated at step 4 and not used — nothing downloadable is a Victorian double
+hung sash, so both of 1A's windows are built in `build_room1a.py` and the
+sourced pack stays as reference for the mouldings. `hammer` is scene 1's yard
+hammer and the yard is Unit B, so it is sourced and waiting. Both rows stay
+here: they were downloaded under CC-BY and the licence follows the file, not
+the shipping decision.
 
 | Slot | Model | Author | Licence | Sketchfab uid |
 |---|---|---|---|---|
@@ -59,8 +75,8 @@ asset. What the game ships is the baked, Meshopt-compressed room out of step 6.
 | `wardrobe` | 2.4k | **metres** | Two door, panelled, arched cornice. Already at real scale |
 | `bedside` | 4.5k | **metres** | Round Victorian side table with a lower shelf |
 | `chair` | 1.7k | **metres** | Thonet no. 14. The bentwood chair, and the correct one |
-| `window` | 0.7k | metres | Three painted timber windows in a row. Evaluate at step 4; the sash may be better built with the room shell |
-| `hammer` | 0.8k | **metres** | Timber handled claw hammer. Scene 1's yard hammer |
+| `window` | 0.7k | metres | Three painted timber windows in a row. **Not shipped.** Evaluated at step 4 and the sash was built with the shell instead: it has to line up with `FIRST_WINDOW` in `lodge.ts` to the centimetre. Kept as moulding reference |
+| `hammer` | 0.8k | **metres** | Timber handled claw hammer. Scene 1's yard hammer. Sourced early, placed at Unit B |
 | `frame` | 1.8k | inches | Plain standing frame with a strut. Carries the authored `photo-in-frame` texture |
 | `lighter` | 0.5k | centimetres | Disposable plastic. Period correct, a Zippo would not be |
 | `magazines` | 2.1k | millimetres | Stack of printed matter. Carries the authored `magazines` texture |

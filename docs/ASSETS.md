@@ -72,13 +72,31 @@ Beige 1993 VP Holden Commodore, unmarked, fleet spec, no personality. Police tap
 ### 2. Reception and parlour
 Reception desk, dark timber, pigeonhole key rack behind. Guest ledger. Bakelite phone. Overflowing ashtray. Parlour visible through a doorway to the left: armchairs, standard lamp, low table, television off.
 
+**That list is Unit A's shopping list.** Reception wants the desk, the key rack, the phone, the ledger and the ashtray; the parlour wants two armchairs, a sofa, a low table, a standard lamp and a TV in a timber cabinet. Sourced, same rules as room 1A's fourteen.
+
 ### 3. Central staircase and first-floor hall
 Wide Victorian staircase, carpet runner worn through on the treads, brass stair rods. Numbered doors. 1A first on the right.
+
+**No furniture in either.** They are transit and they are where the budget gets saved.
 
 ### 4. Room 1A
 Bed, dresser, chair, wardrobe, side table, sash window onto the verandah.
 
-**Current build state (28 July 2026):** kit primitives only for the room, Crystal, and props. Hand examines and evidence filing work against that kit. Real meshes replace pieces as they land; the hand is already a modelled glTF.
+**Current build state (31 July 2026): done and shipped.** Room 1A is fourteen sourced Sketchfab models assembled in Blender, baked in Cycles and loaded as one `.glb` with three lightmap atlases. 10.27MB. Crystal, the hand, Rosie and Moretti are modelled glTF. Every other space in the game is still kit primitives.
+
+### Baked light per space
+
+Density is set by **dwell time, not floor area**. The first-floor hall is six seconds of walking and does not get hero resolution.
+
+| Space | Lightmap | Why |
+|---|---|---|
+| Room 1A | 2048 | Half an hour, crouched, close to everything |
+| Parlour | 2048 | The one conversation in scene 1 that carries information |
+| Reception | 1024 | A conversation, standing, and a desk full of look targets |
+| Staircase | 1024 | Walked twice, and the runner is the texture that reads |
+| First-floor hall | 512 | Transit |
+
+Exteriors are **not baked at all**. HDRI plus the one sun, realtime. AO to vertex colours if contact shadows read badly, and nothing beyond that.
 
 **Examinable objects — twelve hand animations, budget one each:**
 
@@ -122,9 +140,9 @@ Cell door, corridor, and the only third-person camera in the game.
 | Character | Fidelity | Notes |
 |---|---|---|
 | **Miller** | Hands only, until the last shot | Gloves in scene 1. Cuff state per scene. Face matters once. **Hand mesh done:** source `assets/blender/miller-hand.blend`, shipped `public/models/miller-hand.glb`, ref `images/characters/miller-hands.png` |
-| **Moretti** | Full, mid distance | Uniform constable. Never closer than two metres |
-| **Rosie** | Full, close | Mid 50s, shoulder-length red and grey, ugly cardigan, cigarette always lit. Sheet ready. Next build step |
-| **Crystal** | Full, very close | 28, blonde, petite, well dressed. Twelve hours dead. Lividity and rigor visible. **Currently kit primitives** on the bed in room 1A |
+| **Moretti** | Full, mid distance | Uniform constable. Never closer than two metres. **Mesh done:** `assets/blender/moretti.blend`, `public/models/moretti.glb` |
+| **Rosie** | Full, close | Mid 50s, shoulder-length red and grey, ugly cardigan, cigarette always lit. **Mesh done:** `assets/blender/rosie.blend`, `public/models/rosie.glb`. Two stations, procedural idle |
+| **Crystal** | Full, very close | 28, blonde, petite, well dressed. Twelve hours dead. Lividity and rigor visible. **Mesh done:** `assets/blender/crystal.blend`, `public/models/crystal.glb`. On the bed in room 1A |
 | **Mark** | Full, mid | Bouncer build, black shirt, ponytail. Matches the photo exactly |
 | **Victor** | Full, distance and interview | Seen running, then across a table |
 | **Sterling** | Full, close | Publican. Smug. Needs a face worth grabbing |

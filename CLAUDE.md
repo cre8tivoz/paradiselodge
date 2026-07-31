@@ -76,9 +76,11 @@ The player is Detective Graham Miller. You never see him until the last shot of 
 
 ## Status
 
-Last updated 30 July 2026. **Scene 1's engine is finished and the render layer is being replaced.** Update this whenever work resumes.
+Last updated 31 July 2026. **Scene 1's engine is finished and room 1A is through the render reset.** The rest of the lodge is not. Update this whenever work resumes.
 
 Gameplay is correct and is not to be touched. `src/interact`, `src/case`, `src/dialogue`, `src/npc`, `src/core`, `src/player`, `src/ui`, `src/audio` are closed. Evidence copy, gate order and the event bus are closed. The live job is `src/materials`, `src/render`, and the geometry in `src/world`. See *The render reset* below before anything else.
+
+**The live job is Unit A: the lodge interior, one Blender scene, one bake.** Room 1A proved the pipeline and its process is not repeated per room. See *Extending the pipeline* at the bottom of this file.
 
 Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Live at `https://paradiselodge-game.pages.dev` (Cloudflare Pages project `paradiselodge-game`). Custom domain `lodge.billyhaddad.au` not wired yet. Deploys are manual: `npm run build && wrangler pages deploy dist --project-name paradiselodge-game --branch main`.
 
@@ -90,7 +92,7 @@ Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Live at `https://pa
 | 3b. Hand mesh | Done. Blender source + shipped glTF. See Hand mesh below |
 | 4. Examine tier two | Done. **Press F** starts the clip; it runs to the end and files evidence. Esc cancels. (Was hold-to-cancel; that made the verb unusable under pointer lock — see Play fixes below) |
 | 5. Case file, evidence IDs, notebook UI | Done. N opens. Examine files. Idempotent |
-| 6. Room 1A, geometry, fixed 3pm sun | Done. Kit furniture, sash, sun across the bed. Prop layout revised — see Room 1A layout below |
+| 6. Room 1A, geometry, fixed 3pm sun | Done, then rebuilt by the render reset. Sourced furniture, assembled and baked in Blender, shipped as one `.glb`. See *Room 1A ships as one file* below |
 | 7. Crystal + examine set | Done. Modelled Crystal glTF. Body/head/needle/sling examinable (look pads). Dress texture wired. Diary and hammer wait for parlour and yard |
 | 8. Dialogue system | Done. Node graph, runner, DOM panel. Rosie is its first real user |
 | 9. Approach and ground floor | Done. Street, steps, neon letterforms, facade, hall, reception, parlour, staircase, first-floor hall. 1A is placed in it. See below |
@@ -107,6 +109,10 @@ Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Live at `https://pa
 ---
 
 ## The render reset
+
+**Done, all seven steps, for room 1A only.** What it settled is below and it is not
+re-openable. What it does *not* cover is the rest of the building, which goes
+through Unit A at the bottom of this file and does not repeat this process.
 
 Four days went into tuning a directional light against `images/mood/1a-target.png` and it never got close, because the target is a photograph and the thing it has that the render did not is bounced light. That cannot be tuned in. It has to be computed once, offline, and baked.
 
@@ -127,12 +133,33 @@ One step per session. Verify with `tools/shot.mjs`. Commit after each with a rea
 | Step | State |
 |---|---|
 | 1. IBL and colour | **Done.** HDRI + PMREM, AgX, no fill lights. See *The light rig is an HDRI and one sun* |
-| 2. One real material | Floorboards only. Full PBR set from Poly Haven, all four maps on a `MeshStandardMaterial`, to prove the pipeline before anything else is wired |
-| 3. Source the furniture | Via the Blender MCP, Sketchfab and Poly Haven. Bed, dresser with mirror, bentwood chair, wardrobe, bedside table, sash frame, syringe, hammer, picture frame, lighter, magazines |
-| 4. Assemble 1A in Blender | Walls, ceiling with cornice, picture rail, skirtings, floorboards, window opening. Sourced furniture placed. Layout and camera match `images/mood/1a-wide.png`. Sun at the fixed 3pm angle, HDRI outside the window |
-| 5. Bake in Cycles | **Diffuse Indirect only, not Combined.** See *The bake* |
-| 6. Export and load | glTF 2.0 `.glb`, Meshopt on, KTX2 textures, under 25MB for the room. `room1a.ts` becomes a loader and a prop registry, not a geometry builder |
-| 7. Reconnect | Re-wire lookables and examinables to the loaded mesh names. Nothing in `src/case` or `src/interact` should need editing. **If it does, stop and say so rather than editing them** |
+| 2. One real material | **Done.** Poly Haven `wood_planks`, all four maps on a `MeshStandardMaterial`, `src/materials/pbr.ts` |
+| 3. Source the furniture | **Done.** Fourteen models off Sketchfab through the Blender MCP, all CC-BY, all in `docs/CREDITS.md` |
+| 4. Assemble 1A in Blender | **Done.** `tools/blender/build_room1a.py` |
+| 5. Bake in Cycles | **Done.** Diffuse Indirect, three 2048 atlases, `tools/blender/bake_room1a.py` |
+| 6. Export and load | **Done.** `tools/blender/export_room1a.py`. 10.27MB against a 25MB budget. `room1a.ts` is a loader |
+| 7. Reconnect | **Done.** Every id resolves, from the deep child mesh a ray actually hits. Nothing in `src/case` or `src/interact` was edited |
+
+### What the reset shipped, and where it deviated from the plan
+
+Three things came out different from what the steps above predicted. All three
+are settled and the reasons are load-bearing.
+
+- **The lightmaps are half float EXR, not KTX2.** KTX2 wants an encoder and
+  `toktx`, `basisu` and `gltfpack` are all absent, and rule 9 says not to add
+  tooling. `EXRLoader` ships inside `three` alongside the loaders the reset
+  already allowed. DWAA compression takes a 50MB bake to under 1.3MB, and half
+  float carries indirect irradiance — which tops out around 20 — with decimal
+  places to spare. **The furniture textures inside the `.glb` are JPEG** at
+  quality 82, capped at 1024, and 512 for normal and roughness
+- **`environmentIntensity` is 0.3, not the 1 this document predicted.** The
+  prediction assumed the bake would say how much sky each surface sees. It does,
+  for 1A. The environment is scene-wide and 1A is the only baked room in the
+  building, so 1 would flood everything else. **It goes to 1 when Unit A lands**
+  and the whole interior is baked
+- **Geometry was never the cost.** The room came back at 42MB with the geometry
+  accounting for almost none of it. Textures are the entire budget. Reduce
+  resolution before you reduce triangles, every time
 
 ### The bake
 
@@ -147,9 +174,50 @@ One step per session. Verify with `tools/shot.mjs`. Commit after each with a rea
 - **Iterate at 64 samples with denoise on.** Layout, light direction and UV problems are all visible at 64
 - **Final pass only: 256.** Above that, with denoising, the difference is not visible on Metal and the time is roughly linear
 - Close other applications for the final bake
-- Export `.exr`, convert to KTX2
+- Export `.exr` at half float, DWAA. Not KTX2, there is no encoder on this machine
 
 A few minutes per iteration bake, longer for the final. **More than about twenty minutes means the render device is on CPU. Stop and check.**
+
+### Every failure in this pipeline is silent
+
+Not one of the things that went wrong in steps 4 to 7 raised an error. Every
+one of them reported success and wrote a plausible-looking file. **Verify
+numerically or with a purpose-built render. Do not verify by eye and do not
+trust a return code.** That is what `preview()` in `bake_room1a.py` is for: it
+puts the lightmap back on the geometry as emission, so you are looking at the
+map rather than at a room that happens to be lit.
+
+The specific traps, because they will all recur on Unit A:
+
+- **`bpy.ops.object.bake` starts a background job** when it is invoked from a
+  viewport context. It wrote three black 2048 squares in four seconds and said
+  it was fine. Pass `"EXEC_DEFAULT"`
+- **Cycles wants the bake target image node active *and* selected.** Active
+  alone cancels with "no active and selected image texture node found"
+- **Cycles does not denoise a bake.** `cycles.use_denoising` is the render
+  denoiser and does nothing here. Denoise through the compositor
+- **Blender 5 moved the compositor.** `scene.node_tree` is now
+  `scene.compositing_node_group`, File Output takes `directory` / `file_name`
+  rather than `base_path` / `file_slots`, and it only offers multilayer EXR. A
+  Viewer node plus a numpy readback is what works
+- **`smart_project` then `pack_islands` in multi-object edit mode silently does
+  not pack.** The bed and the wardrobe each kept the whole 0–1 square, overlapped
+  everything else and baked pure black. Replaced with a deterministic shelf
+  packer weighted by the square root of world surface area, which is also
+  reproducible across runs
+- **A prefix match misses a sourced model**, because the holder is an empty
+  named `mattress` and its children are called things like `Box001_03 -
+  Default_0`. Collect through the holder
+- **`image.has_data` is False for a packed image** until something decodes it,
+  so a size-cap loop that skips on it caps a different set of textures depending
+  on what ran before it. The same export capped 33 textures standalone and 13
+  after a bake, and shipped 4k normals both times it was 13
+- **Scaling an image buffer without re-packing changes nothing** in the export.
+  Every texture off a sourced `.glb` arrives packed
+- **A `Box3` bounding box is the wrong anchor for soft furnishing.** The bottom
+  of a bedspread is its drape hem and the top is a fold crest, so both ends lie.
+  Anchor by median vertex height over the footprint it rests on. A pillow in the
+  same import needs its own anchor, off its own lowest vertex
 
 ### Judging it
 
@@ -183,9 +251,9 @@ The route plays: footpath, marble steps, front door, hall, up the flight, turn a
 
 Cold open street staging (Commodore, uniforms, tape lift) is in. Authored textures are on render, carpet, marble, neon letterforms.
 
-Still scaffolding:
+Still scaffolding, and 1A is no longer part of it:
 
-- **Kit geometry** for the building, furniture, car, uniforms, iron lace, yard tufts — until modelled glTF lands
+- **Kit geometry** for the shell, reception, the parlour, the stairs, the car, the uniforms, the iron lace and the yard. Unit A takes the interiors, Unit B takes the outside
 
 Plan, so the numbers in `lodge.ts` mean something: **-Z is the street, +X is the side the verandah wraps onto.** The building runs x -6.5 to 6.4 and z 0 to 10.5. Ground floor at y 0, first floor at y 3.45. The flight climbs the -X half of the hall toward the back, so the passage runs *beside* it, not under it, and the stairwell above it is open on that side.
 
@@ -212,7 +280,7 @@ Two more things are set out against the sun and not by eye:
 
 Move any of it and check the room, not the arithmetic.
 
-**The geometry is settled. The pixel values are not.** 98 against 172 was measured under the old rig, with a sun at 8.0 and a pile of ambient behind it. The post spacing and the balustrade height still hold, because they are about where a shadow lands and not how bright it is, but do not treat those two numbers as a target to hit again. Re-measure when 1A is rebuilt at reset step 4.
+**The geometry is settled. The pixel values are not.** 98 against 172 was measured under the old rig, with a sun at 8.0 and a pile of ambient behind it. The post spacing and the balustrade height still hold, because they are about where a shadow lands and not how bright it is, but do not treat those two numbers as a target to hit again. **1A has been rebuilt and baked and the verandah has not**, so the two are now lit by different eras of the pipeline. Re-measure when Unit B replaces the verandah, against the baked room rather than against those numbers.
 
 **Room 1A has a verandah door.** BRIEF.md says a verandah runs off 1A, and something has to run off it: the sash opens a hand's width, `pushSash` gives another inch and stops, and the toe print on the sill is what the `sill` evidence is. A detective climbing out of the murder scene's window would also be wrong. It changes nothing about how Sterling got in. He came through the sash; this is the door he did not use.
 
@@ -237,7 +305,8 @@ Two `AmbientLight`s and a `HemisphereLight` used to stand in for bounce. **Flat 
 - **The HDRI is Poly Haven `balcony`, 2k, CC0.** `public/env/`. Partly cloudy morning-afternoon on a suburban deck: trees and a tiled roof, which is both plausible fill and a plausible thing to see out a first floor sash
 - **Raw equirect on `scene.background`, PMREM output on `scene.environment`.** The prefiltered chain is small and smears if you use it as the backdrop. Two textures on purpose
 - **Rotated 0.62π on both.** That puts the bright quarter of the sky on +X, which is the side 1A's sash faces and where the sun comes from, so the fill agrees with the beam instead of fighting it. It is also what puts trees rather than a blue shutter in the window
-- **`environmentIntensity` is 0.45, not 1.** Three applies an environment map **with no occlusion at all**, so a wall two rooms deep takes the full open sky the same as the verandah does. At 1 the interior floods and goes flat, which is the ambient failure again, better coloured. **This goes back to 1 when the baked indirect map lands**, because at that point the bake is what says how much sky each surface can see
+- **`environmentIntensity` is 0.3, not 1.** Three applies an environment map **with no occlusion at all**, so a wall two rooms deep takes the full open sky the same as the verandah does. At 1 the interior floods and goes flat, which is the ambient failure again, better coloured. It was 0.45 and came down to 0.3 when 1A's bake landed and started supplying that room's fill honestly. **It goes to 1 when Unit A lands** and every interior surface has a lightmap saying how much sky it can see. Not before: the environment is scene-wide and four of the five interiors are still unbaked
+- **`LIGHTMAP_INTENSITY` is 14, in `room1a.ts`.** The bake as measured is 1. This is the dial between a physically correct map and a room that reads right, and it is high because `environmentIntensity` is low. **The two move together.** When the environment goes to 1 this comes down
 - **AgX, not ACES.** Both stop the sun clipping. ACES pulls saturated highlights toward orange, and on nicotine walls under a warm sun that made every lit surface the same amber. AgX desaturates as it rolls off, so a blown sash stays white and the bedspread stays rose where the beam is on it
 - **Exposure lives in `renderer.ts`, not `core/config.ts`, and is set last.** 1.0, after the environment intensity and the sun. It is not a designer tunable, it only means anything alongside those two
 - **The sun is 4.2 and its `shadow.intensity` fudge is gone.** It was 8.0 to out-shout the ambient pile and 0.72 to fake bounce back into its own shadows. The environment does both honestly now
@@ -248,23 +317,59 @@ Still true from before, and still the reason the rig is scene-scoped:
 
 **A `DirectionalLight` lights everything in the scene wherever it sits.** Only its shadow camera is local, which is why the rig came out of `room1a.ts` the moment there was a building around it. Direction is the vector that put the beam across Crystal's bed, carried into world space. Shadow texel size is `2 * extent / mapSize`, 16 and 4096. **Change one, check the other.**
 
-**A window has to have something bright behind it** or the eye reads the black rectangle as the exposure reference and calls the room dim. That is `scene.background` now for every opening in the building. `ROOM_1A.daylight`, the blown card outside 1A's sash, is a leftover from before there was a sky and it goes when the room is rebuilt at step 4.
+**A window has to have something bright behind it** or the eye reads the black rectangle as the exposure reference and calls the room dim. That is `scene.background` now for every opening in the building. The blown card outside 1A's sash went with the rebuild; `ROOM_1A.daylight` survives in the palette as a material colour and is no longer a card in front of a window.
 
-**The sash has glass.** Both panes were solid timber boxes filling the opening, so the window was opaque and cast a shadow across the whole room. They are unlit, barely opaque, and cast nothing. Keep that when the sash is replaced with a sourced frame.
+**The sash has glass, and it is unlit.** Both panes started as solid timber boxes filling the opening, so the window was opaque and cast a shadow across the whole room. Barely opaque, casts nothing. **The sourced sash keeps that**, and so must reception's and the parlour's in Unit A.
 
 ### What is kit vs modelled
 
-| Modelled glTF | Still kit primitives |
-|---|---|
-| Miller's hand, Crystal, Rosie, Moretti | Lodge shell, furniture, Commodore, uniforms, iron lace, yard, most props |
+| Modelled glTF | Sourced and baked | Still kit primitives |
+|---|---|---|
+| Miller's hand, Crystal, Rosie, Moretti | Room 1A, whole | Lodge shell, reception, parlour, stairs, Commodore, uniforms, iron lace, yard |
 
-Kit is deliberate scaffolding. `world/kit.ts` builds boxes from **extents**. Every one of those boxes is on death row: steps 3 and 4 of the reset source the furniture and rebuild room 1A in Blender, and `room1a.ts` stops being a geometry builder at step 6.
+Kit is deliberate scaffolding. `world/kit.ts` builds boxes from **extents**. Every one of those boxes is on death row and 1A's are already dead. The rest go through Unit A and Unit B.
 
 **Replacing kit means sourcing a mesh, not modelling one and not generating a texture for one.** Image generation does not produce game-ready meshes, and hand-modelling a wardrobe is a session spent badly when a CC-BY one exists.
 
-### Room 1A layout (revised)
+### Room 1A ships as one file
 
-Dresser under the street window. Side table beside it on the same wall (not by the bed head — that sat in the hall-door swing). Frame, magazines, map, note, and lighter are spaced along the dresser top; each is a group with a raised invisible look pad so the ray hits the prop, not the timber. Twelve room 1A examine clips still apply.
+`public/models/room1a.glb`, 7.2MB, plus three lightmap atlases at 3.1MB. 10.27
+against a 25MB budget. `src/world/room1a.ts` loads it and registers props; it
+builds no geometry except one invisible look pad. Same `buildRoom1A(placement)`
+signature it always had, same `Room1A` shape, so `main.ts` did not move.
+
+| Role | Path |
+|---|---|
+| Build the Blender scene | `tools/blender/build_room1a.py` |
+| Bake it | `tools/blender/bake_room1a.py` |
+| Export it | `tools/blender/export_room1a.py` |
+| Blender source | `assets/blender/room1a.blend` — **gitignored, 190MB.** Rebuilt by the build script from `assets/sourced/`, which is rebuilt from the uids in `docs/CREDITS.md` |
+| Raw bake | `assets/bake/*.exr` — gitignored, 50MB each |
+| Shipped | `public/models/room1a.glb`, `public/textures/bake/*.exr` |
+
+Four things about the loader are not obvious and all four cost a session:
+
+- **`Texture.channel = 1`.** It defaults to 0, so the lightmap sampled through
+  the wallpaper's UVs and printed the atlas cells on the walls as rectangles.
+  `lightMap` and `aoMap` read the second UV set, which is `uv1` in current three
+  and was `uv2` before r151
+- **`flipY = true`.** Three turns `flipY` off for every texture arriving *inside*
+  a `.glb`, which makes false look obviously right. These do not arrive inside
+  it: they are EXRs Blender wrote bottom-left. False gave a black ceiling and put
+  the floor's bounce on the wall behind the bed
+- **Materials are cloned per `${source.uuid}:${group}`**, because one material
+  (`timber`) spans two atlases and a shared `MeshStandardMaterial` can only carry
+  one `lightMap`
+- **The bake group lists are duplicated** between `room1a.ts` and
+  `bake_room1a.py`. A glTF carries no idea of which atlas a mesh belongs to.
+  **Change one, change the other**, or a mesh comes back unlit and nothing says so
+
+**Layout:** dresser under the street window, side table beside it on the same
+wall (not by the bed head — that sat in the hall-door swing). Frame, magazines,
+map, note and lighter spaced along the dresser top, each with a raised invisible
+look pad so the ray hits the prop and not the timber. Twelve examine clips still
+apply. `SPREAD_TOP` is where Crystal lies and it is measured off the loaded
+room, not off Blender and not off the old kit bed.
 
 ### Added outside the build order
 
@@ -275,9 +380,10 @@ Dresser under the street window. Side table beside it on the same wall (not by t
 
 | Thing | Goes at |
 |---|---|
-| Kit room 1A and its furniture | Reset steps 3, 4 and 6. Sourced glTF, assembled in Blender, loaded as one `.glb` |
-| Kit lodge / Commodore / uniforms / lace / yard tufts | After 1A proves the pipeline. Same route: sourced, assembled, baked. Not a single cutover, and not more PNGs |
-| `ROOM_1A.daylight`, the blown card outside the sash | Reset step 4. There is a real sky behind the window now |
+| ~~Kit room 1A and its furniture~~ | **Gone.** Reset steps 3, 4 and 6 |
+| ~~`ROOM_1A.daylight`, the blown card outside the sash~~ | **Gone.** There is a real sky behind the window |
+| Kit reception, parlour, stairs, first-floor hall | Unit A. One Blender scene, one bake, one `.glb` |
+| Kit facade / Commodore / uniforms / lace / yard tufts | Unit B, and **not baked.** Realtime only out there |
 | `world/kit.ts` itself | When the last box is replaced. Not before, it is holding up four rooms |
 | The pointer lock prompt and its CSS | When the real HUD lands |
 | `window.__lodge` dev handle | Stays. It is `import.meta.env.DEV` only, and the capture tooling wants it |
@@ -426,11 +532,13 @@ The dress uses `crystal-dress` from `public/textures/`. Look pads on head, arm, 
 
 ## Textures
 
-**Full PBR only, from here.** A single albedo tile with a roughness number guessed beside it is what `surfaces.ts` does today and it is revoked. A material is albedo, normal (OpenGL, not DirectX), roughness and AO, sourced as a set at 2k, and all four go on the `MeshStandardMaterial`. Step 2 of the reset does exactly that to the floorboards, alone, to prove it before anything else is rewired.
+**Full PBR only, from here.** A single albedo tile with a roughness number guessed beside it is what `surfaces.ts` still does on the rest of the lodge and it is revoked. A material is albedo, normal (OpenGL, not DirectX), roughness and AO, sourced as a set at 2k, and all four go on the `MeshStandardMaterial`. `src/materials/pbr.ts` is the loader and Poly Haven `wood_planks` on 1A's floor is the proof.
 
-**`lightMap` and `aoMap` read the second UV set, which is `uv1` in current three, not `uv2`.** That rename has broken this in every project that predates it. Check the attribute name on the loaded geometry before assuming the map is not working.
+**`lightMap` and `aoMap` read the second UV set, which is `uv1` in current three, not `uv2`.** That rename has broken this in every project that predates it. Check the attribute name on the loaded geometry before assuming the map is not working — and check `Texture.channel`, which is the other half of it and defaults to 0.
 
-Everything below this line describes the authored tiles that are still on the lodge. They stay until something sourced replaces them.
+**What ships is capped.** 1024 for colour, 512 for normal and roughness, JPEG at 82 inside the `.glb`. The sourced models arrive with 4k sheets on furniture nobody gets within a metre of, and unexported the room was 42MB with the geometry accounting for almost none of it. Textures are the budget.
+
+Everything below this line describes the authored tiles that are still on the lodge outside room 1A. They stay until something sourced replaces them.
 
 `public/textures/`, loaded through `src/materials/textures.ts`. Processed out of `images/assets/` with `sips`, resized to power-of-two and saved as JPEG, which took 6.5 MB of PNG down to 1 MB.
 
@@ -496,7 +604,10 @@ Settled. Do not re-litigate these without a reason.
 - **A ceiling has to cast shadow.** A lid built without `castShadow` lets the 3pm sun straight through it and lights the wall below from above, in a hard slab that reads as a render fault. Found on a hall ceiling, will recur on every room built from here
 - **Fill is an HDRI, never an `AmbientLight`.** Reset step 1. Flat fill has no direction, so it lights a wall facing the window and a wall facing away from it identically. See *The light rig is an HDRI and one sun*
 - **Tone mapping is AgX and exposure lives in `render/renderer.ts`.** Not ACES, and not in `core/config.ts`. Exposure is set after the environment intensity and the sun, never before
-- **`environmentIntensity` below 1 is a stand-in for occlusion, not a taste call.** Three applies an environment map with no occlusion, so interiors flood at 1. It goes to 1 when the bake lands
+- **`environmentIntensity` below 1 is a stand-in for occlusion, not a taste call.** Three applies an environment map with no occlusion, so interiors flood at 1. It is 0.3 and it goes to 1 when **every** interior is baked, which is the end of Unit A, not the end of 1A
+- **Indirect light is a lightmap on `uv1` with `Texture.channel = 1` and `flipY = true`.** Both are wrong by default for a map that arrives beside a `.glb` rather than inside one. See *Room 1A ships as one file*
+- **Lightmaps are half float EXR, not KTX2.** No encoder on this machine and rule 9 says not to add one. `EXRLoader` is already in the `three` package
+- **A baked room is a `.glb` and a loader, never a geometry builder.** `room1a.ts` is the shape every other space copies: same signature, same registry, no primitives except look pads
 - `LOOP.maxDelta` is 0.05 and is a collision guard, not just a tab-out guard. Collision is a pushout, not a swept test. Raise it, or raise `runSpeed`, and check the arithmetic in the comment or Miller goes through a wall on a stalled frame
 
 Assumptions, flagged, cheap to change:
@@ -505,13 +616,13 @@ Assumptions, flagged, cheap to change:
 - **`sun-shadow`.** ASSETS.md lists `#6E6croll`, which is not a colour. The note in that table says `#6E6255`. That is what the palette uses
 - **The date is settled.** BRIEF.md still carries it as the one open decision, but ASSETS.md and both title cards say 26 February 1994. That section of BRIEF.md can go
 - **Look sensitivity** is 0.0022 rad/px, picked blind, shared between pointer lock and drag. Untuned
-- **`ROOM_1A.daylight`.** The blown card outside the sash. It predates there being a real sky and it goes at reset step 4
 - **`EXTERIOR.sky` is no longer the backdrop.** The HDRI is. The token is still in the palette and still used as a material colour in a couple of places; it stops being the thing behind the building
 - **`EXTERIOR.bitumen`, `signBoard`, `grassDry`, `weed`, `paling`, `corrugate`, `rust`.** None of them in ASSETS.md, all guessed. `grassDry` is khaki because it is the end of February. Every one of them is a stand-in for a sourced PBR set
 - **The stair is 18 risers at 0.19.** Steepish for a grand staircase, and it is what fits a 3.45 floor-to-floor in a hall this deep. `RISE` is fenced by `stepUp` and `stepDown` at both ends
 - **Overlays own their own hiding.** The look line hides itself on `casefile:open` and `dialogue:start`. The pointer lock prompt asks `dialogue.isActive`, not `dialoguePanel.isOpen`, because the runner sets its state *before* it emits and the panel opens on the callback *after*, so a panel check runs one step too early
 - **Examine is press F, run to completion.** Hold-to-cancel and cancel-on-`look:exit` made the verb dead under pointer lock. Esc cancels. BRIEF.md still says hold; the implementation that ships is press-to-start
-- **Visual upgrades need sourced glTF and a bake.** Not image-gen tiles, not more light tuning. Hand, Crystal, Rosie, Moretti are already meshes; the lodge and furniture are not
+- **Visual upgrades need sourced glTF and a bake.** Not image-gen tiles, not more light tuning. Hand, Crystal, Rosie, Moretti and the whole of room 1A are through that route; the rest of the lodge is not
+- **`LIGHTMAP_INTENSITY` is 14 against a bake measured at 1.** It is high because `environmentIntensity` is low, and the two come back together at the end of Unit A
 
 ---
 
@@ -568,7 +679,8 @@ Deploy      Cloudflare Pages, static, own project on a subdomain of billyhaddad.
 Lighting    HDRI through PMREM, one directional sun, AgX. Indirect is baked
             in Cycles, offline, and shipped as a map. No realtime GI
 Assets      Sourced. Poly Haven and Sketchfab, CC0 / CC-BY, credited
-            glTF 2.0 with Meshopt, KTX2 textures
+            glTF 2.0. Textures JPEG inside the .glb, lightmaps half
+            float EXR beside it. KTX2 the day there is an encoder
 Audio       Web Audio API
 Physics     None. No library, no engine
 ```
@@ -624,15 +736,22 @@ images/
   mood/         palette and location reference. 1a-target.png is the look target
 assets/
   blender/      original .blend sources. Keep these; export into public/
+                room1a.blend is the exception: 190MB, gitignored, rebuilt
+  sourced/      Sketchfab downloads. Gitignored. A cache, not a source of
+                truth: docs/CREDITS.md holds the uid that re-fetches each one
+  bake/         raw 32 bit Cycles output, 50MB a sheet. Gitignored
 tools/
-  blender/      scripts that build or export those .blend files
+  blender/      scripts that build, bake or export those .blend files
   shot.mjs      headless capture. Verify every step with it
 public/
   env/          HDRIs (balcony_2k.hdr)
   models/       shipped glTF
   textures/
+    bake/       shipped lightmaps. Half float EXR, DWAA
   audio/
 ```
+
+**Three directories under `assets/` are gitignored and all three are reproducible.** `sourced/` from the uids in CREDITS, `room1a.blend` from `build_room1a.py`, `bake/` from `bake_room1a.py`. What is committed is what ships and the scripts that make it.
 
 **Nothing sourced gets committed without a row in `docs/CREDITS.md`.** Author, source URL, licence. Add it in the same commit as the asset, not afterward.
 
@@ -750,13 +869,74 @@ The navmesh landed with step 9, as a set of walkable boxes rather than triangles
 
 **The engine build order is finished.** Steps 1 to 15 all landed. Nothing on that list is open.
 
-### What comes next is the render reset, not step 16
+### What comes next is not step 16
 
-Seven steps, at the top of this file. Step 1 is done. **Next session is step 2: the floorboards, alone, with a full PBR set on them.**
+The render reset is done and it covered one room. Scene 2 does not start until the
+rest of scene 1 is through the same pipeline. **Next is Unit A**, below.
 
-Scene 2 does not start until room 1A looks like `images/mood/1a-target.png`. That is deliberate: 1A is the room the player spends the first half hour in, and whatever it proves about sourcing, baking and loading is what every room after it copies.
+---
 
-One step per session. Verify with `tools/shot.mjs`. Commit after each, with a real message. Do not stack three steps in one prompt.
+## Extending the pipeline to the rest of scene 1
+
+**Room 1A is the proof. Do not repeat its process per room.** Two units follow,
+and Unit A comes entirely before Unit B.
+
+### UNIT A — the lodge interior. One Blender scene, one bake.
+
+Reception, parlour, central staircase, first-floor hallway, room 1A.
+
+These are contiguous and light travels between them. **Baked separately they
+will seam at every doorway**, which is the whole reason this is one scene and
+not five repeats of the reset.
+
+Order of work:
+
+1. **Shared material library first.** One `materials.blend` holding nicotine
+   wall plaster, brown carpet runner, dark stained timber, tessellated entry
+   tile, ornate cornice, picture rail, worn floorboards. Full PBR from Poly
+   Haven. **Every space links this file. It does not copy it**
+2. **Shared kit pieces.** Door unit, window unit, skirting profile, architrave
+   profile, stair tread, baluster. Model once, instance everywhere
+3. **Assemble all five spaces in one scene.** Correct relative positions, real
+   wall thickness, doorways open. Room 1A already exists — bring it in
+4. **Source furniture per space**, same rules as before. Reception: desk,
+   pigeonhole key rack, bakelite phone, ledger, ashtray. Parlour: two armchairs,
+   sofa, low table, standard lamp, TV in a timber cabinet. **Stairs and hallway
+   get nothing. They are transit**
+5. **Lightmap density by dwell time, not floor area.** 1A 2048, parlour 2048,
+   reception 1024, stairs 1024, hallway 512. The hallway is six seconds of
+   walking. Do not give it hero resolution
+6. **Bake Diffuse Indirect, 64 while iterating, 256 final.** Persistent Data on.
+   **Bake per object group, not the whole scene at once**, or a failure at 90%
+   costs you the lot
+7. **Export as one `.glb`.** Under 60MB for the whole interior. It loads once,
+   behind the title card
+
+### UNIT B — exteriors. No baking.
+
+Street and facade, verandah, back yard.
+
+- **Realtime only.** HDRI environment plus the one directional sun
+- **No lightmaps, no indirect bake.** If contact shadows read badly, bake ambient
+  occlusion to vertex colours or a low-res AO map. That is the only bake
+  permitted out here
+- Separate `.glb` from the interior
+
+The facade needs the neon sign as an emissive material, the police tape, the
+Commodore and the marble steps. Everything else out there is silhouette and can
+be low poly.
+
+### Rules for both units
+
+- **Unit A entirely before Unit B**
+- **Do not re-source a material that exists in `materials.blend`. Link it**
+- **Keep every existing object id.** `src/interact` and `src/case` do not change.
+  That was step 7's test and it is still the test
+- **One space assembled per session.** Commit after each
+- If the interior `.glb` goes over 60MB, **reduce texture resolution before you
+  reduce geometry.** Textures are the cost. The reset measured that: 42MB of
+  room, almost none of it triangles
+- Report: what changed, the shot path, whether it builds. Nothing else
 
 ---
 
@@ -766,7 +946,7 @@ One step per session. Verify with `tools/shot.mjs`. Commit after each, with a re
 
 Do not add TAA, GTAA, cascaded shadow maps, motion blur, SSAO, or any realtime GI. **One directional light with a shadow map, an HDRI through PMREM, and a baked indirect map** is enough and it is the correct amount. Everything expensive happens in Cycles, once, on the author's machine.
 
-Budget for room 1A: **under 25MB** of glTF and KTX2 together. That is the number step 6 has to hit.
+Budget for room 1A was **under 25MB** of glTF and lightmap together. It ships at 10.27. The whole lodge interior out of Unit A gets **60MB**, loaded once behind the title card.
 
 ---
 

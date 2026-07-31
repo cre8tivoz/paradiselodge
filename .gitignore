@@ -40,5 +40,6 @@ assets/sourced/
 assets/blender/room1a.blend
 
 # Baked lightmaps. 50MB of float EXR each and rebuilt by
-# tools/blender/bake_room1a.py. What ships is the KTX2 out of step 6.
+# tools/blender/bake_room1a.py. What ships is the half float DWAA EXR under
+# public/textures/bake/, written by tools/blender/export_room1a.py.
 assets/bake/
