@@ -85,6 +85,10 @@ the shipping decision.
 | `bedspread` | [Single Bed Blanket](https://sketchfab.com/models/14084f216e834241a7f152cdfa4e5d59) | whewnewacc | CC-BY 4.0 | `14084f216e834241a7f152cdfa4e5d59` |
 | `mattress` | [Mattress](https://sketchfab.com/models/6a526b42e6a34a4ba12136a40d9a686b) | Miguel Ángel | CC-BY 4.0 | `6a526b42e6a34a4ba12136a40d9a686b` |
 | `paper` | [Low-poly Papers Set](https://sketchfab.com/models/2edf57ce2e6c4475bd4897b9c91b0a77) | Hox_Lira | CC-BY 4.0 | `2edf57ce2e6c4475bd4897b9c91b0a77` |
+| `reception-desk` | [Counter Desk](https://sketchfab.com/models/f37a60e917554d8c98931bf6b99cefaf) | Skowster | CC-BY 4.0 | `f37a60e917554d8c98931bf6b99cefaf` |
+| `reception-phone` | [Old bakelite style phone](https://sketchfab.com/models/e5674d675edb42b6986d58fdda153c17) | Keeya | CC-BY 4.0 | `e5674d675edb42b6986d58fdda153c17` |
+| `reception-ledger` | [1920's Hotel Leather Ledger](https://sketchfab.com/models/fdeed37ffb9e4cdfa40e44a5f2ca5c53) | Nicholas Record | CC-BY 4.0 | `fdeed37ffb9e4cdfa40e44a5f2ca5c53` |
+| `reception-ashtray` | [Glass Ashtray](https://sketchfab.com/models/8c9deaa3f4b84e01b186eec4c1269b60) | RED2000 | CC-BY 4.0 | `8c9deaa3f4b84e01b186eec4c1269b60` |
 
 ### What each one is, and what it is for
 
@@ -105,6 +109,10 @@ the shipping decision.
 | `bedspread` | 785 | source units | A plain single bedspread with a flat that covers a mattress, which is the one thing `bedding` could not do. Retextured to dusty rose. 0.95 across against a mattress of 0.75, because wider than that and the fall hangs through the iron side rails |
 | `mattress` | 34k | centimetres | Quilted, rounded edges. Scaled to the frame's interior on both axes and retextured to ticking. It replaced a grey box |
 | `paper` | 2 | source units | One sheet, separated out of a set of loose papers. Used twice, for the `map` and the `note`, each carrying its own authored image through the sheet's own UVs |
+| `reception-desk` | 4.0k | source units | Panelled counter scaled to the locked runtime footprint. Its white vertex-colour finish is replaced by the shared dark-timber PBR and a generated metre-scale albedo UV |
+| `reception-phone` | 70.6k | source units | The phone and cord only. The source's presentation table and backdrop are discarded; the red plastic is retinted black bakelite |
+| `reception-ledger` | 86 | source units | Open hotel ledger with ruled guest pages, scaled to the runtime look target on the counter |
+| `reception-ashtray` | 1.1k | source units | Low-poly clear glass ashtray on the reception counter |
 
 **Nothing is at a consistent scale and that is normal for Sketchfab.** Three of
 them are in metres, the rest are in inches, centimetres or millimetres. Every

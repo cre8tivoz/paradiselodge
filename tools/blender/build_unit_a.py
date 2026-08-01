@@ -5,17 +5,18 @@ Run inside Blender through BlenderMCP:
 
     exec(open('tools/blender/build_unit_a.py').read())
 
-This pass builds the reception, parlour, central staircase and first-floor hall
-shells. A later pass brings the existing room 1A into this same scene before
-one shared indirect-light bake. It writes `assets/blender/unit-a.blend` and one
-check render per assembled space under `shots/unit-a-*.jpg`.
+This pass builds all five contiguous spaces and furnishes the reception. Room
+1A is imported from its completed shipped glTF; the parlour remains ready for
+its own furniture pass before one shared indirect-light bake. It writes
+`assets/blender/unit-a.blend` and one check render per assembled space under
+`shots/unit-a-*.jpg`.
 
 Axes follow the room 1A pipeline:
 
     three (x, y, z) -> blender (x, -z, y)
 
-The numbers below are the reception extents from `src/world/lodge.ts`; this is
-not a fresh layout. Furniture is deliberately absent until Unit A step 4.
+The numbers below are the extents from `src/world/lodge.ts`; this is not a fresh
+layout. Gameplay-facing furniture holder names remain the runtime object IDs.
 """
 
 from __future__ import annotations
@@ -29,6 +30,12 @@ import mathutils
 ROOT = "/Users/habibi/Documents/CLAUDE/paradisegame"
 MATERIALS = f"{ROOT}/assets/blender/materials.blend"
 ROOM1A_GLB = f"{ROOT}/public/models/room1a.glb"
+RECEPTION_SOURCES = {
+    "desk": f"{ROOT}/assets/sourced/reception-desk.glb",
+    "phone": f"{ROOT}/assets/sourced/reception-phone.glb",
+    "ledger": f"{ROOT}/assets/sourced/reception-ledger.glb",
+    "ashtray": f"{ROOT}/assets/sourced/reception-ashtray.glb",
+}
 OUT_BLEND = f"{ROOT}/assets/blender/unit-a.blend"
 OUT_RECEPTION_SHOT = f"{ROOT}/shots/unit-a-reception.jpg"
 OUT_PARLOUR_SHOT = f"{ROOT}/shots/unit-a-parlour.jpg"
@@ -151,6 +158,15 @@ def brass_material():
     bsdf.inputs["Metallic"].default_value = 0.58
     bsdf.inputs["Roughness"].default_value = 0.50
     material["tile_metres"] = 1.0
+    return material
+
+
+def black_bakelite_material():
+    material = bpy.data.materials.new("unit_a_black_bakelite")
+    material.use_nodes = True
+    bsdf = next(node for node in material.node_tree.nodes if node.type == "BSDF_PRINCIPLED")
+    bsdf.inputs["Base Color"].default_value = (0.012, 0.010, 0.008, 1.0)
+    bsdf.inputs["Roughness"].default_value = 0.28
     return material
 
 
@@ -314,6 +330,168 @@ def build_reception(materials, glass) -> None:
     ):
         ob = cube(f"reception_cornice_{tag}", lo, hi)
         assign(ob, cornice)
+
+
+def _world_bounds(objects):
+    lo = mathutils.Vector((1e9, 1e9, 1e9))
+    hi = mathutils.Vector((-1e9, -1e9, -1e9))
+    for obj in objects:
+        if obj.type != "MESH":
+            continue
+        for corner in obj.bound_box:
+            point = obj.matrix_world @ mathutils.Vector(corner)
+            for axis in range(3):
+                lo[axis] = min(lo[axis], point[axis])
+                hi[axis] = max(hi[axis], point[axis])
+    return lo, hi
+
+
+def _import_reception_asset(
+    slot,
+    target_size,
+    centre,
+    base_z,
+    source_uid,
+    material_override=None,
+    keep_material_prefixes=None,
+):
+    """Import, measure and place one sourced prop without trusting source units."""
+    path = RECEPTION_SOURCES[slot]
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"Reception source is missing: {path}")
+
+    before = set(bpy.data.objects)
+    bpy.ops.import_scene.gltf(filepath=path)
+    imported = [obj for obj in bpy.data.objects if obj not in before]
+
+    if keep_material_prefixes:
+        for obj in list(imported):
+            if obj.type != "MESH":
+                continue
+            names = [mat.name for mat in obj.data.materials if mat]
+            if not any(name.startswith(keep_material_prefixes) for name in names):
+                bpy.data.objects.remove(obj, do_unlink=True)
+        imported = [obj for obj in bpy.data.objects if obj not in before]
+
+    meshes = [obj for obj in imported if obj.type == "MESH"]
+    if not meshes:
+        raise RuntimeError(f"Reception source {slot} contains no retained meshes")
+
+    holder = bpy.data.objects.new(slot, None)
+    bpy.context.scene.collection.objects.link(holder)
+    holder["unit_a_space"] = "reception"
+    holder["source_uid"] = source_uid
+
+    imported_set = set(imported)
+    for obj in imported:
+        if obj.parent not in imported_set:
+            obj.parent = holder
+
+    bpy.context.view_layer.update()
+    lo, hi = _world_bounds(meshes)
+    size = hi - lo
+    holder.scale = tuple(
+        target_size[axis] / size[axis] if size[axis] > 1e-6 else 1.0
+        for axis in range(3)
+    )
+    bpy.context.view_layer.update()
+
+    lo, hi = _world_bounds(meshes)
+    mid = (lo + hi) / 2
+    holder.location = (
+        holder.location.x + centre[0] - mid.x,
+        holder.location.y + centre[1] - mid.y,
+        holder.location.z + base_z - lo.z,
+    )
+    bpy.context.view_layer.update()
+
+    for index, obj in enumerate(meshes):
+        obj.name = f"reception_{slot}_mesh_{index:02d}"
+        obj["unit_a_space"] = "reception"
+        if material_override is not None:
+            obj.data.materials.clear()
+            obj.data.materials.append(material_override)
+            # The panelled counter ships with vertex colour only. Its linked
+            # timber PBR needs a real albedo UV layer before the later bake.
+            _box_uv(obj, float(material_override.get("tile_metres", 1.0)))
+    return holder
+
+
+def build_reception_furniture(materials, bakelite, brass) -> None:
+    """Furnish reception while keeping the hall opening fully walkable."""
+    timber = materials["timber_dark"]
+
+    _import_reception_asset(
+        "desk", (2.36, 0.80, 1.14), (4.50, -2.32), 0.0,
+        "f37a60e917554d8c98931bf6b99cefaf", material_override=timber,
+    )
+    _import_reception_asset(
+        "ledger", (0.70, 0.42, 0.06), (4.34, -2.28), 1.14,
+        "fdeed37ffb9e4cdfa40e44a5f2ca5c53",
+    )
+    _import_reception_asset(
+        "phone", (0.46, 0.34, 0.25), (5.24, -2.28), 1.14,
+        "e5674d675edb42b6986d58fdda153c17",
+        material_override=bakelite,
+        keep_material_prefixes=("Phone", "Cord"),
+    )
+    _import_reception_asset(
+        "ashtray", (0.32, 0.32, 0.07), (3.65, -2.28), 1.14,
+        "8c9deaa3f4b84e01b186eec4c1269b60",
+    )
+
+    # A fitted rack has to meet this rear wall and preserve the runtime's 8x4
+    # pigeonhole layout. Sketchfab had no credible downloadable period match.
+    rack = bpy.data.objects.new("keyRack", None)
+    bpy.context.scene.collection.objects.link(rack)
+    rack["unit_a_space"] = "reception"
+    x0, x1 = 2.60, 5.20
+    y0, y1 = -5.02, -4.84
+    z0, z1 = 1.35, 2.50
+    frame = 0.075
+    pieces = []
+    for name, lo, hi in (
+        ("back", (x0, y0, z0), (x1, y0 + 0.035, z1)),
+        ("side_l", (x0, y0, z0), (x0 + frame, y1, z1)),
+        ("side_r", (x1 - frame, y0, z0), (x1, y1, z1)),
+        ("top", (x0, y0, z1 - frame), (x1, y1, z1)),
+        ("bottom", (x0, y0, z0), (x1, y1, z0 + frame)),
+    ):
+        piece = cube(f"reception_keyRack_{name}", lo, hi)
+        assign(piece, timber)
+        pieces.append(piece)
+    for col in range(1, 8):
+        x = x0 + (x1 - x0) * col / 8
+        piece = cube(
+            f"reception_keyRack_divider_v{col}",
+            (x - 0.018, y0 + 0.035, z0 + frame),
+            (x + 0.018, y1, z1 - frame),
+        )
+        assign(piece, timber)
+        pieces.append(piece)
+    for row in range(1, 4):
+        z = z0 + (z1 - z0) * row / 4
+        piece = cube(
+            f"reception_keyRack_divider_h{row}",
+            (x0 + frame, y0 + 0.035, z - 0.018),
+            (x1 - frame, y1, z + 0.018),
+        )
+        assign(piece, timber)
+        pieces.append(piece)
+    for row in range(4):
+        for col in range(8):
+            x = x0 + (x1 - x0) * (col + 0.5) / 8
+            z = z0 + (z1 - z0) * (row + 0.30) / 4
+            hook = cube(
+                f"reception_keyRack_hook_{row}_{col}",
+                (x - 0.012, y1, z - 0.012),
+                (x + 0.012, y1 + 0.055, z + 0.012),
+            )
+            assign(hook, brass)
+            pieces.append(hook)
+    for piece in pieces:
+        piece.parent = rack
+        piece["unit_a_space"] = "reception"
 
 
 def build_parlour(materials, glass) -> None:
@@ -881,6 +1059,11 @@ def validate() -> None:
         "reception_window_pane_upper",
         "reception_entry_room_jamb_l0",
         "reception_entry_room_jamb_r0",
+        "desk",
+        "keyRack",
+        "ledger",
+        "phone",
+        "ashtray",
         "parlour_floor",
         "parlour_ceiling",
         "parlour_wall_side",
@@ -939,6 +1122,16 @@ def validate() -> None:
     missing_uv = [obj.name for obj in meshes if len(obj.data.uv_layers) == 0]
     if missing_uv:
         raise RuntimeError(f"Unit A has meshes without albedo UVs: {missing_uv}")
+
+    desk_meshes = [obj for obj in meshes if obj.name.startswith("reception_desk_mesh_")]
+    desk_lo, desk_hi = _world_bounds(desk_meshes)
+    if desk_lo.x - HALL_FACE < 1.0:
+        raise RuntimeError(
+            f"Reception desk blocks circulation: {desk_lo.x - HALL_FACE:.3f}m hall gap"
+        )
+    if abs(desk_lo.z) > 0.002 or abs(desk_hi.z - 1.14) > 0.002:
+        raise RuntimeError(f"Reception desk height drifted: z {desk_lo.z:.3f}..{desk_hi.z:.3f}")
+
     reception_count = sum(obj.name.startswith("reception_") for obj in meshes)
     parlour_count = sum(obj.name.startswith("parlour_") for obj in meshes)
     staircase_count = sum(obj.name.startswith("staircase_") for obj in meshes)
@@ -949,6 +1142,7 @@ def validate() -> None:
         f"staircase {staircase_count} meshes, "
         f"first-floor hall {hall_count} meshes, "
         f"room 1A {room1a_count} meshes, "
+        f"desk hall gap {desk_lo.x - HALL_FACE:.2f}m, "
         "0 unmaterialled, 0 without UVs"
     )
 
@@ -959,14 +1153,16 @@ def build() -> None:
     exec(open(f"{ROOT}/tools/blender/kit_arch.py").read(), globals())
     glass = glass_material()
     brass = brass_material()
+    bakelite = black_bakelite_material()
     build_reception(materials, glass)
+    build_reception_furniture(materials, bakelite, brass)
     build_parlour(materials, glass)
     build_staircase(materials, brass)
     build_first_floor_hall(materials, brass)
     import_room1a()
     build_lighting()
     reception_camera = build_camera(
-        "unit_a_reception", (5.75, -4.55, 1.62), (2.75, -0.15, 1.25)
+        "unit_a_reception", (2.05, -1.18, 1.62), (4.45, -3.55, 1.28)
     )
     parlour_camera = build_camera(
         "unit_a_parlour", (-2.15, -4.55, 1.62), (-4.60, -0.10, 1.30)
@@ -988,7 +1184,7 @@ def build() -> None:
     bpy.context.scene.camera = reception_camera
     bpy.ops.wm.save_as_mainfile(filepath=OUT_BLEND, compress=True)
     for camera, path, preview_exposure in (
-        (reception_camera, OUT_RECEPTION_SHOT, 2.8),
+        (reception_camera, OUT_RECEPTION_SHOT, 3.8),
         (parlour_camera, OUT_PARLOUR_SHOT, 2.8),
         (staircase_camera, OUT_STAIRCASE_SHOT, 3.8),
         (first_floor_hall_camera, OUT_FIRST_FLOOR_HALL_SHOT, 4.2),

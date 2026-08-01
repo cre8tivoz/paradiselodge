@@ -83,3 +83,19 @@ Original prompt: Lets get started with the next phases.
   and 0 meshes without UVs. All five check renders are visually accepted.
 - Next scoped task: Unit A step 4, source and place reception furniture. Room
   1A is already complete and must not be sourced again.
+- Reception furniture is complete. Sketchfab/BlenderMCP supplied the panelled
+  counter, bakelite phone, open hotel ledger and glass ashtray; source IDs and
+  CC-BY attribution are recorded in `docs/CREDITS.md`.
+- No credible downloadable period pigeonhole rack survived the search, so its
+  fitted 8x4 timber joinery was built to the locked rear-wall dimensions. The
+  phone source's presentation table/backdrop were discarded and its retained
+  phone/cord were retinted black bakelite.
+- Reception validation now proves the desk leaves a 1.57m hall-side circulation
+  gap. Combined validation passed: reception 109 meshes, parlour 65,
+  staircase 143, first-floor hall 143 and room 1A 133; 0 unmaterialled meshes
+  and 0 meshes without UVs.
+- All five regression renders were visually inspected. The reception check
+  clearly shows the desk, ledger, phone, ashtray, fitted key rack and open
+  circulation side; its exposure lift is preview-only and the saved scene
+  remains at 2.8.
+- Next scoped task: continue Unit A step 4 with parlour furniture only.
