@@ -133,6 +133,36 @@ def lathe(name: str, profile, segs: int = 16):
 def assign(ob, mat) -> None:
     ob.data.materials.clear()
     ob.data.materials.append(mat)
+    _box_uv(ob, float(mat.get("tile_metres", 1.0)))
+
+
+def _box_uv(ob, tile_metres: float) -> None:
+    """
+    Give generated architecture a real-scale albedo UV map.
+
+    The linked material library reads its image textures from the active UV
+    layer. `from_pydata` creates none, so a material can be linked, assigned and
+    rendered without error while every map samples one point. Project each face
+    on its dominant plane and divide by the material's real tile size. The bake
+    adds a separate non-overlapping lightmap layer later.
+    """
+    mesh = ob.data
+    if len(mesh.uv_layers) > 0:
+        return
+    scale = max(tile_metres, 0.001)
+    uv_layer = mesh.uv_layers.new(name="UVMap")
+    for polygon in mesh.polygons:
+        normal = polygon.normal
+        axis = max(range(3), key=lambda i: abs(normal[i]))
+        for loop_index in polygon.loop_indices:
+            co = mesh.vertices[mesh.loops[loop_index].vertex_index].co
+            if axis == 0:
+                uv = (co.y / scale, co.z / scale)
+            elif axis == 1:
+                uv = (co.x / scale, co.z / scale)
+            else:
+                uv = (co.x / scale, co.y / scale)
+            uv_layer.data[loop_index].uv = uv
 
 
 def _span(axis: str, u0: float, u1: float, d0: float, d1: float, z0: float, z1: float):

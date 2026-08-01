@@ -45,6 +45,11 @@ assets/blender/room1a.blend
 # itself: the ids are in docs/CREDITS.md.
 assets/blender/materials.blend
 
+# Unit A is rebuilt space by space by tools/blender/build_unit_a.py. It links
+# the shared material library and will grow substantially once sourced furniture
+# and room 1A are brought into the single interior scene.
+assets/blender/unit-a.blend
+
 # Baked lightmaps. 50MB of float EXR each and rebuilt by
 # tools/blender/bake_room1a.py. What ships is the half float DWAA EXR under
 # public/textures/bake/, written by tools/blender/export_room1a.py.

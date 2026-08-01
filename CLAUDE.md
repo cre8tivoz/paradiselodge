@@ -76,13 +76,13 @@ The player is Detective Graham Miller. You never see him until the last shot of 
 
 ## Status
 
-Last updated 1 August 2026. **Scene 1's engine is finished, room 1A is through the render reset, and Unit A is two steps in.** The rest of the lodge is not. Update this whenever work resumes.
+Last updated 1 August 2026. **Scene 1's engine is finished, room 1A is through the render reset, and Unit A step 3 is under way.** The reception shell is assembled in the shared interior scene; the rest of the lodge is not. Update this whenever work resumes.
 
 Gameplay is correct and is not to be touched. `src/interact`, `src/case`, `src/dialogue`, `src/npc`, `src/core`, `src/player`, `src/ui`, `src/audio` are closed. Evidence copy, gate order and the event bus are closed. The live job is `src/materials`, `src/render`, and the geometry in `src/world`. See *The render reset* below before anything else.
 
 **The live job is Unit A: the lodge interior, one Blender scene, one bake.** Room 1A proved the pipeline and its process is not repeated per room. See *Extending the pipeline* at the bottom of this file.
 
-Steps 1 and 2 are done and neither produced anything walkable, which is the shape of this unit: the shared surfaces and the shared joinery are made once so four rooms can draw on them. **Next is step 3, and reception is the first space that exists.**
+Steps 1 and 2 are done and neither produced anything walkable, which is the shape of this unit: the shared surfaces and the shared joinery are made once so four rooms can draw on them. **Step 3 is under way: reception is the first assembled space. Next is the parlour shell, in the same scene.**
 
 Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Live at `https://paradiselodge-game.pages.dev` (Cloudflare Pages project `paradiselodge-game`). Custom domain `lodge.billyhaddad.au` not wired yet. Deploys are manual: `npm run build && wrangler pages deploy dist --project-name paradiselodge-game --branch main`.
 
@@ -931,8 +931,14 @@ Order of work:
    - **A riser closes the step, so it sits under the nosing at the front of its
      own tread.** At the back, every step has a gap the depth of the going and
      you can see the wall through the staircase
-3. **Assemble all five spaces in one scene.** Correct relative positions, real
-   wall thickness, doorways open. Room 1A already exists — bring it in
+3. **Assemble all five spaces in one scene. Under way.** Correct relative
+   positions, real wall thickness, doorways open. Reception is assembled by
+   `tools/blender/build_unit_a.py` and verified in
+   `shots/unit-a-reception.jpg`. The builder also caught and fixed a silent
+   shared-kit failure: generated architecture had no albedo UV layer, so linked
+   PBR maps sampled one point. `kit_arch.assign` now creates metre-scaled box
+   UVs; the later bake adds a separate lightmap layer. **Next is the parlour.**
+   Room 1A already exists — bring it in after the contiguous shells are present
 4. **Source furniture per space**, same rules as before. Reception: desk,
    pigeonhole key rack, bakelite phone, ledger, ashtray. Parlour: two armchairs,
    sofa, low table, standard lamp, TV in a timber cabinet. **Stairs and hallway
