@@ -307,22 +307,40 @@ def picture_rail(name, mat, axis, u0, u1, face, outward, height):
     return [ob]
 
 
-def stair_flight(name, tread_mat, riser_mat, axis, u0, u1, start, base, count):
+def stair_flight(
+    name,
+    tread_mat,
+    riser_mat,
+    axis,
+    u0,
+    u1,
+    start,
+    base,
+    count,
+    going=GOING,
+    rise=RISE,
+    direction=1.0,
+):
     """
     A run of treads with risers and a nosing.
 
     `start` is where the bottom tread's face is along the going axis and `base`
-    is the floor it climbs from. Returns the treads separately so the caller
-    can hand them to the navmesh: the player controller walks a staircase as a
-    run of floors a step apart, not as a ramp.
+    is the floor it climbs from. `direction` lets the same definition climb in
+    either world-axis direction; `going` and `rise` allow a caller to preserve
+    the dimensions of an existing runtime stair. Returns the treads separately
+    so the caller can hand them to the navmesh: the player controller walks a
+    staircase as a run of floors a step apart, not as a ramp.
     """
     treads, risers = [], []
     for i in range(count):
-        z = base + (i + 1) * RISE
-        g0 = start + i * GOING
+        z = base + (i + 1) * rise
+        g0 = start + direction * i * going
+        g1 = g0 + direction * going
         # The nosing is the overhang at the front of the tread. It is 25mm and
         # it is the difference between a staircase and a stack of slabs.
-        lo, hi = _span(axis, u0, u1, g0 - NOSING, g0 + GOING, z - TREAD_THICK, z)
+        ga = min(g0 - direction * NOSING, g1)
+        gb = max(g0 - direction * NOSING, g1)
+        lo, hi = _span(axis, u0, u1, ga, gb, z - TREAD_THICK, z)
         t = cube(f"{name}_tread{i}", lo, hi)
         assign(t, tread_mat)
         treads.append(t)
@@ -331,7 +349,9 @@ def stair_flight(name, tread_mat, riser_mat, axis, u0, u1, start, base, count):
         # of its own tread, not at the back. Put it at the back and every step
         # has a gap under it the depth of the going: that is an open tread
         # stair, which is a 1960s thing, and you can see the wall through it.
-        lo, hi = _span(axis, u0, u1, g0, g0 + 0.022, z - RISE, z - TREAD_THICK)
+        ga = min(g0, g0 + direction * 0.022)
+        gb = max(g0, g0 + direction * 0.022)
+        lo, hi = _span(axis, u0, u1, ga, gb, z - rise, z - TREAD_THICK)
         r = cube(f"{name}_riser{i}", lo, hi)
         assign(r, riser_mat)
         risers.append(r)

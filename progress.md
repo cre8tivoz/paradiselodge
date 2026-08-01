@@ -26,3 +26,23 @@ Original prompt: Lets get started with the next phases.
   room 1A rendered correctly; the existing Vite chunk-size warning remains.
 - Next scoped task: assemble the central staircase in this same Unit A scene.
   Do not source furniture yet.
+- Central staircase builder added from the locked `lodge.ts` dimensions: 17
+  treads plus the final landing riser, 0.28 m going, 3.45 m floor-to-floor,
+  inset carpet runner, brass rods, open-side balustrade and adjacent passage.
+- First staircase render caught the shared flight called on the wrong width
+  axis, which displaced its timber treads into the parlour. Corrected to an
+  X-width/Y-going flight before acceptance; no bad geometry was retained.
+- Replaced the first block-stepped rail preview with continuous raked string
+  and handrail prisms; the turned balusters remain fresh bake-safe geometry.
+- Final staircase render accepted: the flight, landing, adjacent passage,
+  double-height walls, upper ceiling, raked joinery and hall-side trim read as
+  one enclosed space. Reception and parlour regression renders remain clean.
+- Combined Blender validation passed: reception 56 meshes, parlour 65 meshes,
+  staircase 146 meshes, 0 unmaterialled, 0 without UVs.
+- The shared `kit_arch_check.py` scene was rebuilt and visually inspected after
+  extending `stair_flight`; its default positive-direction call remains valid.
+- Production build passed and the project-native browser capture rendered room
+  1A correctly. The existing Vite chunk-size warning is unchanged; no new
+  runtime failure appeared.
+- Next scoped task: assemble the first-floor hallway in this Unit A scene, then
+  bring in the existing room 1A shell. Furniture sourcing remains deferred.
