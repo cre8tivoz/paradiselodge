@@ -36,6 +36,14 @@ RECEPTION_SOURCES = {
     "ledger": f"{ROOT}/assets/sourced/reception-ledger.glb",
     "ashtray": f"{ROOT}/assets/sourced/reception-ashtray.glb",
 }
+PARLOUR_SOURCES = {
+    "armchair": f"{ROOT}/assets/sourced/parlour-armchair.glb",
+    "sofa": f"{ROOT}/assets/sourced/parlour-sofa.glb",
+    "table": f"{ROOT}/assets/sourced/parlour-table.glb",
+    "lamp": f"{ROOT}/assets/sourced/parlour-lamp.glb",
+    "television": f"{ROOT}/assets/sourced/parlour-television.glb",
+    "diary": f"{ROOT}/assets/sourced/parlour-diary.glb",
+}
 OUT_BLEND = f"{ROOT}/assets/blender/unit-a.blend"
 OUT_RECEPTION_SHOT = f"{ROOT}/shots/unit-a-reception.jpg"
 OUT_PARLOUR_SHOT = f"{ROOT}/shots/unit-a-parlour.jpg"
@@ -167,6 +175,37 @@ def black_bakelite_material():
     bsdf = next(node for node in material.node_tree.nodes if node.type == "BSDF_PRINCIPLED")
     bsdf.inputs["Base Color"].default_value = (0.012, 0.010, 0.008, 1.0)
     bsdf.inputs["Roughness"].default_value = 0.28
+    return material
+
+
+def parlour_upholstery_material():
+    material = bpy.data.materials.new("unit_a_parlour_upholstery")
+    material.use_nodes = True
+    nodes = material.node_tree.nodes
+    links = material.node_tree.links
+    bsdf = next(node for node in nodes if node.type == "BSDF_PRINCIPLED")
+    bsdf.inputs["Roughness"].default_value = 0.82
+
+    coordinates = nodes.new("ShaderNodeTexCoord")
+    colour_noise = nodes.new("ShaderNodeTexNoise")
+    colour_noise.inputs["Scale"].default_value = 3.5
+    colour_noise.inputs["Detail"].default_value = 3.0
+    ramp = nodes.new("ShaderNodeValToRGB")
+    ramp.color_ramp.elements[0].color = (0.055, 0.012, 0.010, 1.0)
+    ramp.color_ramp.elements[1].color = (0.24, 0.075, 0.055, 1.0)
+    weave = nodes.new("ShaderNodeTexNoise")
+    weave.inputs["Scale"].default_value = 150.0
+    weave.inputs["Detail"].default_value = 2.0
+    bump = nodes.new("ShaderNodeBump")
+    bump.inputs["Strength"].default_value = 0.22
+    bump.inputs["Distance"].default_value = 0.012
+
+    links.new(coordinates.outputs["Generated"], colour_noise.inputs["Vector"])
+    links.new(colour_noise.outputs["Fac"], ramp.inputs["Fac"])
+    links.new(ramp.outputs["Color"], bsdf.inputs["Base Color"])
+    links.new(coordinates.outputs["Generated"], weave.inputs["Vector"])
+    links.new(weave.outputs["Fac"], bump.inputs["Height"])
+    links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
     return material
 
 
@@ -346,17 +385,22 @@ def _world_bounds(objects):
     return lo, hi
 
 
-def _import_reception_asset(
+def _import_sourced_asset(
     slot,
+    sources,
     target_size,
     centre,
     base_z,
     source_uid,
+    space,
+    holder_name=None,
+    rotation=0.0,
+    uniform_axis=None,
     material_override=None,
     keep_material_prefixes=None,
 ):
     """Import, measure and place one sourced prop without trusting source units."""
-    path = RECEPTION_SOURCES[slot]
+    path = sources[slot]
     if not os.path.exists(path):
         raise FileNotFoundError(f"Reception source is missing: {path}")
 
@@ -377,9 +421,10 @@ def _import_reception_asset(
     if not meshes:
         raise RuntimeError(f"Reception source {slot} contains no retained meshes")
 
-    holder = bpy.data.objects.new(slot, None)
+    holder = bpy.data.objects.new(holder_name or slot, None)
     bpy.context.scene.collection.objects.link(holder)
-    holder["unit_a_space"] = "reception"
+    holder.rotation_euler = (0.0, 0.0, rotation)
+    holder["unit_a_space"] = space
     holder["source_uid"] = source_uid
 
     imported_set = set(imported)
@@ -390,10 +435,14 @@ def _import_reception_asset(
     bpy.context.view_layer.update()
     lo, hi = _world_bounds(meshes)
     size = hi - lo
-    holder.scale = tuple(
-        target_size[axis] / size[axis] if size[axis] > 1e-6 else 1.0
-        for axis in range(3)
-    )
+    if uniform_axis is None:
+        holder.scale = tuple(
+            target_size[axis] / size[axis] if size[axis] > 1e-6 else 1.0
+            for axis in range(3)
+        )
+    else:
+        scale = target_size[uniform_axis] / size[uniform_axis]
+        holder.scale = (scale, scale, scale)
     bpy.context.view_layer.update()
 
     lo, hi = _world_bounds(meshes)
@@ -406,8 +455,8 @@ def _import_reception_asset(
     bpy.context.view_layer.update()
 
     for index, obj in enumerate(meshes):
-        obj.name = f"reception_{slot}_mesh_{index:02d}"
-        obj["unit_a_space"] = "reception"
+        obj.name = f"{space}_{holder.name}_mesh_{index:02d}"
+        obj["unit_a_space"] = space
         if material_override is not None:
             obj.data.materials.clear()
             obj.data.materials.append(material_override)
@@ -421,23 +470,23 @@ def build_reception_furniture(materials, bakelite, brass) -> None:
     """Furnish reception while keeping the hall opening fully walkable."""
     timber = materials["timber_dark"]
 
-    _import_reception_asset(
-        "desk", (2.36, 0.80, 1.14), (4.50, -2.32), 0.0,
-        "f37a60e917554d8c98931bf6b99cefaf", material_override=timber,
+    _import_sourced_asset(
+        "desk", RECEPTION_SOURCES, (2.36, 0.80, 1.14), (4.50, -2.32), 0.0,
+        "f37a60e917554d8c98931bf6b99cefaf", "reception", material_override=timber,
     )
-    _import_reception_asset(
-        "ledger", (0.70, 0.42, 0.06), (4.34, -2.28), 1.14,
-        "fdeed37ffb9e4cdfa40e44a5f2ca5c53",
+    _import_sourced_asset(
+        "ledger", RECEPTION_SOURCES, (0.70, 0.42, 0.06), (4.34, -2.28), 1.14,
+        "fdeed37ffb9e4cdfa40e44a5f2ca5c53", "reception",
     )
-    _import_reception_asset(
-        "phone", (0.46, 0.34, 0.25), (5.24, -2.28), 1.14,
-        "e5674d675edb42b6986d58fdda153c17",
+    _import_sourced_asset(
+        "phone", RECEPTION_SOURCES, (0.46, 0.34, 0.25), (5.24, -2.28), 1.14,
+        "e5674d675edb42b6986d58fdda153c17", "reception",
         material_override=bakelite,
         keep_material_prefixes=("Phone", "Cord"),
     )
-    _import_reception_asset(
-        "ashtray", (0.32, 0.32, 0.07), (3.65, -2.28), 1.14,
-        "8c9deaa3f4b84e01b186eec4c1269b60",
+    _import_sourced_asset(
+        "ashtray", RECEPTION_SOURCES, (0.32, 0.32, 0.07), (3.65, -2.28), 1.14,
+        "8c9deaa3f4b84e01b186eec4c1269b60", "reception",
     )
 
     # A fitted rack has to meet this rear wall and preserve the runtime's 8x4
@@ -604,6 +653,51 @@ def build_parlour(materials, glass) -> None:
     ):
         ob = cube(f"parlour_cornice_{tag}", lo, hi)
         assign(ob, cornice)
+
+
+def build_parlour_furniture(upholstery) -> None:
+    """Place the parlour set against the locked gameplay layout and mood shot."""
+    armchairs = bpy.data.objects.new("armchair", None)
+    bpy.context.scene.collection.objects.link(armchairs)
+    armchairs["unit_a_space"] = "parlour"
+
+    for name, centre, rotation in (
+        ("parlour_armchair_a", (-4.80, -3.48), -0.60),
+        ("parlour_armchair_b", (-2.65, -3.75), 0.65),
+    ):
+        chair = _import_sourced_asset(
+            "armchair", PARLOUR_SOURCES, (0.0, 0.0, 1.02), centre, 0.0,
+            "abdd3e6c94604f9781176a84ec2ec70b", "parlour",
+            holder_name=name, rotation=rotation, uniform_axis=2,
+            material_override=upholstery,
+        )
+        chair.parent = armchairs
+
+    _import_sourced_asset(
+        "sofa", PARLOUR_SOURCES, (0.0, 0.0, 0.92), (-4.65, -0.72), 0.0,
+        "ad30c2a1518d425eba2340eaf036386f", "parlour",
+        holder_name="sofa", rotation=math.pi, uniform_axis=2,
+    )
+    _import_sourced_asset(
+        "table", PARLOUR_SOURCES, (1.25, 0.75, 0.48), (-3.55, -2.40), 0.0,
+        "366cea105c5d4d53828bc9ea5583548e", "parlour",
+        holder_name="parlourTable",
+    )
+    _import_sourced_asset(
+        "diary", PARLOUR_SOURCES, (0.42, 0.0, 0.0), (-3.55, -2.40), 0.48,
+        "826bdea0f0ea44c58ee8981b8f69f799", "parlour",
+        holder_name="diary", rotation=math.pi / 2, uniform_axis=0,
+    )
+    _import_sourced_asset(
+        "television", PARLOUR_SOURCES, (0.0, 0.0, 1.02), (-6.00, -2.55), 0.0,
+        "69c872555edc43f89b85d56233d2f43e", "parlour",
+        holder_name="television", rotation=math.pi / 2, uniform_axis=2,
+    )
+    _import_sourced_asset(
+        "lamp", PARLOUR_SOURCES, (0.0, 0.0, 1.86), (-6.00, -1.65), 0.0,
+        "4766a03aa796440598426f8d5e975fec", "parlour",
+        holder_name="standardLamp", uniform_axis=2,
+    )
 
 
 def raked_beam_y(name, material, x0, x1, y0, z0, y1, z1, height):
@@ -1072,6 +1166,12 @@ def validate() -> None:
         "parlour_window_2_pane_upper",
         "parlour_entry_room_jamb_l0",
         "parlour_entry_room_jamb_r0",
+        "armchair",
+        "sofa",
+        "parlourTable",
+        "diary",
+        "television",
+        "standardLamp",
         "staircase_ground_floor",
         "staircase_front_hall_ceiling",
         "staircase_wall_left",
@@ -1132,6 +1232,19 @@ def validate() -> None:
     if abs(desk_lo.z) > 0.002 or abs(desk_hi.z - 1.14) > 0.002:
         raise RuntimeError(f"Reception desk height drifted: z {desk_lo.z:.3f}..{desk_hi.z:.3f}")
 
+    parlour_furniture = [
+        obj for obj in meshes
+        if obj.name.startswith((
+            "parlour_parlour_armchair_", "parlour_sofa_", "parlour_parlourTable_",
+            "parlour_diary_", "parlour_television_", "parlour_standardLamp_",
+        ))
+    ]
+    furniture_lo, furniture_hi = _world_bounds(parlour_furniture)
+    if furniture_lo.x < LEFT + 0.02 or furniture_hi.x > PARLOUR_HALL_FACE - 0.20:
+        raise RuntimeError(
+            f"Parlour furniture escaped the room: x {furniture_lo.x:.3f}..{furniture_hi.x:.3f}"
+        )
+
     reception_count = sum(obj.name.startswith("reception_") for obj in meshes)
     parlour_count = sum(obj.name.startswith("parlour_") for obj in meshes)
     staircase_count = sum(obj.name.startswith("staircase_") for obj in meshes)
@@ -1143,6 +1256,7 @@ def validate() -> None:
         f"first-floor hall {hall_count} meshes, "
         f"room 1A {room1a_count} meshes, "
         f"desk hall gap {desk_lo.x - HALL_FACE:.2f}m, "
+        f"parlour furniture x {furniture_lo.x:.2f}..{furniture_hi.x:.2f}m, "
         "0 unmaterialled, 0 without UVs"
     )
 
@@ -1154,9 +1268,11 @@ def build() -> None:
     glass = glass_material()
     brass = brass_material()
     bakelite = black_bakelite_material()
+    upholstery = parlour_upholstery_material()
     build_reception(materials, glass)
     build_reception_furniture(materials, bakelite, brass)
     build_parlour(materials, glass)
+    build_parlour_furniture(upholstery)
     build_staircase(materials, brass)
     build_first_floor_hall(materials, brass)
     import_room1a()
@@ -1185,7 +1301,7 @@ def build() -> None:
     bpy.ops.wm.save_as_mainfile(filepath=OUT_BLEND, compress=True)
     for camera, path, preview_exposure in (
         (reception_camera, OUT_RECEPTION_SHOT, 3.8),
-        (parlour_camera, OUT_PARLOUR_SHOT, 2.8),
+        (parlour_camera, OUT_PARLOUR_SHOT, 3.8),
         (staircase_camera, OUT_STAIRCASE_SHOT, 3.8),
         (first_floor_hall_camera, OUT_FIRST_FLOOR_HALL_SHOT, 4.2),
         (room1a_camera, OUT_ROOM1A_SHOT, 2.8),

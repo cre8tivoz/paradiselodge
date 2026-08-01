@@ -76,13 +76,13 @@ The player is Detective Graham Miller. You never see him until the last shot of 
 
 ## Status
 
-Last updated 1 August 2026. **Scene 1's engine is finished and Unit A step 4 is under way.** All five lodge-interior spaces are contiguous; reception is furnished and the parlour is next. Update this whenever work resumes.
+Last updated 2 August 2026. **Scene 1's engine is finished and Unit A step 4 is done.** All five lodge-interior spaces are contiguous and the reception and parlour are furnished. Update this whenever work resumes.
 
 Gameplay is correct and is not to be touched. `src/interact`, `src/case`, `src/dialogue`, `src/npc`, `src/core`, `src/player`, `src/ui`, `src/audio` are closed. Evidence copy, gate order and the event bus are closed. The live job is `src/materials`, `src/render`, and the geometry in `src/world`. See *The render reset* below before anything else.
 
 **The live job is Unit A: the lodge interior, one Blender scene, one bake.** Room 1A proved the pipeline and its process is not repeated per room. See *Extending the pipeline* at the bottom of this file.
 
-Steps 1 and 2 are done and neither produced anything walkable, which is the shape of this unit: the shared surfaces and the shared joinery are made once so four rooms can draw on them. **Step 3 is done. Step 4 is under way: reception has its complete furniture set and the parlour is next.**
+Steps 1 and 2 are done and neither produced anything walkable, which is the shape of this unit: the shared surfaces and the shared joinery are made once so four rooms can draw on them. **Steps 3 and 4 are done: the complete interior is assembled and furnished. Next is step 5, allocating the bake UVs at the locked per-space densities.**
 
 Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Live at `https://paradiselodge-game.pages.dev` (Cloudflare Pages project `paradiselodge-game`). Custom domain `lodge.billyhaddad.au` not wired yet. Deploys are manual: `npm run build && wrangler pages deploy dist --project-name paradiselodge-game --branch main`.
 
@@ -944,13 +944,13 @@ Order of work:
    shared-kit failure: generated architecture had no albedo UV layer, so linked
    PBR maps sampled one point. `kit_arch.assign` now creates metre-scaled box
    UVs; the later bake adds a separate lightmap layer.
-4. **Source furniture per space. Under way**, same rules as before. Reception
+4. **Source furniture per space. Done**, same rules as before. Reception
    is done: sourced panelled desk, bakelite phone, hotel ledger and glass
    ashtray, plus a measured fitted 8x4 pigeonhole key rack where no credible
    downloadable period match existed. All retain the runtime holder IDs and
-   the desk leaves a measured 1.57m clear from the hall wall. **Next is the
-   parlour:** two armchairs,
-   sofa, low table, standard lamp, TV in a timber cabinet. **Stairs and hallway
+   the desk leaves a measured 1.57m clear from the hall wall. Parlour has two
+   sourced armchairs, sofa, low table, open diary, standard lamp and TV in a
+   timber cabinet, arranged against `images/mood/1a-parlour.png`. **Stairs and hallway
    get nothing. They are transit**
 5. **Lightmap density by dwell time, not floor area.** 1A 2048, parlour 2048,
    reception 1024, stairs 1024, hallway 512. The hallway is six seconds of

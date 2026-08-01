@@ -99,3 +99,21 @@ Original prompt: Lets get started with the next phases.
   circulation side; its exposure lift is preview-only and the saved scene
   remains at 2.8.
 - Next scoped task: continue Unit A step 4 with parlour furniture only.
+- Parlour furniture is complete against `images/mood/1a-parlour.png`: two
+  maroon fabric armchairs, a worn brown sofa, dark timber low table, shaded
+  standard lamp and off CRT in a timber cabinet. The open notebook and pen on
+  the table preserve the gameplay evidence holder ID `diary`.
+- All six source models were fetched through BlenderMCP/Sketchfab and cached in
+  ignored `assets/sourced/`; reproducible UIDs, authors and CC-BY attribution
+  are recorded in `docs/CREDITS.md`.
+- The imported holders preserve `armchair`, `parlourTable`, `diary`,
+  `television` and `standardLamp`. The two chairs share one source and one
+  procedural worn-maroon upholstery definition rather than duplicating data.
+- Final combined validation passed: reception 109 meshes, parlour 73,
+  staircase 143, first-floor hall 143 and room 1A 133; parlour furniture stays
+  within x -6.47..-1.98m, with 0 unmaterialled meshes and 0 meshes without UVs.
+- All five final regression renders were visually inspected. The parlour check
+  shows the complete furniture group, exposed diary, window light and clear
+  hall-side floor; its exposure lift is preview-only.
+- Unit A step 4 is complete. Next scoped task: step 5, add/allocate the separate
+  non-overlapping lightmap UV layer at the locked per-space resolutions.

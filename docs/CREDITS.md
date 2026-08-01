@@ -89,6 +89,12 @@ the shipping decision.
 | `reception-phone` | [Old bakelite style phone](https://sketchfab.com/models/e5674d675edb42b6986d58fdda153c17) | Keeya | CC-BY 4.0 | `e5674d675edb42b6986d58fdda153c17` |
 | `reception-ledger` | [1920's Hotel Leather Ledger](https://sketchfab.com/models/fdeed37ffb9e4cdfa40e44a5f2ca5c53) | Nicholas Record | CC-BY 4.0 | `fdeed37ffb9e4cdfa40e44a5f2ca5c53` |
 | `reception-ashtray` | [Glass Ashtray](https://sketchfab.com/models/8c9deaa3f4b84e01b186eec4c1269b60) | RED2000 | CC-BY 4.0 | `8c9deaa3f4b84e01b186eec4c1269b60` |
+| `parlour-armchair` | [Arm chair](https://sketchfab.com/models/abdd3e6c94604f9781176a84ec2ec70b) | woodge | CC-BY 4.0 | `abdd3e6c94604f9781176a84ec2ec70b` |
+| `parlour-sofa` | [Vintage Fabric Sofa](https://sketchfab.com/models/ad30c2a1518d425eba2340eaf036386f) | uliana | CC-BY 4.0 | `ad30c2a1518d425eba2340eaf036386f` |
+| `parlour-table` | [Coffee Table](https://sketchfab.com/models/366cea105c5d4d53828bc9ea5583548e) | darkmoral | CC-BY 4.0 | `366cea105c5d4d53828bc9ea5583548e` |
+| `parlour-lamp` | [Wooden Floor Lamp](https://sketchfab.com/models/4766a03aa796440598426f8d5e975fec) | Atalaya22 | CC-BY 4.0 | `4766a03aa796440598426f8d5e975fec` |
+| `parlour-television` | [Old wooden TV](https://sketchfab.com/models/69c872555edc43f89b85d56233d2f43e) | Gottin slim | CC-BY 4.0 | `69c872555edc43f89b85d56233d2f43e` |
+| `parlour-diary` | [Pen and Notebook Props - Game Ready 3D Model](https://sketchfab.com/models/826bdea0f0ea44c58ee8981b8f69f799) | GAMICO | CC-BY 4.0 | `826bdea0f0ea44c58ee8981b8f69f799` |
 
 ### What each one is, and what it is for
 
@@ -113,6 +119,12 @@ the shipping decision.
 | `reception-phone` | 70.6k | source units | The phone and cord only. The source's presentation table and backdrop are discarded; the red plastic is retinted black bakelite |
 | `reception-ledger` | 86 | source units | Open hotel ledger with ruled guest pages, scaled to the runtime look target on the counter |
 | `reception-ashtray` | 1.1k | source units | Low-poly clear glass ashtray on the reception counter |
+| `parlour-armchair` | 2.7k | source units | One worn rounded armchair imported twice, with a shared procedural maroon fabric finish |
+| `parlour-sofa` | 26.9k | source units | Brown three-seat vintage sofa, retained with its worn source upholstery |
+| `parlour-table` | 688 | metres | Low dark-timber coffee table carrying the diary evidence |
+| `parlour-lamp` | 3.7k | metres | Wooden standard lamp with a fabric shade, unlit until the shared interior lighting pass |
+| `parlour-television` | 1.6k | source units | Off CRT already housed in the timber cabinet required by the mood reference |
+| `parlour-diary` | 2.6k | metres | Open ruled notebook and pen; the holder remains the gameplay evidence ID `diary` |
 
 **Nothing is at a consistent scale and that is normal for Sketchfab.** Three of
 them are in metres, the rest are in inches, centimetres or millimetres. Every
