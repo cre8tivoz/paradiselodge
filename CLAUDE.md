@@ -891,10 +891,22 @@ not five repeats of the reset.
 
 Order of work:
 
-1. **Shared material library first.** One `materials.blend` holding nicotine
-   wall plaster, brown carpet runner, dark stained timber, tessellated entry
-   tile, ornate cornice, picture rail, worn floorboards. Full PBR from Poly
-   Haven. **Every space links this file. It does not copy it**
+1. **Shared material library first. Done.** `assets/blender/materials.blend`,
+   six surfaces off five Poly Haven sets, built by
+   `tools/blender/build_materials.py`. Gitignored at 41MB and rebuilt by that
+   script, which fetches from the Poly Haven API itself. **Every space links
+   this file. It does not copy it.** Three things it settled:
+   - **The addon's downloader leaves the normal map unconnected**, and nothing
+     reports it. The material renders fine and is a flat photograph of a wall.
+     The script wires all four maps itself
+   - **Only four of the seven maps are kept.** `nor_dx` is the DirectX normal
+     and would light every bump as a dent, `arm` duplicates maps that are
+     already separate, `Displacement` needs subdivision to mean anything. AO is
+     kept and left unwired, because the Cycles bake computes occlusion for real
+     and multiplying the baked-in kind in as well darkens every crevice twice
+   - **`plaster_cornice` is `plaster_nicotine` with a tint above 1.** A tint is
+     a multiply and can only darken, and at 0.88 the cornice rendered nine
+     percent off the wall, which is the same wall twice
 2. **Shared kit pieces.** Door unit, window unit, skirting profile, architrave
    profile, stair tread, baluster. Model once, instance everywhere
 3. **Assemble all five spaces in one scene.** Correct relative positions, real

@@ -39,6 +39,12 @@ assets/sourced/
 # small and they are the only copy of that geometry.
 assets/blender/room1a.blend
 
+# Unit A's shared material library. 41MB, because every map is packed into it
+# so that a cleared cache cannot break five spaces at once. Rebuilt end to end
+# by tools/blender/build_materials.py, which fetches from the Poly Haven API
+# itself: the ids are in docs/CREDITS.md.
+assets/blender/materials.blend
+
 # Baked lightmaps. 50MB of float EXR each and rebuilt by
 # tools/blender/bake_room1a.py. What ships is the half float DWAA EXR under
 # public/textures/bake/, written by tools/blender/export_room1a.py.

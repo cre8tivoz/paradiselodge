@@ -21,12 +21,31 @@ Full sets under `public/textures/pbr/<id>/`, 2k jpg, named as shipped: albedo
 
 | Set | Used on | Source | Author | Licence |
 |---|---|---|---|---|
-| `wood_planks` | Room 1A floor | [Poly Haven — Wood Planks](https://polyhaven.com/a/wood_planks) | Amal Kumar | CC0 |
+| `wood_planks` | Room 1A floor, and `boards_worn` in the library | [Poly Haven — Wood Planks](https://polyhaven.com/a/wood_planks) | Amal Kumar | CC0 |
+| `beige_wall_001` | `plaster_nicotine` and `plaster_cornice` | [Poly Haven — Beige Wall 001](https://polyhaven.com/a/beige_wall_001) | Dimitrios Savva, Rico Cilliers | CC0 |
+| `dirty_carpet` | `carpet_runner`, the hall and stair runner | [Poly Haven — Dirty Carpet](https://polyhaven.com/a/dirty_carpet) | Rohit Seervi | CC0 |
+| `dark_wood` | `timber_dark`, skirtings, banister, desk, picture rail | [Poly Haven — Dark Wood](https://polyhaven.com/a/dark_wood) | Dario Barresi, Dimitrios Savva, Rico Cilliers | CC0 |
+| `checkered_pavement_tiles` | `tile_entry`, the tessellated entry floor | [Poly Haven — Checkered Pavement Tiles](https://polyhaven.com/a/checkered_pavement_tiles) | Amal Kumar | CC0 |
 
-Unit A adds the rest of the interior's surfaces — nicotine plaster, carpet
-runner, stained timber, entry tile — into a shared `materials.blend` that every
-space links rather than copies. **Each one gets a row here as it is sourced**,
-in the same commit as the asset.
+### The material library
+
+`assets/blender/materials.blend` holds six named surfaces built from those five
+sets, and **every Unit A space links it rather than copying it**, so the plaster
+is judged once instead of drifting a few percent per room and reading as a
+lighting fault at the doorway between them.
+
+It is gitignored at 41MB and rebuilt end to end by
+`tools/blender/build_materials.py`, which fetches from the Poly Haven API
+itself rather than through the addon. Two of the six are the same maps under a
+different tint: a cornice is painted plaster and a picture rail is stained
+timber, and those are shapes rather than surfaces.
+
+Only four of Poly Haven's seven maps are kept. `nor_dx` is the DirectX normal
+and this project is OpenGL throughout, `arm` is a packed variant of maps that
+are already here separately, and `Displacement` would need real subdivision to
+mean anything. **AO is kept and deliberately left unwired**: Cycles computes
+occlusion for real in Unit A's bake, and multiplying the baked-in kind into the
+albedo as well darkens every crevice twice. Unit B is realtime and will want it.
 
 ## Models
 
