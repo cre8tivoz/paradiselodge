@@ -46,3 +46,25 @@ Original prompt: Lets get started with the next phases.
   runtime failure appeared.
 - Next scoped task: assemble the first-floor hallway in this Unit A scene, then
   bring in the existing room 1A shell. Furniture sourcing remains deferred.
+- First-floor hall builder added: full U-turn landing, carpeted gallery, open
+  stairwell banister, two closed neighbour doors, upper trim and ceiling. The
+  hall render camera is placed on the landing to prove the circulation path.
+- First hall render visually confirms the landing turns right into a continuous
+  upper gallery with the stairwell banister on the left and neighbour doors on
+  the right. The bright front-side opening is the pending room 1A interface.
+- Extended the shared door/architrave definitions with an optional base height
+  so upper-storey doors remain the same fresh bake-safe geometry. The default
+  ground-floor architecture check was rebuilt and remains visually correct.
+- Combined Blender validation passed: reception 56 meshes, parlour 65 meshes,
+  staircase 143 meshes, first-floor hall 140 meshes, 0 unmaterialled, 0 without
+  UVs. The ignored working scene was restored to `assets/blender/unit-a.blend`.
+- Production build and project-native runtime capture passed. The existing Vite
+  chunk-size warning remains unchanged; room 1A still renders correctly.
+- Next scoped task: bring the existing room 1A shell into Unit A and close the
+  bright hall-side interface visible in the hallway check render.
+- Overlap audit moved the rear landing entirely under the hallway owner and
+  stopped the staircase's right wall at first-floor height, so the upstairs
+  door openings are real and no duplicate coplanar bake surfaces remain there.
+- The opened wall exposed sunlight tracing through decorative gaps in the
+  shared panel-door leaf. Added its missing opaque timber core; rails and inset
+  panels remain the visible face while closed doors now block direct light.

@@ -183,7 +183,7 @@ def _point(axis: str, u: float, d: float, z: float):
     return (u, d, z) if axis == "x" else (d, u, z)
 
 
-def architrave(name, mat, axis, u0, u1, z_head, face, outward):
+def architrave(name, mat, axis, u0, u1, z_head, face, outward, base=0.0):
     """
     The moulded surround on one face of an opening.
 
@@ -204,13 +204,15 @@ def architrave(name, mat, axis, u0, u1, z_head, face, outward):
             ("jamb_l", u0 - ARCH_WIDTH, u0 - ARCH_WIDTH + w),
             ("jamb_r", u1 + ARCH_WIDTH - w, u1 + ARCH_WIDTH),
         ):
-            lo, hi = _span(axis, ua, ub, min(a, b), max(a, b), 0.0, z_head + ARCH_WIDTH)
+            lo, hi = _span(
+                axis, ua, ub, min(a, b), max(a, b), base, base + z_head + ARCH_WIDTH
+            )
             ob = cube(f"{name}_{tag}{i}", lo, hi)
             assign(ob, mat)
             parts.append(ob)
         lo, hi = _span(
             axis, u0 - ARCH_WIDTH, u1 + ARCH_WIDTH, min(a, b), max(a, b),
-            z_head + ARCH_WIDTH - w, z_head + ARCH_WIDTH,
+            base + z_head + ARCH_WIDTH - w, base + z_head + ARCH_WIDTH,
         )
         ob = cube(f"{name}_head{i}", lo, hi)
         assign(ob, mat)
@@ -219,7 +221,7 @@ def architrave(name, mat, axis, u0, u1, z_head, face, outward):
 
 
 def door_unit(name, mat, axis, centre, wall_near, wall_far, open_angle=0.0,
-              width=DOOR_WIDTH, height=DOOR_HEIGHT):
+              width=DOOR_WIDTH, height=DOOR_HEIGHT, base=0.0):
     """
     A doorway: architrave on both faces, and a four panel leaf.
 
@@ -234,8 +236,12 @@ def door_unit(name, mat, axis, centre, wall_near, wall_far, open_angle=0.0,
     parts = []
     u0, u1 = centre - width / 2, centre + width / 2
 
-    parts += architrave(f"{name}_arch_in", mat, axis, u0, u1, height, wall_near, -1)
-    parts += architrave(f"{name}_arch_out", mat, axis, u0, u1, height, wall_far, 1)
+    parts += architrave(
+        f"{name}_arch_in", mat, axis, u0, u1, height, wall_near, -1, base=base
+    )
+    parts += architrave(
+        f"{name}_arch_out", mat, axis, u0, u1, height, wall_far, 1, base=base
+    )
 
     # The leaf.
     #
@@ -248,8 +254,17 @@ def door_unit(name, mat, axis, centre, wall_near, wall_far, open_angle=0.0,
     mid = (wall_near + wall_far) / 2
     leaf = bpy.data.objects.new(f"{name}_leaf", None)
     bpy.context.scene.collection.objects.link(leaf)
-    leaf.location = _point(axis, u0, mid, 0.0)
+    leaf.location = _point(axis, u0, mid, base)
     leaf.rotation_euler = (0.0, 0.0, open_angle if axis == "x" else -open_angle)
+
+    # A panel door is still a solid door. The stiles, rails and inset panels
+    # describe its face, but without a thin opaque core direct sun traces every
+    # decorative join onto the wall behind it.
+    lo, hi = _span(axis, 0.0, width, -DOOR_THICK * 0.16, DOOR_THICK * 0.16, 0.0, height)
+    backing = cube(f"{name}_backing", lo, hi)
+    assign(backing, mat)
+    backing.parent = leaf
+    parts.append(backing)
 
     stiles = (
         ("stile_hinge", 0.0, 0.11, 0.0, height),

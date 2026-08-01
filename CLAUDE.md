@@ -932,15 +932,16 @@ Order of work:
      own tread.** At the back, every step has a gap the depth of the going and
      you can see the wall through the staircase
 3. **Assemble all five spaces in one scene. Under way.** Correct relative
-   positions, real wall thickness, doorways open. Reception, parlour and
-   central staircase are assembled by `tools/blender/build_unit_a.py` and verified in
-   `shots/unit-a-reception.jpg`, `shots/unit-a-parlour.jpg` and
-   `shots/unit-a-staircase.jpg`. The builder also caught and fixed a silent
+   positions, real wall thickness, doorways open. Reception, parlour, central
+   staircase and first-floor hallway are assembled by
+   `tools/blender/build_unit_a.py` and verified in
+   `shots/unit-a-reception.jpg`, `shots/unit-a-parlour.jpg` and the
+   staircase/hall checks under `shots/unit-a-*.jpg`. The builder also caught
+   and fixed a silent
    shared-kit failure: generated architecture had no albedo UV layer, so linked
    PBR maps sampled one point. `kit_arch.assign` now creates metre-scaled box
-   UVs; the later bake adds a separate lightmap layer. **Next is the
-   first-floor hallway.**
-   Room 1A already exists — bring it in after the contiguous shells are present
+   UVs; the later bake adds a separate lightmap layer. **Next is bringing the
+   existing room 1A into this contiguous scene.**
 4. **Source furniture per space**, same rules as before. Reception: desk,
    pigeonhole key rack, bakelite phone, ledger, ashtray. Parlour: two armchairs,
    sofa, low table, standard lamp, TV in a timber cabinet. **Stairs and hallway

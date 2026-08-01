@@ -5,10 +5,10 @@ Run inside Blender through BlenderMCP:
 
     exec(open('tools/blender/build_unit_a.py').read())
 
-This pass builds the reception, parlour and central staircase shells. Later
-passes add the first-floor hall and the existing room 1A to this same scene
-before one shared indirect-light bake. It writes `assets/blender/unit-a.blend`
-and one check render per assembled space under `shots/unit-a-*.jpg`.
+This pass builds the reception, parlour, central staircase and first-floor hall
+shells. A later pass brings the existing room 1A into this same scene before
+one shared indirect-light bake. It writes `assets/blender/unit-a.blend` and one
+check render per assembled space under `shots/unit-a-*.jpg`.
 
 Axes follow the room 1A pipeline:
 
@@ -32,6 +32,7 @@ OUT_BLEND = f"{ROOT}/assets/blender/unit-a.blend"
 OUT_RECEPTION_SHOT = f"{ROOT}/shots/unit-a-reception.jpg"
 OUT_PARLOUR_SHOT = f"{ROOT}/shots/unit-a-parlour.jpg"
 OUT_STAIRCASE_SHOT = f"{ROOT}/shots/unit-a-staircase.jpg"
+OUT_FIRST_FLOOR_HALL_SHOT = f"{ROOT}/shots/unit-a-first-floor-hall.jpg"
 HDRI = f"{ROOT}/public/env/balcony_2k.hdr"
 
 MCP_SETTINGS = (
@@ -479,17 +480,10 @@ def build_staircase(materials, brass) -> None:
         (hall_right, y_front, CEILING + 0.08),
     )
     assign(ceiling, cornice)
-    upper_ceiling = cube(
-        "staircase_upper_ceiling",
-        (hall_left, y_back, FIRST_CEILING),
-        (hall_right, y_room_back, FIRST_CEILING + 0.08),
-    )
-    assign(upper_ceiling, cornice)
-
     # The double-height stair hall begins behind the room backs.
     for tag, lo, hi in (
         ("left", (PARLOUR_HALL_FACE, y_back - WALL_THICK, 0.0), (hall_left, y_room_back, FIRST_CEILING)),
-        ("right", (hall_right, y_back - WALL_THICK, 0.0), (HALL_FACE, y_room_back, FIRST_CEILING)),
+        ("right", (hall_right, y_back - WALL_THICK, 0.0), (HALL_FACE, y_room_back, FIRST_FLOOR)),
         ("rear", (PARLOUR_HALL_FACE, y_back - WALL_THICK, 0.0), (HALL_FACE, y_back, FIRST_CEILING)),
     ):
         wall = cube(f"staircase_wall_{tag}", lo, hi)
@@ -538,19 +532,6 @@ def build_staircase(materials, brass) -> None:
         (STAIR_EDGE, -STAIR_Z1, FIRST_FLOOR - 0.04),
     )
     assign(top_riser, timber)
-    landing = cube(
-        "staircase_landing",
-        (PARLOUR_HALL_FACE, y_back, FIRST_FLOOR - 0.16),
-        (hall_right, -STAIR_Z1, FIRST_FLOOR),
-    )
-    assign(landing, plaster)
-    landing_carpet = cube(
-        "staircase_landing_carpet",
-        (PARLOUR_HALL_FACE, y_back, FIRST_FLOOR),
-        (hall_right, -STAIR_Z1, FIRST_FLOOR + 0.008),
-    )
-    assign(landing_carpet, carpet)
-
     # A continuous closed string and handrail. Axis-aligned boxes following a
     # rake read as a stack of blocks, so these two members are honest prisms.
     rail_end_y = -(STAIR_Z0 + STAIR_RAIL_TREADS * STAIR_GOING)
@@ -618,6 +599,162 @@ def build_staircase(materials, brass) -> None:
         ("rear", (hall_left, y_back, FIRST_CEILING - height), (hall_right, y_back + depth, FIRST_CEILING)),
     ):
         cornice_ob = cube(f"staircase_cornice_{tag}", lo, hi)
+        assign(cornice_ob, cornice)
+
+
+def build_first_floor_hall(materials, brass) -> None:
+    plaster = materials["plaster_nicotine"]
+    cornice = materials["plaster_cornice"]
+    timber = materials["timber_dark"]
+    carpet = materials["carpet_runner"]
+
+    y_front = -FRONT
+    y_back = -BUILDING_BACK
+    y_stair_foot = -STAIR_Z0
+    y_landing_front = -STAIR_Z1 + 0.06
+    hall_floor_left = STAIR_EDGE - 0.16
+    hall_wall_left = STAIR_EDGE - 0.16
+    hall_wall_left_face = STAIR_EDGE - 0.02
+    hall_right_face = HALL_FACE - 0.14
+
+    # The long gallery beside the void, plus the wider rear landing where the
+    # player turns right after the last riser.
+    main_slab = cube(
+        "first_floor_hall_main_slab",
+        (hall_floor_left, y_back, FIRST_FLOOR - 0.16),
+        (HALL_FACE, y_front, FIRST_FLOOR),
+    )
+    assign(main_slab, plaster)
+    landing_slab = cube(
+        "first_floor_hall_landing_slab",
+        (STAIR_X0 - 0.05, y_back, FIRST_FLOOR - 0.16),
+        (hall_floor_left, y_landing_front, FIRST_FLOOR),
+    )
+    assign(landing_slab, plaster)
+    main_carpet = cube(
+        "first_floor_hall_main_carpet",
+        (hall_floor_left, y_back, FIRST_FLOOR),
+        (HALL_FACE, y_front, FIRST_FLOOR + 0.008),
+    )
+    assign(main_carpet, carpet)
+    landing_carpet = cube(
+        "first_floor_hall_landing_carpet",
+        (STAIR_X0 - 0.05, y_back, FIRST_FLOOR),
+        (hall_floor_left, y_landing_front, FIRST_FLOOR + 0.008),
+    )
+    assign(landing_carpet, carpet)
+
+    # Left wall toward the street and rear return wall at the landing.
+    left_wall = cube(
+        "first_floor_hall_wall_left",
+        (hall_wall_left, y_stair_foot, FIRST_FLOOR),
+        (hall_wall_left_face, y_front, FIRST_CEILING),
+    )
+    assign(left_wall, plaster)
+    rear_left_wall = cube(
+        "first_floor_hall_wall_rear_left",
+        (STAIR_X0 - 0.05, y_back, FIRST_FLOOR),
+        (STAIR_X0 + 0.09, y_landing_front, FIRST_CEILING),
+    )
+    assign(rear_left_wall, plaster)
+
+    # Right wall behind room 1A, split around the two shut neighbour doors.
+    door_spans = ((-9.00, -8.10), (-6.90, -6.00))
+    for tag, ya, yb in (
+        ("rear", (y_back), door_spans[0][0]),
+        ("middle", door_spans[0][1], door_spans[1][0]),
+        ("front", door_spans[1][1], y_stair_foot),
+    ):
+        wall = cube(
+            f"first_floor_hall_wall_right_{tag}",
+            (hall_right_face, ya, FIRST_FLOOR),
+            (HALL_FACE, yb, FIRST_CEILING),
+        )
+        assign(wall, plaster)
+    for index, (ya, yb) in enumerate(door_spans, start=2):
+        over = cube(
+            f"first_floor_hall_wall_right_door_{index}_over",
+            (hall_right_face, ya, FIRST_FLOOR + ENTRY_HEAD),
+            (HALL_FACE, yb, FIRST_CEILING),
+        )
+        assign(over, plaster)
+        door_unit(
+            f"first_floor_hall_door_{index}",
+            timber,
+            "y",
+            (ya + yb) / 2,
+            hall_right_face,
+            HALL_FACE,
+            width=yb - ya,
+            height=ENTRY_HEAD,
+            base=FIRST_FLOOR,
+        )
+        plate = cube(
+            f"first_floor_hall_door_{index}_number_plate",
+            (hall_right_face - 0.018, (ya + yb) / 2 - 0.075, FIRST_FLOOR + 1.38),
+            (hall_right_face - 0.006, (ya + yb) / 2 + 0.075, FIRST_FLOOR + 1.53),
+        )
+        assign(plate, brass)
+
+    ceiling = cube(
+        "first_floor_hall_ceiling",
+        (STAIR_X0 - 0.05, y_back, FIRST_CEILING),
+        (HALL_FACE, y_front, FIRST_CEILING + 0.09),
+    )
+    assign(ceiling, cornice)
+
+    # Level banister along the open stairwell. It stops before the rear landing,
+    # leaving the turn at the stair head fully open and visibly walkable.
+    rail_end_y = -(STAIR_Z0 + STAIR_RAIL_TREADS * STAIR_GOING)
+    balustrade(
+        "first_floor_hall_banister",
+        timber,
+        "y",
+        y_stair_foot,
+        rail_end_y,
+        STAIR_EDGE,
+        FIRST_FLOOR,
+        spacing=STAIR_GOING,
+    )
+    newel(
+        "first_floor_hall_newel_front", timber, STAIR_EDGE, y_stair_foot, FIRST_FLOOR, 1.02
+    )
+    newel(
+        "first_floor_hall_newel_rear", timber, STAIR_EDGE, rail_end_y, FIRST_FLOOR, 1.02
+    )
+
+    # Upper-level skirting, picture rails and cornice use explicit heights;
+    # the shared helpers are grounded at z=0 for room-level calls.
+    trim_runs = (
+        ("left", hall_wall_left_face, y_stair_foot, y_front, 1),
+        ("right_rear", hall_right_face, y_back, door_spans[0][0], -1),
+        ("right_middle", hall_right_face, door_spans[0][1], door_spans[1][0], -1),
+        ("right_front", hall_right_face, door_spans[1][1], y_stair_foot, -1),
+    )
+    for tag, face, y0, y1, outward in trim_runs:
+        skirt_depth = face + outward * 0.02
+        skirt = cube(
+            f"first_floor_hall_skirt_{tag}",
+            (min(face, skirt_depth), y0, FIRST_FLOOR),
+            (max(face, skirt_depth), y1, FIRST_FLOOR + 0.18),
+        )
+        assign(skirt, timber)
+        rail_depth = face + outward * 0.016
+        rail = cube(
+            f"first_floor_hall_picture_rail_{tag}",
+            (min(face, rail_depth), y0, FIRST_FLOOR + 2.35),
+            (max(face, rail_depth), y1, FIRST_FLOOR + 2.398),
+        )
+        assign(rail, timber)
+
+    depth = 0.11
+    height = 0.12
+    for tag, lo, hi in (
+        ("left", (hall_wall_left_face, y_stair_foot, FIRST_CEILING - height), (hall_wall_left_face + depth, y_front, FIRST_CEILING)),
+        ("right", (hall_right_face - depth, y_back, FIRST_CEILING - height), (hall_right_face, y_stair_foot, FIRST_CEILING)),
+        ("rear", (STAIR_X0 + 0.09, y_back, FIRST_CEILING - height), (hall_right_face, y_back + depth, FIRST_CEILING)),
+    ):
+        cornice_ob = cube(f"first_floor_hall_cornice_{tag}", lo, hi)
         assign(cornice_ob, cornice)
 
 
@@ -702,7 +839,6 @@ def validate() -> None:
         "parlour_entry_room_jamb_r0",
         "staircase_ground_floor",
         "staircase_front_hall_ceiling",
-        "staircase_upper_ceiling",
         "staircase_wall_left",
         "staircase_wall_right",
         "staircase_wall_rear",
@@ -711,9 +847,18 @@ def validate() -> None:
         "staircase_riser_top",
         "staircase_runner_00",
         "staircase_runner_16",
-        "staircase_landing",
         "staircase_newel_foot_post",
         "staircase_newel_head_post",
+        "first_floor_hall_main_slab",
+        "first_floor_hall_landing_slab",
+        "first_floor_hall_main_carpet",
+        "first_floor_hall_wall_left",
+        "first_floor_hall_wall_right_rear",
+        "first_floor_hall_door_2_stile_hinge",
+        "first_floor_hall_door_3_panel_t",
+        "first_floor_hall_banister_b0_foot",
+        "first_floor_hall_newel_front_post",
+        "first_floor_hall_ceiling",
     }
     missing = required.difference(names)
     if missing:
@@ -729,9 +874,11 @@ def validate() -> None:
     reception_count = sum(obj.name.startswith("reception_") for obj in meshes)
     parlour_count = sum(obj.name.startswith("parlour_") for obj in meshes)
     staircase_count = sum(obj.name.startswith("staircase_") for obj in meshes)
+    hall_count = sum(obj.name.startswith("first_floor_hall_") for obj in meshes)
     print(
         f"[unit-a] validated: reception {reception_count} meshes, parlour {parlour_count} meshes, "
         f"staircase {staircase_count} meshes, "
+        f"first-floor hall {hall_count} meshes, "
         "0 unmaterialled, 0 without UVs"
     )
 
@@ -745,6 +892,7 @@ def build() -> None:
     build_reception(materials, glass)
     build_parlour(materials, glass)
     build_staircase(materials, brass)
+    build_first_floor_hall(materials, brass)
     build_lighting()
     reception_camera = build_camera(
         "unit_a_reception", (5.75, -4.55, 1.62), (2.75, -0.15, 1.25)
@@ -754,6 +902,9 @@ def build() -> None:
     )
     staircase_camera = build_camera(
         "unit_a_staircase", (1.30, -4.15, 1.58), (-0.72, -7.55, 1.85)
+    )
+    first_floor_hall_camera = build_camera(
+        "unit_a_first_floor_hall", (0.92, -9.62, 4.68), (0.34, -5.72, 4.48)
     )
     configure_render()
     validate()
@@ -766,6 +917,7 @@ def build() -> None:
         (reception_camera, OUT_RECEPTION_SHOT),
         (parlour_camera, OUT_PARLOUR_SHOT),
         (staircase_camera, OUT_STAIRCASE_SHOT),
+        (first_floor_hall_camera, OUT_FIRST_FLOOR_HALL_SHOT),
     ):
         bpy.context.scene.camera = camera
         bpy.context.scene.render.filepath = path
