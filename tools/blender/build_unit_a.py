@@ -28,11 +28,13 @@ import mathutils
 
 ROOT = "/Users/habibi/Documents/CLAUDE/paradisegame"
 MATERIALS = f"{ROOT}/assets/blender/materials.blend"
+ROOM1A_GLB = f"{ROOT}/public/models/room1a.glb"
 OUT_BLEND = f"{ROOT}/assets/blender/unit-a.blend"
 OUT_RECEPTION_SHOT = f"{ROOT}/shots/unit-a-reception.jpg"
 OUT_PARLOUR_SHOT = f"{ROOT}/shots/unit-a-parlour.jpg"
 OUT_STAIRCASE_SHOT = f"{ROOT}/shots/unit-a-staircase.jpg"
 OUT_FIRST_FLOOR_HALL_SHOT = f"{ROOT}/shots/unit-a-first-floor-hall.jpg"
+OUT_ROOM1A_SHOT = f"{ROOT}/shots/unit-a-room1a.jpg"
 HDRI = f"{ROOT}/public/env/balcony_2k.hdr"
 
 MCP_SETTINGS = (
@@ -88,6 +90,7 @@ STAIR_GOING = 0.28
 STAIR_Z0 = 5.20
 STAIR_Z1 = STAIR_Z0 + STAIR_TREADS * STAIR_GOING
 STAIR_RAIL_TREADS = STAIR_TREADS - 3
+ROOM1A_HALL_FACE = 1.70
 
 
 def reset_scene() -> None:
@@ -622,7 +625,7 @@ def build_first_floor_hall(materials, brass) -> None:
     main_slab = cube(
         "first_floor_hall_main_slab",
         (hall_floor_left, y_back, FIRST_FLOOR - 0.16),
-        (HALL_FACE, y_front, FIRST_FLOOR),
+        (ROOM1A_HALL_FACE, y_front, FIRST_FLOOR),
     )
     assign(main_slab, plaster)
     landing_slab = cube(
@@ -634,7 +637,7 @@ def build_first_floor_hall(materials, brass) -> None:
     main_carpet = cube(
         "first_floor_hall_main_carpet",
         (hall_floor_left, y_back, FIRST_FLOOR),
-        (HALL_FACE, y_front, FIRST_FLOOR + 0.008),
+        (ROOM1A_HALL_FACE, y_front, FIRST_FLOOR + 0.008),
     )
     assign(main_carpet, carpet)
     landing_carpet = cube(
@@ -657,6 +660,12 @@ def build_first_floor_hall(materials, brass) -> None:
         (STAIR_X0 + 0.09, y_landing_front, FIRST_CEILING),
     )
     assign(rear_left_wall, plaster)
+    front_wall = cube(
+        "first_floor_hall_wall_front",
+        (hall_floor_left, y_front, FIRST_FLOOR),
+        (ROOM1A_HALL_FACE, y_front + WALL_THICK, FIRST_CEILING),
+    )
+    assign(front_wall, plaster)
 
     # Right wall behind room 1A, split around the two shut neighbour doors.
     door_spans = ((-9.00, -8.10), (-6.90, -6.00))
@@ -699,7 +708,7 @@ def build_first_floor_hall(materials, brass) -> None:
     ceiling = cube(
         "first_floor_hall_ceiling",
         (STAIR_X0 - 0.05, y_back, FIRST_CEILING),
-        (HALL_FACE, y_front, FIRST_CEILING + 0.09),
+        (ROOM1A_HALL_FACE, y_front, FIRST_CEILING + 0.09),
     )
     assign(ceiling, cornice)
 
@@ -756,6 +765,49 @@ def build_first_floor_hall(materials, brass) -> None:
     ):
         cornice_ob = cube(f"first_floor_hall_cornice_{tag}", lo, hi)
         assign(cornice_ob, cornice)
+
+    front_skirt = cube(
+        "first_floor_hall_skirt_front_wall",
+        (hall_floor_left, y_front - 0.02, FIRST_FLOOR),
+        (ROOM1A_HALL_FACE, y_front, FIRST_FLOOR + 0.18),
+    )
+    assign(front_skirt, timber)
+    front_picture_rail = cube(
+        "first_floor_hall_picture_rail_front_wall",
+        (hall_floor_left, y_front - 0.016, FIRST_FLOOR + 2.35),
+        (ROOM1A_HALL_FACE, y_front, FIRST_FLOOR + 2.398),
+    )
+    assign(front_picture_rail, timber)
+
+
+def import_room1a() -> None:
+    """Import the completed shipped room once and place it in lodge space."""
+    if not os.path.exists(ROOM1A_GLB):
+        raise FileNotFoundError(f"Room 1A model is missing: {ROOM1A_GLB}")
+
+    before = set(bpy.data.objects)
+    bpy.ops.import_scene.gltf(filepath=ROOM1A_GLB)
+    imported = [obj for obj in bpy.data.objects if obj not in before]
+    if not imported:
+        raise RuntimeError("Room 1A glTF import created no objects")
+
+    holder = bpy.data.objects.new("room1a_transform", None)
+    bpy.context.scene.collection.objects.link(holder)
+    # Authored Blender -> Unit A Blender:
+    # (x, y, z) -> (4 - y, x - 2.6, z + 3.45), the runtime's +90 degree turn.
+    holder.location = (4.0, -2.6, FIRST_FLOOR)
+    holder.rotation_euler = (0.0, 0.0, math.pi / 2)
+
+    imported_set = set(imported)
+    for obj in imported:
+        obj["unit_a_space"] = "room1a"
+        if obj.parent not in imported_set:
+            obj.parent = holder
+
+    meshes = [obj for obj in imported if obj.type == "MESH"]
+    if not meshes:
+        raise RuntimeError("Room 1A glTF import contains no meshes")
+    print(f"[unit-a] imported room 1A: {len(imported)} objects, {len(meshes)} meshes")
 
 
 def build_lighting() -> None:
@@ -853,12 +905,28 @@ def validate() -> None:
         "first_floor_hall_landing_slab",
         "first_floor_hall_main_carpet",
         "first_floor_hall_wall_left",
+        "first_floor_hall_wall_front",
         "first_floor_hall_wall_right_rear",
         "first_floor_hall_door_2_stile_hinge",
         "first_floor_hall_door_3_panel_t",
         "first_floor_hall_banister_b0_foot",
         "first_floor_hall_newel_front_post",
         "first_floor_hall_ceiling",
+        "floor",
+        "ceiling",
+        "wall_hall_pier0",
+        "wall_verandah_end",
+        "wall_street_end",
+        "door",
+        "verandahDoor",
+        "sash",
+        "frontWindow",
+        "bed",
+        "dresser",
+        "wardrobe",
+        "sideTable",
+        "rug",
+        "room1a_transform",
     }
     missing = required.difference(names)
     if missing:
@@ -875,10 +943,12 @@ def validate() -> None:
     parlour_count = sum(obj.name.startswith("parlour_") for obj in meshes)
     staircase_count = sum(obj.name.startswith("staircase_") for obj in meshes)
     hall_count = sum(obj.name.startswith("first_floor_hall_") for obj in meshes)
+    room1a_count = sum(obj.get("unit_a_space") == "room1a" for obj in meshes)
     print(
         f"[unit-a] validated: reception {reception_count} meshes, parlour {parlour_count} meshes, "
         f"staircase {staircase_count} meshes, "
         f"first-floor hall {hall_count} meshes, "
+        f"room 1A {room1a_count} meshes, "
         "0 unmaterialled, 0 without UVs"
     )
 
@@ -893,6 +963,7 @@ def build() -> None:
     build_parlour(materials, glass)
     build_staircase(materials, brass)
     build_first_floor_hall(materials, brass)
+    import_room1a()
     build_lighting()
     reception_camera = build_camera(
         "unit_a_reception", (5.75, -4.55, 1.62), (2.75, -0.15, 1.25)
@@ -904,7 +975,10 @@ def build() -> None:
         "unit_a_staircase", (1.30, -4.15, 1.58), (-0.72, -7.55, 1.85)
     )
     first_floor_hall_camera = build_camera(
-        "unit_a_first_floor_hall", (0.92, -9.62, 4.68), (0.34, -5.72, 4.48)
+        "unit_a_first_floor_hall", (0.92, -9.62, 4.68), (0.72, -2.82, 4.48)
+    )
+    room1a_camera = build_camera(
+        "unit_a_room1a", (2.18, -2.60, 4.98), (5.72, -2.42, 4.72)
     )
     configure_render()
     validate()
@@ -913,14 +987,17 @@ def build() -> None:
     os.makedirs(os.path.dirname(OUT_RECEPTION_SHOT), exist_ok=True)
     bpy.context.scene.camera = reception_camera
     bpy.ops.wm.save_as_mainfile(filepath=OUT_BLEND, compress=True)
-    for camera, path in (
-        (reception_camera, OUT_RECEPTION_SHOT),
-        (parlour_camera, OUT_PARLOUR_SHOT),
-        (staircase_camera, OUT_STAIRCASE_SHOT),
-        (first_floor_hall_camera, OUT_FIRST_FLOOR_HALL_SHOT),
+    for camera, path, preview_exposure in (
+        (reception_camera, OUT_RECEPTION_SHOT, 2.8),
+        (parlour_camera, OUT_PARLOUR_SHOT, 2.8),
+        (staircase_camera, OUT_STAIRCASE_SHOT, 3.8),
+        (first_floor_hall_camera, OUT_FIRST_FLOOR_HALL_SHOT, 4.2),
+        (room1a_camera, OUT_ROOM1A_SHOT, 2.8),
     ):
         bpy.context.scene.camera = camera
         bpy.context.scene.render.filepath = path
+        # Preview-only compensation until the shared indirect bake exists.
+        bpy.context.scene.view_settings.exposure = preview_exposure
         bpy.ops.render.render(write_still=True)
         print(f"[unit-a] wrote {path} {os.path.getsize(path)} bytes")
     print(f"[unit-a] saved {OUT_BLEND}")

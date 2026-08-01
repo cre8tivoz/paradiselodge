@@ -68,3 +68,18 @@ Original prompt: Lets get started with the next phases.
 - The opened wall exposed sunlight tracing through decorative gaps in the
   shared panel-door leaf. Added its missing opaque timber core; rails and inset
   panels remain the visible face while closed doors now block direct light.
+- Room 1A integration reuses the complete shipped `public/models/room1a.glb`
+  once, including its already-sourced furniture and preserved object IDs. No
+  room 1A asset is rebuilt or sourced again; only reception/parlour shopping is
+  still deferred.
+- The first fully enclosed hall preview was too dark before the shared indirect
+  bake. Stair/hall check renders now use preview-only exposure compensation;
+  the saved Unit A scene remains at the locked 2.8 exposure.
+- Unit A step 3 is complete: reception, parlour, central staircase,
+  first-floor hallway and the complete room 1A now form one contiguous Blender
+  scene. The upstairs hall terminates in solid architecture and opens into 1A.
+- Final combined validation passed: reception 56 meshes, parlour 65,
+  staircase 143, first-floor hall 143 and room 1A 133; 0 unmaterialled meshes
+  and 0 meshes without UVs. All five check renders are visually accepted.
+- Next scoped task: Unit A step 4, source and place reception furniture. Room
+  1A is already complete and must not be sourced again.
