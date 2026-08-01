@@ -76,11 +76,13 @@ The player is Detective Graham Miller. You never see him until the last shot of 
 
 ## Status
 
-Last updated 31 July 2026. **Scene 1's engine is finished and room 1A is through the render reset.** The rest of the lodge is not. Update this whenever work resumes.
+Last updated 1 August 2026. **Scene 1's engine is finished, room 1A is through the render reset, and Unit A is two steps in.** The rest of the lodge is not. Update this whenever work resumes.
 
 Gameplay is correct and is not to be touched. `src/interact`, `src/case`, `src/dialogue`, `src/npc`, `src/core`, `src/player`, `src/ui`, `src/audio` are closed. Evidence copy, gate order and the event bus are closed. The live job is `src/materials`, `src/render`, and the geometry in `src/world`. See *The render reset* below before anything else.
 
 **The live job is Unit A: the lodge interior, one Blender scene, one bake.** Room 1A proved the pipeline and its process is not repeated per room. See *Extending the pipeline* at the bottom of this file.
+
+Steps 1 and 2 are done and neither produced anything walkable, which is the shape of this unit: the shared surfaces and the shared joinery are made once so four rooms can draw on them. **Next is step 3, and reception is the first space that exists.**
 
 Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Live at `https://paradiselodge-game.pages.dev` (Cloudflare Pages project `paradiselodge-game`). Custom domain `lodge.billyhaddad.au` not wired yet. Deploys are manual: `npm run build && wrangler pages deploy dist --project-name paradiselodge-game --branch main`.
 
@@ -608,6 +610,7 @@ Settled. Do not re-litigate these without a reason.
 - **Indirect light is a lightmap on `uv1` with `Texture.channel = 1` and `flipY = true`.** Both are wrong by default for a map that arrives beside a `.glb` rather than inside one. See *Room 1A ships as one file*
 - **Lightmaps are half float EXR, not KTX2.** No encoder on this machine and rule 9 says not to add one. `EXRLoader` is already in the `three` package
 - **A baked room is a `.glb` and a loader, never a geometry builder.** `room1a.ts` is the shape every other space copies: same signature, same registry, no primitives except look pads
+- **Baked geometry cannot be instanced.** Shared mesh data is shared UVs is one patch of the atlas, and the same door in two rooms needs two lightmaps. Reuse is a function that builds fresh geometry, never a linked duplicate. This is why `kit_arch.py` is a module and not a `.blend` full of instanced parts
 - `LOOP.maxDelta` is 0.05 and is a collision guard, not just a tab-out guard. Collision is a pushout, not a swept test. Raise it, or raise `runSpeed`, and check the arithmetic in the comment or Miller goes through a wall on a stalled frame
 
 Assumptions, flagged, cheap to change:
@@ -741,7 +744,9 @@ assets/
                 truth: docs/CREDITS.md holds the uid that re-fetches each one
   bake/         raw 32 bit Cycles output, 50MB a sheet. Gitignored
 tools/
-  blender/      scripts that build, bake or export those .blend files
+  blender/      scripts that build, bake or export those .blend files.
+                build_materials.py and kit_arch.py are Unit A's shared
+                surfaces and shared joinery, called by every space
   shot.mjs      headless capture. Verify every step with it
 public/
   env/          HDRIs (balcony_2k.hdr)
@@ -907,8 +912,25 @@ Order of work:
    - **`plaster_cornice` is `plaster_nicotine` with a tint above 1.** A tint is
      a multiply and can only darken, and at 0.88 the cornice rendered nine
      percent off the wall, which is the same wall twice
-2. **Shared kit pieces.** Door unit, window unit, skirting profile, architrave
-   profile, stair tread, baluster. Model once, instance everywhere
+2. **Shared kit pieces. Done.** `tools/blender/kit_arch.py` — doors and
+   architrave, skirting, picture rail, stair treads and risers, turned
+   balusters, handrail, newel. `kit_arch_check.py` builds one of everything
+   against the linked library and renders it to `shots/kit-arch.jpg`.
+   Dimensions come off `lodge.ts` so the new spaces line up with what is
+   already standing. Three things it settled:
+   - **"Instance everywhere" cannot mean Blender instances.** Every copy needs
+     its own island in the lightmap atlas, and two objects sharing mesh data
+     share UVs and therefore share one patch of it. Linked duplicates and baked
+     lighting are mutually exclusive. What is shared is the *definition*: one
+     function, fresh geometry per call
+   - **A rotated box is not a box.** The door leaf was built by computing its
+     corners at the open angle and handing them back as a min and a max, which
+     is the axis aligned bounding box of a turned door and rendered as a slab
+     standing across the opening. Anything that turns gets an empty for a
+     parent, and the parent is what turns
+   - **A riser closes the step, so it sits under the nosing at the front of its
+     own tread.** At the back, every step has a gap the depth of the going and
+     you can see the wall through the staircase
 3. **Assemble all five spaces in one scene.** Correct relative positions, real
    wall thickness, doorways open. Room 1A already exists — bring it in
 4. **Source furniture per space**, same rules as before. Reception: desk,

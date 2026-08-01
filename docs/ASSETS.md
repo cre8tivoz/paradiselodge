@@ -79,6 +79,8 @@ Wide Victorian staircase, carpet runner worn through on the treads, brass stair 
 
 **No furniture in either.** They are transit and they are where the budget gets saved.
 
+The staircase, the doors, the skirtings and the picture rails are **built, not sourced**, in `tools/blender/kit_arch.py`. That is not a break with the sourcing rule: nothing downloadable is a Victorian double-hung sash or a stair that lands on `lodge.ts`'s 18 risers at 0.19, and the architecture has to line up with what is already standing to the centimetre. Furniture is sourced; the building is built. Same split room 1A settled.
+
 ### 4. Room 1A
 Bed, dresser, chair, wardrobe, side table, sash window onto the verandah.
 
