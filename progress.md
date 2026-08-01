@@ -13,3 +13,16 @@ Original prompt: Lets get started with the next phases.
 - Final Blender validation passed: 56 meshes, 0 unmaterialled, 0 without UVs. The ignored working scene is `assets/blender/unit-a.blend`.
 - The generic web-game client stalled in its injected virtual-time loop; the project-native `tools/shot.mjs` path completed and its runtime 1A capture was visually inspected with no new console failure.
 - Next scoped task: add the parlour shell to this same Unit A scene. Do not source furniture until all contiguous shells are assembled.
+- Added the parlour shell to the same Unit A scene: carpet, nicotine plaster,
+  dark timber trim, two fixed double-hung street sashes and the open hall entry.
+  Furniture remains deferred to Unit A step 4.
+- Generalised the reception sash builder so both rooms use the same fresh-geometry
+  definition without linked bake geometry.
+- Rebuilt and visually inspected both `shots/unit-a-reception.jpg` and
+  `shots/unit-a-parlour.jpg`.
+- Blender validation passed for the combined scene: reception 56 meshes,
+  parlour 65 meshes, 0 unmaterialled, 0 without UVs.
+- Production build passed. The project-native runtime capture also completed and
+  room 1A rendered correctly; the existing Vite chunk-size warning remains.
+- Next scoped task: assemble the central staircase in this same Unit A scene.
+  Do not source furniture yet.
