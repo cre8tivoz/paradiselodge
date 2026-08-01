@@ -634,16 +634,42 @@ async function main(): Promise<void> {
    * Deliberately not gated on having examined it first. The player who tags
    * something they have not looked at still has to look at it to know it is
    * there, and a refusal with no stated reason is worse than a wasted walk.
+   *
+   * ## It answers, even when the answer is no
+   *
+   * Two objects in scene 1 are taggable and nothing marks which, so G on the
+   * other twenty eight used to do nothing at all: no sound, no line, no
+   * movement. Play-tested, that reads as a dead key rather than as an answer,
+   * and a player who thinks the verb is broken stops pressing it.
+   *
+   * So it says so, on the same line the examine text uses, which already
+   * clears itself when the player looks away. Miller decides not to call
+   * Moretti over and tells you that, in the same voice as everything else.
+   * It is a response to a verb the player pressed, not a marker: nothing here
+   * announces the two that do work, and looking at the hammer still tells you
+   * only what a hammer looks like.
+   *
+   * Aimed at nothing, it stays silent. The verb has no object and a line about
+   * empty air is noise.
    */
   function tryTag(): void {
     if (hands.isPlaying || notebook.isOpen || dialogue.isActive) {
       return
     }
     const target = look.target
-    if (target === undefined || target.taggable !== true) {
+    if (target === undefined) {
       return
     }
-    if (gates.isBagged(target.id) || moretti.state === 'approaching' || moretti.state === 'bagging') {
+    if (target.taggable !== true) {
+      hud.showExamine(target.id, 'Nothing here to bag.')
+      return
+    }
+    if (gates.isBagged(target.id)) {
+      hud.showExamine(target.id, "Moretti's got that one.")
+      return
+    }
+    if (moretti.state === 'approaching' || moretti.state === 'bagging') {
+      hud.showExamine(target.id, "He's on one already.")
       return
     }
     locate(target.object, targetWorld)

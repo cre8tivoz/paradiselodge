@@ -122,18 +122,21 @@ const SOLID = ['wall_', 'wardrobe', 'bed', 'dresser', 'sideTable', 'chair', 'cha
  *     0.4831  the spread's median over the mattress, measured in Blender
  *     0.438   the sourced mattress's top as it arrives in the .glb
  *
- * All three are the wrong surface. She is on the spread, and the spread is
- * seventeen centimetres of chenille, not a sheet: raycast down onto it in the
- * running game and its crown over her comes back at 0.635 local while the
- * mattress under it is at 0.461. Set to the mattress, which is what 0.452 was,
- * she lay inside the bedspread with the folds coming through her.
+ * All three are the wrong surface, and so was 0.62, which was measured against
+ * the thrown blanket that used to be here. **Measure this again whenever the
+ * bedding changes.** It is the one number in the room that is not the room's:
+ * she is loaded separately and placed onto geometry that arrives in the .glb.
  *
- * 0.62 puts her back a centimetre and a half under the crown, so the spread
- * gives where she is on it. The map of that surface is not flat — it dips to
- * 0.535 in one fold beside her ribs — and a body does not follow a fold, so
- * this is the crown minus a compression rather than an average.
+ * The way to measure it is to raycast straight down onto the spread in the
+ * running game, over the footprint she actually occupies, and never to read it
+ * off a bounding box. A bedspread's box bottom is its hem and its box top is a
+ * fold crest, so both ends of it lie by ten centimetres.
+ *
+ * The sourced bedspread's flat sits at 0.505 to 0.54 local over the mattress.
+ * 0.505 puts her a centimetre into it at the low end of that, which is a body
+ * on a bed rather than a body over one.
  */
-const SPREAD_TOP = 0.62
+const SPREAD_TOP = 0.505
 
 /** Head end of the bed, in room local z. The sourced frame runs -0.85 to 1.15. */
 const BED_HEAD_Z = -0.8

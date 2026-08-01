@@ -702,20 +702,6 @@ def build_bedding(bed_holder, spread, linen, ticking):
         holder.scale = ((hi.y - lo.y - 0.16) / (bhi - blo).y,) * 3
     bpy.context.view_layer.update()
 
-    # Then widen it on its own. Length is what sets the scale, because a spread
-    # that is short reads as a towel, and at that scale this one came up narrow
-    # enough to leave a bare strip of ticking down one side whichever way it was
-    # thrown. Stretching cloth across its width by a sixth is not visible. A bed
-    # half made is.
-    # Wide enough to cover the mattress and turn down its sides, and no wider.
-    # At frame width plus a third of a metre the drape cleared the mattress
-    # entirely, passed through the iron side rail and hung in mid air beside the
-    # bed. The spread has to be measured against the mattress, not the frame.
-    blo, bhi = world_bounds(new)
-    if (bhi - blo).x > 1e-6:
-        holder.scale.x *= ((mhi.x - mlo.x) + 0.17) / (bhi - blo).x
-    bpy.context.view_layer.update()
-
     # Centre it on the frame in plan. Height is settled per mesh, below.
     blo, bhi = world_bounds(new)
     mid = (blo + bhi) / 2
@@ -726,39 +712,24 @@ def build_bedding(bed_holder, spread, linen, ticking):
     )
     bpy.context.view_layer.update()
 
-    """
-    Then half a turn about the bed centre.
-
-    This is a throw, not a bedspread. Raycast down over the mattress and it
-    covers a band about forty centimetres wide out of seventy five: the rest of
-    what the bounding box calls "bedding" is the hem, hanging past the frame
-    thirty centimetres lower down. The band was on the room side of the bed,
-    which is the only side anybody ever sees, so the bare ticking was the first
-    thing you looked at and the spread was the thing behind it.
-
-    Turned, the band faces the room and the bare strip goes against the wall.
-
-    It does not make the bed and it cannot: **this asset is the wrong shape for
-    the job and wants replacing with a sourced bedspread.** Scaling it wider is
-    not the answer either, that was measured too. At 1.35x the covered band
-    reaches the mattress edges and the hem is 1.07 wide against a frame of 0.825,
-    so the drape hangs straight through the iron side rails.
-    """
-    centre = mathutils.Vector(((lo.x + hi.x) / 2, (lo.y + hi.y) / 2, 0.0))
-    turn = (
-        mathutils.Matrix.Translation(centre)
-        @ mathutils.Matrix.Rotation(math.pi, 4, "Z")
-        @ mathutils.Matrix.Translation(-centre)
-    )
-    for o in [c for c in holder.children_recursive if c.type == "MESH"]:
-        o.matrix_world = turn @ o.matrix_world
-    bpy.context.view_layer.update()
-
+    # Only the pillow is kept out of this import. The bed comes with a blanket
+    # and the blanket is a throw: raycast down over the mattress and it covers
+    # a band about forty centimetres wide out of seventy five, and the rest of
+    # what its bounding box calls cloth is hem, hanging past the frame thirty
+    # centimetres lower down. It cannot make a bed, and widening it does not
+    # help either, that was measured: at 1.35x the covered band reaches the
+    # mattress edges and the hem is 1.07 wide against a frame of 0.825, so the
+    # drape hangs straight through the iron side rails.
+    #
+    # The spread is a separate sourced asset now. See `_place_spread`.
     meshes = sorted(
         (o for o in new if o.type == "MESH"),
         key=lambda o: -(o.dimensions.x * o.dimensions.y * o.dimensions.z),
     )
-    spread_mesh, pillow_mesh = meshes[0], (meshes[1] if len(meshes) > 1 else None)
+    for dead in meshes[:1]:
+        bpy.data.objects.remove(dead, do_unlink=True)
+    pillow_mesh = meshes[1] if len(meshes) > 1 else None
+    spread_mesh = _place_spread(holder, mlo, mhi, top, spread)
 
     def heights(ob, over_mattress: bool):
         """World z of every vertex, optionally only those over the mattress."""
@@ -778,15 +749,74 @@ def build_bedding(bed_holder, spread, linen, ticking):
         bpy.context.view_layer.update()
 
     flat = heights(spread_mesh, True)
-    drop(spread_mesh, (top + 0.015) - flat[len(flat) // 2])
+    drop(spread_mesh, (top + 0.010) - flat[len(flat) // 2])
 
     if pillow_mesh is not None:
         drop(pillow_mesh, (top + 0.010) - heights(pillow_mesh, False)[0])
 
-    assign(spread_mesh, spread)
     if pillow_mesh is not None:
         assign(pillow_mesh, linen)
     return holder
+
+
+def _place_spread(holder, mlo, mhi, top, spread):
+    """
+    The bedspread, sourced separately from the bed it lies on.
+
+    `bedding.glb` ships a blanket thrown back off one side, which is a fine
+    thing to own and the wrong thing for this room: Crystal is laid out on this
+    bed and half of what she is laid out on was bare ticking. This is a plain
+    single bedspread, 785 faces, and it has a flat that covers a mattress.
+
+    Sized 0.95 across and 1.60 down, against a mattress of 0.75 by 1.90. The
+    width is the number that matters and it is not a free choice: less and the
+    ticking shows at the edges, more and the fall goes outside the frame and
+    hangs through the iron. The drape depth follows the width factor rather
+    than being set on its own, so the fall off the sides stays in proportion
+    with the squash along the length.
+
+    It stops short of the head so the pillow sits on the mattress and not on
+    the spread, which is how a bed is made.
+
+    **Anchored on the median of its vertices over the mattress, never on its
+    bounding box.** Placed by box top, its highest fold sat on the mattress and
+    the flat that is supposed to touch the bed hung ten centimetres inside it.
+    That is the same trap the old spread and the pillow each fell into, in
+    their own way, and it is why both of them are anchored by vertices too.
+    """
+    before = {o.name for o in bpy.data.objects}
+    bpy.ops.import_scene.gltf(filepath=f"{SOURCED}/bedspread.glb")
+    new = [o for o in bpy.data.objects if o.name not in before]
+    mesh = next(o for o in new if o.type == "MESH")
+    for junk in [o for o in new if o is not mesh]:
+        bpy.data.objects.remove(junk, do_unlink=True)
+
+    mesh.parent = None
+    mesh.matrix_parent_inverse.identity()
+    mesh.name = "spread"
+    mesh.data.name = "spread"
+    bpy.context.view_layer.update()
+
+    lo, hi = world_bounds([mesh])
+    across = 0.95 / (hi.x - lo.x)
+    mesh.scale = (across, 1.60 / (hi.y - lo.y), across)
+    bpy.context.view_layer.update()
+
+    lo, hi = world_bounds([mesh])
+    mid = (lo + hi) / 2
+    mesh.location = (
+        mesh.location.x + ((mlo.x + mhi.x) / 2 - mid.x),
+        # Down the bed from centre, which is what leaves the pillow clear.
+        mesh.location.y + ((mlo.y + mhi.y) / 2 + 0.175 - mid.y),
+        mesh.location.z,
+    )
+    bpy.context.view_layer.update()
+
+    mesh.parent = holder
+    mesh.matrix_parent_inverse = holder.matrix_world.inverted()
+    assign(mesh, spread)
+    bpy.context.view_layer.update()
+    return mesh
 
 
 def build_rug(carpet):

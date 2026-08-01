@@ -63,6 +63,7 @@ the shipping decision.
 | `magazines` | [Newspaper Stack](https://sketchfab.com/models/c4311a0b918643af97904e10c7a34efc) | karlwirbelwind | CC-BY 4.0 | `c4311a0b918643af97904e10c7a34efc` |
 | `syringe` | [Disposable Syringe 2ml Set](https://sketchfab.com/models/4cdb3198b4284144b9722fe4cde5462b) | joezeffdesign | CC-BY 4.0 | `4cdb3198b4284144b9722fe4cde5462b` |
 | `bedding` | [Messy Bed](https://sketchfab.com/models/aebc9bae5a4d459494d1e5de76658d5a) | lucaboechat | CC-BY 4.0 | `aebc9bae5a4d459494d1e5de76658d5a` |
+| `bedspread` | [Single Bed Blanket](https://sketchfab.com/models/14084f216e834241a7f152cdfa4e5d59) | whewnewacc | CC-BY 4.0 | `14084f216e834241a7f152cdfa4e5d59` |
 | `mattress` | [Mattress](https://sketchfab.com/models/6a526b42e6a34a4ba12136a40d9a686b) | Miguel Ángel | CC-BY 4.0 | `6a526b42e6a34a4ba12136a40d9a686b` |
 | `paper` | [Low-poly Papers Set](https://sketchfab.com/models/2edf57ce2e6c4475bd4897b9c91b0a77) | Hox_Lira | CC-BY 4.0 | `2edf57ce2e6c4475bd4897b9c91b0a77` |
 
@@ -81,7 +82,8 @@ the shipping decision.
 | `lighter` | 0.5k | centimetres | Disposable plastic. Period correct, a Zippo would not be |
 | `magazines` | 2.1k | millimetres | Stack of printed matter. Carries the authored `magazines` texture |
 | `syringe` | 15.5k | centimetres | Disposable plastic, not a glass and steel antique. 1994 |
-| `bedding` | 33k | source units | The blanket and the pillow only. Its timber frame was thrown away and it goes on the sourced iron one. Retextured to dusty rose |
+| `bedding` | 33k | source units | **The pillow only, now.** Its timber frame was thrown away at step 4 and its blanket at the play-test pass: the blanket is a throw folded off one side and it left half the mattress bare with Crystal laid out on it |
+| `bedspread` | 785 | source units | A plain single bedspread with a flat that covers a mattress, which is the one thing `bedding` could not do. Retextured to dusty rose. 0.95 across against a mattress of 0.75, because wider than that and the fall hangs through the iron side rails |
 | `mattress` | 34k | centimetres | Quilted, rounded edges. Scaled to the frame's interior on both axes and retextured to ticking. It replaced a grey box |
 | `paper` | 2 | source units | One sheet, separated out of a set of loose papers. Used twice, for the `map` and the `note`, each carrying its own authored image through the sheet's own UVs |
 
