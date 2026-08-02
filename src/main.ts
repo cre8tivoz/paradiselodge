@@ -11,6 +11,7 @@ import { buildLodge } from './world/lodge.ts'
 import { buildVerandah } from './world/verandah.ts'
 import { buildYard } from './world/yard.ts'
 import { buildRoom1A } from './world/room1a.ts'
+import { loadUnitA } from './world/unit-a.ts'
 import { BoxCollisionSolver } from './world/collision.ts'
 import { PlayerController } from './player/controller.ts'
 import { LookRegistry } from './interact/lookable.ts'
@@ -70,6 +71,9 @@ async function main(): Promise<void> {
   const lodge = buildLodge()
   world.add(lodge.group)
 
+  const unitA = await loadUnitA()
+  lodge.interiorVisuals.removeFromParent()
+
   /*
    * Room 1A, placed into the building rather than sitting at the origin.
    *
@@ -81,8 +85,10 @@ async function main(): Promise<void> {
   const room = await buildRoom1A({
     position: new Vector3(4.0, 3.45, 2.6),
     rotationY: Math.PI / 2,
-  })
+  }, unitA.scene)
   world.add(room.group)
+
+  const lodgeProps = { ...lodge.props, ...unitA.props }
 
   const verandah = buildVerandah()
   world.add(verandah.group)
@@ -347,42 +353,42 @@ async function main(): Promise<void> {
     {
       id: 'lodge.desk',
       description: 'Reception desk.',
-      object: lodge.props.desk,
+      object: lodgeProps.desk,
     },
     {
       id: 'lodge.keyRack',
       description: 'Pigeonholes. Most of them still have a key in them.',
-      object: lodge.props.keyRack,
+      object: lodgeProps.keyRack,
     },
     {
       id: 'lodge.ledger',
       description: 'Guest ledger, open on the desk.',
-      object: lodge.props.ledger,
+      object: lodgeProps.ledger,
     },
     {
       id: 'lodge.phone',
       description: 'Bakelite phone. The cord is twisted right up.',
-      object: lodge.props.phone,
+      object: lodgeProps.phone,
     },
     {
       id: 'lodge.ashtray',
       description: 'Ashtray on the desk. Full.',
-      object: lodge.props.ashtray,
+      object: lodgeProps.ashtray,
     },
     {
       id: 'lodge.stairs',
       description: 'The staircase. Runner worn through on the treads.',
-      object: lodge.props.stairs,
+      object: lodgeProps.stairs,
     },
     {
       id: 'lodge.armchair',
       description: 'Armchairs round a low table.',
-      object: lodge.props.armchair,
+      object: lodgeProps.armchair,
     },
     {
       id: 'lodge.parlourTable',
       description: 'Low table in the middle of the parlour.',
-      object: lodge.props.parlourTable,
+      object: lodgeProps.parlourTable,
     },
     {
       id: 'lodge.diary',
@@ -393,17 +399,17 @@ async function main(): Promise<void> {
       clipId: 'liftNote',
       evidenceId: diary.id,
       taggable: true,
-      object: lodge.props.diary,
+      object: lodgeProps.diary,
     },
     {
       id: 'lodge.television',
       description: 'Television in the corner. Off.',
-      object: lodge.props.television,
+      object: lodgeProps.television,
     },
     {
       id: 'lodge.standardLamp',
       description: 'Standard lamp. Shade gone yellow.',
-      object: lodge.props.standardLamp,
+      object: lodgeProps.standardLamp,
     },
     {
       id: 'lodge.commodore',

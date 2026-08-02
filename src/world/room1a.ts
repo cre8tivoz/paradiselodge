@@ -22,10 +22,9 @@ import type { WalkableRegion } from './collision.ts'
  * BRIEF.md: the light is the point. Everything in here happened at 2am in the
  * dark. Whoever arranged it never saw it like this.
  *
- * **This file is a loader and a prop registry. It does not build geometry.**
- * The room is `public/models/room1a.glb`, assembled in Blender out of sourced
- * furniture and baked in Cycles by `tools/blender/build_room1a.py` and
- * `bake_room1a.py`. Reset steps 4 to 6. Move a wall in the script, not here.
+ * **This file is a prop registry. It does not build geometry.** In production
+ * the room arrives inside `public/models/unit-a.glb`; the standalone Room 1A
+ * loader remains as a fallback for focused development.
  *
  * What is still this file's job:
  *
@@ -34,10 +33,9 @@ import type { WalkableRegion } from './collision.ts'
  * - baking collision boxes and the walkable floor off the loaded geometry
  * - placing Crystal, who is not part of the room and is never baked into it
  *
- * Built at the origin and placed into the lodge by the caller. Local -Z is the
- * hall door and local +Z is the sash, so the placement rotation decides which
- * way the room faces; collision boxes are baked after the transform is applied,
- * which is why the placement is an argument and not something you set later.
+ * The placement still defines where separately loaded Crystal belongs. Unit A
+ * itself already arrives in lodge coordinates; the standalone fallback is
+ * transformed by that same placement before its collision is measured.
  */
 
 /** Where the room sits in the lodge. */
@@ -280,8 +278,11 @@ function lookPad(name: string, size: Vector3, at: Vector3): Object3D {
   return pad
 }
 
-export async function buildRoom1A(placement: Room1APlacement): Promise<Room1A> {
-  const [scene, maps] = await Promise.all([loadModel(), loadLightmaps()])
+export async function buildRoom1A(
+  placement: Room1APlacement,
+  unitAScene?: Group,
+): Promise<Room1A> {
+  const scene = unitAScene ?? await loadModel()
 
   const group = new Group()
   group.name = 'room1a'
@@ -292,13 +293,18 @@ export async function buildRoom1A(placement: Room1APlacement): Promise<Room1A> {
    * chain, so every solid below would otherwise be baked at the origin and the
    * room would collide four metres from where it is drawn.
    */
-  group.position.copy(placement.position)
-  group.rotation.y = placement.rotationY
+  if (unitAScene === undefined) {
+    group.position.copy(placement.position)
+    group.rotation.y = placement.rotationY
+  }
   group.updateMatrixWorld(true)
 
-  const unlit = applyLightmaps(scene, maps)
-  if (unlit > 0 && import.meta.env.DEV) {
-    console.warn(`room1a: ${unlit} meshes matched no bake group and are unlit`)
+  if (unitAScene === undefined) {
+    const maps = await loadLightmaps()
+    const unlit = applyLightmaps(scene, maps)
+    if (unlit > 0 && import.meta.env.DEV) {
+      console.warn(`room1a: ${unlit} meshes matched no bake group and are unlit`)
+    }
   }
 
   const dresser = need(scene, 'dresser')
@@ -341,6 +347,11 @@ export async function buildRoom1A(placement: Room1APlacement): Promise<Room1A> {
     BED_HEAD_Z + CRYSTAL_LENGTH,
   )
   crystal.root.rotation.y = Math.PI
+  if (unitAScene !== undefined) {
+    crystal.root.position.applyAxisAngle(new Vector3(0, 1, 0), placement.rotationY)
+    crystal.root.position.add(placement.position)
+    crystal.root.rotation.y += placement.rotationY
+  }
   group.add(crystal.root)
   group.updateMatrixWorld(true)
 

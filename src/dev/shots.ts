@@ -44,6 +44,30 @@ const SHOTS: Record<string, ShotFn> = {
     hands.setVisible(false)
     player.place(new Vector3(2.35, 3.45, 1.85), Math.PI + 1.05, -0.34)
   },
+
+  'unit-a-reception': ({ player, hands, hudRoot }) => {
+    hudRoot.style.display = 'none'
+    hands.setVisible(false)
+    player.place(new Vector3(2.05, 0, 1.18), -2.35, -0.12)
+  },
+
+  'unit-a-parlour': ({ player, hands, hudRoot }) => {
+    hudRoot.style.display = 'none'
+    hands.setVisible(false)
+    player.place(new Vector3(-2.15, 0, 4.55), 0.5, -0.06)
+  },
+
+  'unit-a-staircase': ({ player, hands, hudRoot }) => {
+    hudRoot.style.display = 'none'
+    hands.setVisible(false)
+    player.place(new Vector3(1.3, 0, 4.15), 2.61, 0.07)
+  },
+
+  'unit-a-hallway': ({ player, hands, hudRoot }) => {
+    hudRoot.style.display = 'none'
+    hands.setVisible(false)
+    player.place(new Vector3(0.92, 3.45, 9.62), 0.03, -0.03)
+  },
 }
 
 export function listShots(): string[] {

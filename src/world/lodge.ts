@@ -51,6 +51,8 @@ import { aabb, elevation, mat, raked, slab, unlit, walk, wall } from './kit.ts'
 
 export interface Lodge {
   readonly group: Group
+  /** Temporary kit interior, detached once the Blender-authored Unit A loads. */
+  readonly interiorVisuals: Group
   readonly solids: Box3[]
   readonly floors: WalkableRegion[]
   /** On the footpath, facing the steps. Where the cold open will start. */
@@ -390,6 +392,8 @@ export function buildLodge(): Lodge {
 
   // === Ground floor ===
 
+  const interiorStart = group.children.length
+
   slab(group, carpet, LEFT, RIGHT, GROUND - 0.1, GROUND, FRONT, BACK).receiveShadow = true
   walk(floors, 'carpet', HALL_X0, HALL_X1, FRONT - 0.2, STAIR_Z0 + 0.05, GROUND)
   walk(floors, 'carpet', STAIR_EDGE - 0.05, HALL_X1, STAIR_Z0 + 0.05, BACK, GROUND)
@@ -638,6 +642,16 @@ export function buildLodge(): Lodge {
   slab(standardLamp, mat(0xbfa87e, 0.9), -5.55, -5.05, 1.5, 1.86, 3.75, 4.25)
   slab(standardLamp, timber, -5.5, -5.1, GROUND, 0.03, 3.8, 4.2)
 
+  /*
+   * Keep the collision and walk regions above, but make the old visual kit one
+   * detachable unit. Unit A replaces this group after its GLB and lightmaps
+   * have loaded; the street, facade and front door remain authored here.
+   */
+  const interiorVisuals = new Group()
+  interiorVisuals.name = 'lodge-interior-kit'
+  group.children.slice(interiorStart).forEach((child) => interiorVisuals.add(child))
+  group.add(interiorVisuals)
+
   // === Commodore ===
   // Beige 1993 VP Holden, unmarked, fleet spec. Parked parallel to the kerb,
   // off to the left so it does not block the approach. Kit boxes: body, cabin,
@@ -732,6 +746,7 @@ export function buildLodge(): Lodge {
 
   return {
     group,
+    interiorVisuals,
     solids,
     floors,
     spawn: new Vector3(0.6, ROAD, -7.4),
@@ -786,4 +801,3 @@ export function buildLodge(): Lodge {
     },
   }
 }
-

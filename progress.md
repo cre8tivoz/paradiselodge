@@ -155,3 +155,22 @@ Original prompt: Lets get started with the next phases.
   replace the runtime lodge/room split without changing gameplay IDs.
 - Production build and the project-native room 1A runtime capture passed after
   the Blender-only bake work; the existing Vite chunk-size warning is unchanged.
+- Added `tools/blender/export_unit_a.py` and shipped Unit A as one optimized
+  31.14MB GLB plus five DWAA half-float EXRs, 34.12MB combined against the 60MB
+  budget. The export contains 766 nodes, 601 mesh primitives, no cameras or
+  lights, all required gameplay IDs, and `TEXCOORD_1` on all 586 baked meshes.
+- Added `src/world/unit-a.ts` to load the combined interior once, restore the
+  room 1A/parlour/reception/staircase/hallway atlases on UV channel 1 and expose
+  the existing interaction targets. The lodge's temporary interior kit is now
+  detached after the authored scene loads; its collision, floors, facade,
+  front door, tape, neon, Commodore and uniforms remain in place.
+- Room 1A now accepts the already-loaded Unit A scene, so its object registry,
+  collision, drawer pad and separately loaded Crystal continue to use the same
+  gameplay contract without loading the retired standalone room a second time.
+- Production build passed. Runtime captures for room 1A, reception, parlour,
+  staircase and first-floor hallway were opened and inspected. The upper flight
+  visibly reaches a real landing with continuous banister and hallway, and all
+  startup interaction-ID checks passed. The existing Vite chunk-size warning is
+  unchanged.
+- Unit A step 7 is complete. Next scoped task: Unit B exterior art, realtime
+  only, beginning with the street and facade. Do not bake Unit B.

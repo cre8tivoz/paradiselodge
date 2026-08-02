@@ -963,10 +963,16 @@ Order of work:
    costs you the lot. `tools/blender/bake_unit_a.py` bakes and denoises the five
    space atlases independently on Metal; final bake-only checks are under
    `shots/unit-a-bake-final-*.jpg`
-7. **Export as one `.glb`.** Under 60MB for the whole interior. It loads once,
-   behind the title card
+7. **Export as one `.glb`. Done.** `tools/blender/export_unit_a.py` writes the
+   complete Blender-authored interior to `public/models/unit-a.glb`, caps source
+   textures before export and converts the five accepted bakes to compact
+   half-float EXRs. The shipped set is 34.12MB combined, below the 60MB budget.
+   `src/world/unit-a.ts` loads it once behind the title card, restores the five
+   atlases on `TEXCOORD_1`, and preserves every existing gameplay object ID.
+   The old lodge interior kit is detached only after Unit A has loaded; its
+   collision, walk regions, facade and exterior gameplay remain unchanged
 
-### UNIT B — exteriors. No baking.
+### UNIT B — exteriors. No baking. Next.
 
 Street and facade, verandah, back yard.
 
