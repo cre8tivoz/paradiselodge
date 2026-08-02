@@ -81,15 +81,15 @@ def _atlas_name(obj) -> str | None:
 
 def _is_glass(obj) -> bool:
     lower = obj.name.lower()
-    if "glass" in lower or "pane_" in lower:
+    if "glass" in lower or "pane_" in lower or "ashtray" in lower:
         return True
     for material in obj.data.materials:
         if material is None:
             continue
         name = material.name.lower()
-        if "glass" in name or "barely" in name:
+        if "glass" in name or "barely" in name or "sheer" in name:
             return True
-        if getattr(material, "surface_render_method", "DITHERED") != "DITHERED":
+        if material.diffuse_color[3] < 0.999:
             return True
     return False
 
@@ -304,6 +304,27 @@ def _check_uv_geometry(obj) -> tuple[int, int]:
     return overlaps, degenerates
 
 
+def _texel_coverage(obj, resolution: int) -> tuple[float, float]:
+    """Return occupied texels and the fraction of triangles below one texel."""
+    mesh = obj.data
+    mesh.calc_loop_triangles()
+    layer = mesh.uv_layers[LIGHTMAP_UV]
+    areas = []
+    for triangle in mesh.loop_triangles:
+        points = [
+            np.array(layer.uv[loop_index].vector, dtype=np.float64)
+            for loop_index in triangle.loops
+        ]
+        areas.append(
+            abs(_cross(points[0], points[1], points[2]))
+            * 0.5
+            * resolution
+            * resolution
+        )
+    values = np.array(areas, dtype=np.float64)
+    return float(values.sum()), float(np.count_nonzero(values < 1.0) / len(values))
+
+
 def _place_in_cell(obj, cell, resolution: int) -> None:
     x, y, side = cell
     layer = obj.data.uv_layers[LIGHTMAP_UV]
@@ -405,13 +426,20 @@ def _diagnostic(name: str, objects, cells) -> str:
     return path
 
 
-def allocate() -> None:
+def allocate(only=None) -> None:
     if bpy.data.filepath != OUT_BLEND:
         raise RuntimeError(f"Open {OUT_BLEND} before allocating Unit A UVs")
+
+    requested = set(only or (name for name, _resolution in ATLASES))
+    known = {name for name, _resolution in ATLASES}
+    if not requested <= known:
+        raise RuntimeError(f"unknown Unit A UV atlases: {sorted(requested - known)}")
 
     all_targets = []
     reports = []
     for name, resolution in ATLASES:
+        if name not in requested:
+            continue
         objects = _members(name)
         if not objects:
             raise RuntimeError(f"Unit A atlas {name} matched no meshes")
@@ -441,11 +469,13 @@ def allocate() -> None:
         for index, obj in enumerate(objects):
             _place_in_cell(obj, cells[index], resolution)
             overlap_pairs, degenerate_triangles = _check_uv_geometry(obj)
-            if overlap_pairs or degenerate_triangles:
+            occupied_texels, subtexel_fraction = _texel_coverage(obj, resolution)
+            if overlap_pairs or degenerate_triangles or subtexel_fraction > 0.10:
                 print(
                     f"[unit-a-uv] {obj.name}: atlas scaling exposed "
                     f"{overlap_pairs} crossing pairs and {degenerate_triangles} "
-                    "degenerate triangles; repacking faces"
+                    f"degenerate triangles; {subtexel_fraction * 100:.1f}% "
+                    f"subtexel triangles across {occupied_texels:.0f}px; repacking faces"
                 )
                 _face_pack(obj)
                 overlap_pairs, degenerate_triangles = _check_uv_geometry(obj)
@@ -455,6 +485,13 @@ def allocate() -> None:
                         f"pairs and {degenerate_triangles} degenerate triangles"
                     )
                 _place_in_cell(obj, cells[index], resolution)
+                occupied_texels, subtexel_fraction = _texel_coverage(obj, resolution)
+                if subtexel_fraction > 0.25:
+                    print(
+                        f"[unit-a-uv] warning: {obj.name} retains "
+                        f"{subtexel_fraction * 100:.1f}% subtexel triangles after "
+                        f"face pack ({occupied_texels:.0f}px occupied)"
+                    )
         _validate_cells(objects, cells, resolution)
 
         occupancy = sum(cell[2] ** 2 for cell in cells.values())

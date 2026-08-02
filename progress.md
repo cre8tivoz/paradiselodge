@@ -134,3 +134,24 @@ Original prompt: Lets get started with the next phases.
   1A correctly. The existing Vite chunk-size warning remains unchanged.
 - Unit A step 5 is complete. Next scoped task: step 6, bake Diffuse Indirect per
   object group at 64 samples for iteration, then 256 for the accepted final.
+- Added `tools/blender/bake_unit_a.py`: five resumable space-group bakes,
+  Diffuse Indirect without direct or colour, Metal GPU enforcement, persistent
+  data, compositor OIDN, finite/lit-pixel checks and bake-only previews.
+- The first 64-sample pass exposed two problems before the final: linked library
+  materials silently rejected bake image assignment, and dense imported meshes
+  could have thousands of subtexel UV triangles. Baking now uses temporary local
+  material copies; the allocator falls back to face packing when texel coverage
+  is inadequate. The opaque sofa was also separated from true transparent
+  exclusions and added to the parlour atlas.
+- Reallocated and validated 586 unique opaque meshes, then reran the complete
+  64-sample pass. All five bake-only previews were inspected; black triangle
+  dropouts were removed and indirect falloff is coherent across each space.
+- Final 256-sample timings: room 1A 315.6s, parlour 178.4s, reception 148.5s,
+  staircase 195.5s and hallway 164.3s. Every EXR passed finite, non-black and
+  lit-pixel checks at its locked resolution.
+- Visually inspected all five final diagnostics under
+  `shots/unit-a-bake-final-*.jpg`. Unit A step 6 is complete. Next scoped task:
+  step 7, export one optimized interior GLB under the 60MB combined budget and
+  replace the runtime lodge/room split without changing gameplay IDs.
+- Production build and the project-native room 1A runtime capture passed after
+  the Blender-only bake work; the existing Vite chunk-size warning is unchanged.

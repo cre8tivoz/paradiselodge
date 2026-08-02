@@ -76,13 +76,13 @@ The player is Detective Graham Miller. You never see him until the last shot of 
 
 ## Status
 
-Last updated 2 August 2026. **Scene 1's engine is finished and Unit A step 5 is done.** All five lodge-interior spaces have separate, validated bake UVs at their locked resolutions. Update this whenever work resumes.
+Last updated 2 August 2026. **Scene 1's engine is finished and Unit A step 6 is done.** All five lodge-interior spaces have final 256-sample indirect-light atlases. Update this whenever work resumes.
 
 Gameplay is correct and is not to be touched. `src/interact`, `src/case`, `src/dialogue`, `src/npc`, `src/core`, `src/player`, `src/ui`, `src/audio` are closed. Evidence copy, gate order and the event bus are closed. The live job is `src/materials`, `src/render`, and the geometry in `src/world`. See *The render reset* below before anything else.
 
 **The live job is Unit A: the lodge interior, one Blender scene, one bake.** Room 1A proved the pipeline and its process is not repeated per room. See *Extending the pipeline* at the bottom of this file.
 
-Steps 1 and 2 are done and neither produced anything walkable, which is the shape of this unit: the shared surfaces and the shared joinery are made once so four rooms can draw on them. **Steps 3 through 5 are done: the complete interior is assembled, furnished and allocated into five bake atlases. Next is step 6, the grouped Diffuse Indirect bake.**
+Steps 1 and 2 are done and neither produced anything walkable, which is the shape of this unit: the shared surfaces and the shared joinery are made once so four rooms can draw on them. **Steps 3 through 6 are done: the complete interior is assembled, furnished, unwrapped and baked. Next is step 7, the single optimized GLB export and runtime handoff.**
 
 Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Live at `https://paradiselodge-game.pages.dev` (Cloudflare Pages project `paradiselodge-game`). Custom domain `lodge.billyhaddad.au` not wired yet. Deploys are manual: `npm run build && wrangler pages deploy dist --project-name paradiselodge-game --branch main`.
 
@@ -958,9 +958,11 @@ Order of work:
    deterministically allocates 585 unique opaque meshes, preserves the albedo
    UV as the render layer, and rejects out-of-bounds, overlapping or degenerate
    final UVs. Cell diagnostics are under `shots/unit-a-lightmap-uv-*.png`
-6. **Bake Diffuse Indirect, 64 while iterating, 256 final.** Persistent Data on.
+6. **Bake Diffuse Indirect, 64 while iterating, 256 final. Done.** Persistent Data on.
    **Bake per object group, not the whole scene at once**, or a failure at 90%
-   costs you the lot
+   costs you the lot. `tools/blender/bake_unit_a.py` bakes and denoises the five
+   space atlases independently on Metal; final bake-only checks are under
+   `shots/unit-a-bake-final-*.jpg`
 7. **Export as one `.glb`.** Under 60MB for the whole interior. It loads once,
    behind the title card
 
