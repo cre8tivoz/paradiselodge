@@ -20,6 +20,13 @@ export interface ShotContext {
 type ShotFn = (ctx: ShotContext) => void
 
 const SHOTS: Record<string, ShotFn> = {
+  /** Street approach toward the complete front elevation. */
+  'scene1-exterior': ({ player, hands, hudRoot }) => {
+    hudRoot.style.display = 'none'
+    hands.setVisible(false)
+    player.place(new Vector3(-5.8, -0.85, -8.2), -2.5, 0.18)
+  },
+
   /**
    * Doorway into 1A. Matches images/mood/1a-target.png's wide framing:
    * standing just inside the threshold, door jamb on one side, bed and sash
