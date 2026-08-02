@@ -303,23 +303,26 @@ def facade_detail(materials) -> None:
 
     # Full-width iron-lace balcony. Repetition is broken by wider structural
     # bays, while crossed diagonals keep it Victorian instead of office railing.
-    box("exterior_balcony_slab", (LEFT + 0.20, FRONT_BACK - 0.05, 3.08), (RIGHT - 0.20, 1.34, 3.22), trim)
-    box("exterior_balcony_rail_top", (LEFT + 0.28, 1.21, 4.20), (RIGHT - 0.28, 1.30, 4.30), iron)
-    box("exterior_balcony_rail_bottom", (LEFT + 0.28, 1.21, 3.28), (RIGHT - 0.28, 1.30, 3.36), iron)
+    # The outer edge is y=2.20 (runtime z=-2.20), exactly the front edge of
+    # verandah.ts' return. The previous 1.30 m edge cut through that return and
+    # made the authored balcony look like a barrier across the wraparound deck.
+    box("exterior_balcony_slab", (LEFT + 0.20, FRONT_BACK - 0.05, 3.31), (RIGHT - 0.20, 2.20, 3.45), trim)
+    box("exterior_balcony_rail_top", (LEFT + 0.28, 2.08, 4.37), (RIGHT - 0.28, 2.17, 4.47), iron)
+    box("exterior_balcony_rail_bottom", (LEFT + 0.28, 2.08, 3.53), (RIGHT - 0.28, 2.17, 3.61), iron)
     for x in (-6.20, -3.12, 0.0, 3.12, 6.10):
-        box(f"exterior_balcony_post_{x}", (x - 0.065, 1.18, GROUND), (x + 0.065, 1.32, 6.55), iron)
-        box(f"exterior_balcony_post_cap_{x}", (x - 0.13, 1.13, 6.45), (x + 0.13, 1.37, 6.68), iron)
+        box(f"exterior_balcony_post_{x}", (x - 0.065, 2.05, GROUND), (x + 0.065, 2.19, 6.55), iron)
+        box(f"exterior_balcony_post_cap_{x}", (x - 0.13, 2.00, 6.45), (x + 0.13, 2.24, 6.68), iron)
     for index, x in enumerate([LEFT + 0.42 + i * 0.34 for i in range(38)]):
-        box(f"exterior_baluster_{index:02d}", (x - 0.018, 1.22, 3.33), (x + 0.018, 1.29, 4.23), iron)
+        box(f"exterior_baluster_{index:02d}", (x - 0.018, 2.09, 3.58), (x + 0.018, 2.16, 4.40), iron)
         if index % 2 == 0:
-            path_curve(f"exterior_lace_{index:02d}", [(x - 0.13, 1.31, 3.47), (x + 0.13, 1.31, 4.06)], iron, 0.012)
-            path_curve(f"exterior_lace_cross_{index:02d}", [(x + 0.13, 1.31, 3.47), (x - 0.13, 1.31, 4.06)], iron, 0.012)
+            path_curve(f"exterior_lace_{index:02d}", [(x - 0.13, 2.18, 3.70), (x + 0.13, 2.18, 4.26)], iron, 0.012)
+            path_curve(f"exterior_lace_cross_{index:02d}", [(x + 0.13, 2.18, 3.70), (x - 0.13, 2.18, 4.26)], iron, 0.012)
 
     # Small iron rings break the straight modern railing silhouette and give
     # the full-width balcony a denser nineteenth-century lace rhythm.
     for index, x in enumerate([LEFT + 0.76 + i * 0.68 for i in range(19)]):
         ring_points = [
-            (x + math.cos(math.tau * step / 12) * 0.095, 1.32, 3.77 + math.sin(math.tau * step / 12) * 0.095)
+            (x + math.cos(math.tau * step / 12) * 0.095, 2.18, 3.99 + math.sin(math.tau * step / 12) * 0.095)
             for step in range(12)
         ]
         path_curve(

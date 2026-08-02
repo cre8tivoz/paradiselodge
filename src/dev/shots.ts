@@ -33,6 +33,12 @@ const SHOTS: Record<string, ShotFn> = {
     player.place(new Vector3(7.05, 3.45, 0.1), Math.PI, -0.04)
   },
 
+  'scene1-verandah-junction': ({ player, hands, hudRoot }) => {
+    hudRoot.style.display = 'none'
+    hands.setVisible(false)
+    player.place(new Vector3(4.9, 3.45, -1.25), -Math.PI / 2, -0.05)
+  },
+
   'scene1-yard': ({ player, hands, hudRoot }) => {
     hudRoot.style.display = 'none'
     hands.setVisible(false)

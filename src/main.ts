@@ -9,6 +9,7 @@ import { loadEnvironment } from './render/environment.ts'
 import { buildSceneLighting } from './render/lighting.ts'
 import { buildLodge } from './world/lodge.ts'
 import { loadLodgeExterior } from './world/lodge-exterior.ts'
+import { loadCommodore } from './world/commodore.ts'
 import { buildVerandah } from './world/verandah.ts'
 import { buildYard } from './world/yard.ts'
 import { buildRoom1A } from './world/room1a.ts'
@@ -72,11 +73,17 @@ async function main(): Promise<void> {
   const lodge = buildLodge()
   world.add(lodge.group)
 
-  const [unitA, lodgeExterior] = await Promise.all([loadUnitA(), loadLodgeExterior()])
+  const [unitA, lodgeExterior, commodore] = await Promise.all([
+    loadUnitA(),
+    loadLodgeExterior(),
+    loadCommodore(),
+  ])
   lodge.interiorVisuals.removeFromParent()
   world.add(lodgeExterior.scene)
   lodge.props.neon.clear()
   lodge.props.neon.add(lodgeExterior.neon)
+  lodge.props.commodore.clear()
+  lodge.props.commodore.add(commodore)
 
   /*
    * Room 1A, placed into the building rather than sitting at the origin.

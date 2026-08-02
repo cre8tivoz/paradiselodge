@@ -195,3 +195,15 @@ pipeline and are not current project phases.
   14.8 ms p95 and 15.9 ms p99, with no hitches and no runtime shader compiles.
   Shader prewarming is therefore not justified. Remaining exterior work is the
   verandah, back yard and street dressing, not a new rendering system.
+- Corrected the authored upper balcony/wraparound verandah junction. Its slab,
+  posts and iron lace now terminate on the existing return's outer edge instead
+  of crossing the middle of the playable deck; the corner route and collision
+  remain continuous. Added a fixed regression shot for this junction.
+- Replaced the temporary box-built car with an authored VP/VR-era Commodore
+  based on the supplied front, side and rear references. The 0.31MB GLB keeps
+  the existing story interaction proxy and collision while adding the correct
+  long four-door silhouette, glasshouse, trim, pinstripe, lights and wheels.
+- Production build and final exterior capture passed. A 240-frame moving-camera
+  profile measured 14.0 ms p50, 16.2 ms p95 and 18.2 ms p99 with no hitches,
+  browser errors or runtime shader compiles. The remaining Scene 1 exterior
+  deliverable is back-yard and street dressing/polish.
