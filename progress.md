@@ -185,3 +185,13 @@ pipeline and are not current project phases.
 - Project constraint clarified: this is a short independent companion piece for
   a book release, not a commercial game. Visual quality is the priority; no new
   systems or production pipeline are justified by the exterior deliverable.
+- Scene 1 lodge exterior is in progress. The concept-led Blender facade now
+  supplies the two-storey arched elevation, full iron balcony, distressed
+  render, exposed side brick and pink/cyan signs over the existing collision,
+  route, door and evidence. The first integrated exterior capture was opened
+  and inspected; the old blank facade has been replaced.
+- Added the Claude of Duty-style frame-time distribution profiler. With the
+  authored facade loaded, a 240-frame moving-camera run measured 13.6 ms p50,
+  14.8 ms p95 and 15.9 ms p99, with no hitches and no runtime shader compiles.
+  Shader prewarming is therefore not justified. Remaining exterior work is the
+  verandah, back yard and street dressing, not a new rendering system.

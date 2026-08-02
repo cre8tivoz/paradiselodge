@@ -34,7 +34,7 @@ These labels are retired from active progress reporting.
 |---|---|---|
 | **1. Scene 1 playable investigation** | **Done** | Cold open, movement, interactions, evidence, Rosie, Moretti, all eight objective gates, theorise ending, audio and save boundary work from start to finish |
 | **2. Scene 1 lodge interior** | **Done** | Reception, parlour, staircase, upstairs hall and Room 1A are Blender-authored, furnished, baked, integrated and under the 60MB asset budget |
-| **3. Scene 1 lodge exterior** | **Next** | Replace placeholder street/facade, verandah and yard visuals while preserving the existing route, evidence, collision and fixed sunlight; realtime lighting only |
+| **3. Scene 1 lodge exterior** | **In progress** | Authored street facade is integrated and profiled; verandah, back yard and the remaining street dressing still need their final visual pass |
 | **4. Scene 1 release candidate** | **Pending** | Balance final interior/exterior lighting, run one clean start-to-finish playthrough, fix only release blockers, verify performance, push and deploy the accepted build |
 | **5. Scene 2 — Police station** | **Not started** | Playable forensics handoff, coffee/wait beat, Victor record lookup and Mark statement using the existing interaction/dialogue systems |
 | **6. Scene 3 — Victor chase** | **Not started** | Playable location and fixed scripted chase with the designed forced outcome; no pursuit AI or failure state |

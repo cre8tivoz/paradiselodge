@@ -27,6 +27,18 @@ const SHOTS: Record<string, ShotFn> = {
     player.place(new Vector3(-5.8, -0.85, -8.2), -2.5, 0.18)
   },
 
+  'scene1-verandah': ({ player, hands, hudRoot }) => {
+    hudRoot.style.display = 'none'
+    hands.setVisible(false)
+    player.place(new Vector3(7.05, 3.45, 0.1), Math.PI, -0.04)
+  },
+
+  'scene1-yard': ({ player, hands, hudRoot }) => {
+    hudRoot.style.display = 'none'
+    hands.setVisible(false)
+    player.place(new Vector3(7.3, -0.15, 12.7), -2.75, -0.06)
+  },
+
   /**
    * Doorway into 1A. Matches images/mood/1a-target.png's wide framing:
    * standing just inside the threshold, door jamb on one side, bed and sash
