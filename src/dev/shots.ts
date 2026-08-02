@@ -27,6 +27,18 @@ const SHOTS: Record<string, ShotFn> = {
     player.place(new Vector3(-5.8, -0.85, -8.2), -2.5, 0.18)
   },
 
+  'scene1-commodore-front': ({ player, hands, hudRoot }) => {
+    hudRoot.style.display = 'none'
+    hands.setVisible(false)
+    player.place(new Vector3(-7.6, -0.85, -7.6), -2.13, 0.05)
+  },
+
+  'scene1-commodore-rear': ({ player, hands, hudRoot }) => {
+    hudRoot.style.display = 'none'
+    hands.setVisible(false)
+    player.place(new Vector3(-0.15, -0.85, -7.75), 2.19, 0.05)
+  },
+
   'scene1-verandah': ({ player, hands, hudRoot }) => {
     hudRoot.style.display = 'none'
     hands.setVisible(false)

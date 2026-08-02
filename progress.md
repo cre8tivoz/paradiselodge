@@ -207,3 +207,12 @@ pipeline and are not current project phases.
   profile measured 14.0 ms p50, 16.2 ms p95 and 18.2 ms p99 with no hitches,
   browser errors or runtime shader compiles. The remaining Scene 1 exterior
   deliverable is back-yard and street dressing/polish.
+- Corrected the Commodore after front/rear review. Removed the painted cabin
+  side geometry that intruded across the glass, trimmed the roof skin to both
+  screen headers and added explicit dark A/B/C pillars and window surrounds.
+  Rebuilt the rear around a shallow boot lid, broad horizontal lamp panel,
+  recessed plate and integrated bumper instead of the previous crude tail box.
+- Added fixed front and rear Commodore regression views. Both in-game captures
+  were visually inspected and the production build passed. The generic skill
+  client still cannot resolve its own Playwright import; the project-native
+  Playwright capture completed both real WebGL checks successfully.

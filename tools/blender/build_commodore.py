@@ -17,6 +17,7 @@ ROOT = "/Users/habibi/Documents/CLAUDE/paradisegame"
 OUT_BLEND = f"{ROOT}/assets/blender/commodore.blend"
 OUT_GLB = f"{ROOT}/public/models/commodore.glb"
 OUT_SHOT = f"{ROOT}/shots/commodore.jpg"
+OUT_SHOT_REAR = f"{ROOT}/shots/commodore-rear.jpg"
 HDRI = f"{ROOT}/public/env/balcony_2k.hdr"
 
 MCP_SETTINGS = (
@@ -87,13 +88,15 @@ def cabin(name, stations, mat, root, bevel=0.0):
     vertices = []
     for x, lower_width, upper_width, low, high in stations:
         vertices += [(x, -lower_width, low), (x, lower_width, low), (x, upper_width, high), (x, -upper_width, high)]
-    # End caps are supplied by the sloped glass screens; closing the station
-    # ends here would put a vertical painted wall in front of each windscreen.
+    # Roof skin only. The previous version also emitted full painted side faces
+    # behind the windows; their station diagonals showed through as the large
+    # pale wedges across the glasshouse. Glass and explicit pillars now define
+    # the cabin sides, while the screens close its front and rear.
     faces = []
     for index in range(len(stations) - 1):
         a = index * 4
         b = (index + 1) * 4
-        faces += [(a, b, b + 1, a + 1), (a + 1, b + 1, b + 2, a + 2), (a + 2, b + 2, b + 3, a + 3), (a + 3, b + 3, b, a)]
+        faces.append((a + 2, b + 2, b + 3, a + 3))
     return mesh_object(name, vertices, faces, mat, root, bevel)
 
 
@@ -169,17 +172,24 @@ def build_car():
     ], paint, root, 0.055)
     prism("commodore_belt", [(-2.28, 0.845, 0.72, 0.82), (-1.30, 0.91, 0.78, 0.91), (1.55, 0.91, 0.78, 0.91), (2.20, 0.84, 0.70, 0.80)], paint, root, 0.025)
     cabin("commodore_cabin", [
-        (-1.30, 0.80, 0.62, 0.82, 1.25), (-0.92, 0.82, 0.69, 0.84, 1.45),
-        (-0.25, 0.83, 0.72, 0.85, 1.54), (0.72, 0.83, 0.71, 0.85, 1.52),
-        (1.34, 0.80, 0.61, 0.82, 1.28),
+        (-0.95, 0.82, 0.69, 0.84, 1.45), (-0.25, 0.83, 0.72, 0.85, 1.54),
+        (0.72, 0.83, 0.71, 0.85, 1.52), (0.76, 0.82, 0.70, 0.84, 1.48),
     ], paint, root, 0.035)
     # Side glass and the strong black B-pillar/triangular rear quarter shown in
     # the supplied front and rear three-quarter photographs.
     for side in (-1, 1):
         y = side * 0.858
-        panel(f"commodore_front_side_glass_{side}", [(-1.30, y, 0.91), (-0.18, y, 0.92), (-0.20, side * 0.748, 1.47), (-0.93, side * 0.728, 1.42)], glass, root)
+        panel(f"commodore_front_side_glass_{side}", [(-1.29, y, 0.91), (-0.18, y, 0.92), (-0.20, side * 0.748, 1.47), (-0.93, side * 0.728, 1.42)], glass, root)
         panel(f"commodore_rear_side_glass_{side}", [(-0.10, y, 0.92), (1.18, side * 0.834, 0.90), (1.22, side * 0.654, 1.27), (-0.05, side * 0.748, 1.47)], glass, root)
-        box(f"commodore_b_pillar_{side}", (-0.15, y - 0.012, 0.88), (-0.05, y + 0.012, 1.49), dark, root)
+        panel(f"commodore_a_pillar_fill_{side}", [(-1.37, side * 0.64, 0.91), (-1.28, y, 0.90), (-0.92, side * 0.728, 1.44), (-0.96, side * 0.70, 1.45)], dark, root)
+        curve(f"commodore_a_pillar_{side}", [(-1.31, y, 0.88), (-0.94, side * 0.728, 1.44)], dark, root, 0.033)
+        curve(f"commodore_c_pillar_{side}", [(1.19, side * 0.844, 0.88), (1.24, side * 0.650, 1.28)], dark, root, 0.038)
+        curve(f"commodore_window_sill_{side}", [(-1.30, y, 0.89), (1.20, side * 0.844, 0.89)], dark, root, 0.022)
+        curve(f"commodore_roof_gutter_{side}", [(-0.95, side * 0.724, 1.44), (-0.22, side * 0.750, 1.49), (0.70, side * 0.738, 1.47), (1.24, side * 0.650, 1.28)], dark, root, 0.018)
+        box(f"commodore_b_pillar_{side}", (-0.18, y - 0.016, 0.88), (-0.02, y + 0.016, 1.54), dark, root)
+        curve(f"commodore_front_door_seam_{side}", [(-1.14, side * 0.925, 0.35), (-1.14, side * 0.925, 0.86)], dark, root, 0.008)
+        curve(f"commodore_rear_door_seam_{side}", [(0.02, side * 0.925, 0.32), (0.02, side * 0.925, 0.89)], dark, root, 0.008)
+        curve(f"commodore_rear_door_edge_{side}", [(1.08, side * 0.920, 0.34), (1.16, side * 0.900, 0.88)], dark, root, 0.008)
         for x in (-0.72, 0.48):
             box(f"commodore_handle_{side}_{x}", (x - 0.10, y - 0.018, 0.72), (x + 0.10, y + 0.018, 0.76), dark, root, 0.01)
         curve(f"commodore_pinstripe_{side}", [(-2.15, side * 0.925, 0.61), (2.14, side * 0.895, 0.61)], red, root, 0.012)
@@ -189,6 +199,12 @@ def build_car():
 
     panel("commodore_windscreen", [(-1.36, -0.64, 0.92), (-1.36, 0.64, 0.92), (-0.95, 0.71, 1.43), (-0.95, -0.71, 1.43)], glass, root)
     panel("commodore_rear_screen", [(1.38, 0.63, 0.91), (1.38, -0.63, 0.91), (0.75, -0.72, 1.48), (0.75, 0.72, 1.48)], glass, root)
+
+    # The VP's rear is a low, broad boot below the fast rear screen—not a tall
+    # separate box. These surfaces carry the screen into a shallow lid and then
+    # into the full-width horizontal lamp panel visible in the supplied photos.
+    panel("commodore_boot_lid", [(1.34, -0.69, 0.90), (1.34, 0.69, 0.90), (2.31, 0.76, 0.79), (2.31, -0.76, 0.79)], paint, root)
+    curve("commodore_boot_lid_rear_seam", [(2.30, -0.74, 0.80), (2.30, 0.74, 0.80)], dark, root, 0.009)
 
     for x, label in ((-1.55, "front"), (1.48, "rear")):
         for side in (-1, 1):
@@ -204,13 +220,15 @@ def build_car():
     box("commodore_front_indicator_right", (-2.55, 0.75, 0.54), (-2.46, 0.88, 0.69), amber, root, 0.015)
     box("commodore_front_plate", (-2.565, -0.28, 0.37), (-2.54, 0.28, 0.53), plate, root, 0.01)
 
-    box("commodore_rear_bumper", (2.39, -0.80, 0.32), (2.49, 0.80, 0.50), paint, root, 0.04)
-    box("commodore_tail_panel", (2.40, -0.76, 0.54), (2.47, 0.76, 0.73), dark, root, 0.012)
-    box("commodore_tail_left", (2.46, -0.75, 0.55), (2.49, -0.28, 0.72), red, root, 0.012)
-    box("commodore_tail_right", (2.46, 0.28, 0.55), (2.49, 0.75, 0.72), red, root, 0.012)
-    box("commodore_tail_amber_left", (2.49, -0.46, 0.57), (2.51, -0.28, 0.68), amber, root, 0.008)
-    box("commodore_tail_amber_right", (2.49, 0.28, 0.57), (2.51, 0.46, 0.68), amber, root, 0.008)
-    box("commodore_rear_plate", (2.505, -0.26, 0.48), (2.52, 0.26, 0.62), plate, root, 0.008)
+    box("commodore_rear_bumper", (2.38, -0.84, 0.30), (2.49, 0.84, 0.48), paint, root, 0.055)
+    box("commodore_rear_bumper_insert", (2.485, -0.73, 0.39), (2.505, 0.73, 0.44), dark, root, 0.012)
+    box("commodore_tail_panel", (2.38, -0.78, 0.53), (2.48, 0.78, 0.75), dark, root, 0.018)
+    box("commodore_tail_left", (2.475, -0.76, 0.55), (2.51, -0.27, 0.72), red, root, 0.016)
+    box("commodore_tail_right", (2.475, 0.27, 0.55), (2.51, 0.76, 0.72), red, root, 0.016)
+    box("commodore_tail_amber_left", (2.505, -0.48, 0.57), (2.525, -0.27, 0.68), amber, root, 0.008)
+    box("commodore_tail_amber_right", (2.505, 0.27, 0.57), (2.525, 0.48, 0.68), amber, root, 0.008)
+    box("commodore_rear_plate_recess", (2.50, -0.265, 0.545), (2.525, 0.265, 0.69), dark, root, 0.006)
+    box("commodore_rear_plate", (2.523, -0.22, 0.565), (2.54, 0.22, 0.66), plate, root, 0.006)
     cylinder_y("commodore_exhaust", 2.42, -0.54, 0.18, 0.045, 0.30, dark, root, 12).rotation_euler.x = math.pi / 2
 
     return root
@@ -255,6 +273,11 @@ def light_camera_and_export(root) -> None:
     scene.view_settings.look = "AgX - Medium High Contrast"
     scene.render.filepath = OUT_SHOT
     bpy.ops.wm.save_as_mainfile(filepath=OUT_BLEND, compress=True)
+    bpy.ops.render.render(write_still=True)
+
+    camera.location = (5.7, 6.1, 2.45)
+    camera.rotation_euler = (mathutils.Vector((0.35, 0, 0.68)) - camera.location).to_track_quat("-Z", "Y").to_euler()
+    scene.render.filepath = OUT_SHOT_REAR
     bpy.ops.render.render(write_still=True)
 
     export_objects = [root, *root.children_recursive]
