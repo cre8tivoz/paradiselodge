@@ -221,3 +221,11 @@ pipeline and are not current project phases.
   rebuilt the rear side-window polygon around a flush body-colour C-pillar.
   The exact marked rear game angle was recaptured and inspected; neither
   protrusion remains. Production build and diff validation passed.
+- Preserved the rejected sourced Rosie proof under
+  `assets/blender/backups/`. The packed Blender source retains the rig, adapted
+  materials and original cardigan backup mesh; its GLB and closest in-game
+  preview are included with source/licence and recovery notes. It is not wired
+  into `public/models/rosie.glb`, so the current playable build is unchanged.
+- Production build and project-native reception capture passed before the
+  current build was committed for Cloudflare Pages. The generic web-game
+  client remains blocked by its own unresolved Playwright package import.
