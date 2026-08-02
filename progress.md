@@ -117,3 +117,20 @@ Original prompt: Lets get started with the next phases.
   hall-side floor; its exposure lift is preview-only.
 - Unit A step 4 is complete. Next scoped task: step 5, add/allocate the separate
   non-overlapping lightmap UV layer at the locked per-space resolutions.
+- Added `tools/blender/unwrap_unit_a.py` for Unit A step 5. It creates a fresh
+  `Lightmap` channel without replacing any albedo UV, assigns each opaque mesh
+  to one deterministic per-space atlas cell and saves the ignored Unit A scene.
+- Final atlas allocation: room 1A 125 meshes at 2048 (70.1% cell occupancy),
+  parlour 68 at 2048 (70.0%), reception 106 at 1024 (71.2%), staircase 143 at
+  1024 (71.5%) and hallway 143 at 512 (69.0%): 585 unique bake meshes total.
+- Strict triangle-area validation caught real smart-projection crossings in
+  several imported meshes and two degenerate diary triangles. Those meshes use
+  Blender's face-level lightmap pack fallback; the final scaled atlases contain
+  no overlaps, degenerates or UVs outside 0..1.
+- Visually inspected all five coloured allocation diagnostics under
+  `shots/unit-a-lightmap-uv-*.png`; the cells are isolated and match the locked
+  dwell-time resolutions. No lighting was baked in this step.
+- Production build passed and the project-native runtime capture rendered room
+  1A correctly. The existing Vite chunk-size warning remains unchanged.
+- Unit A step 5 is complete. Next scoped task: step 6, bake Diffuse Indirect per
+  object group at 64 samples for iteration, then 256 for the accepted final.
