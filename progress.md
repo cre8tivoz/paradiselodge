@@ -216,3 +216,8 @@ pipeline and are not current project phases.
   were visually inspected and the production build passed. The generic skill
   client still cannot resolve its own Playwright import; the project-native
   Playwright capture completed both real WebGL checks successfully.
+- Corrected the two user-marked rear glasshouse artifacts. Removed the tubular
+  C-pillar and floating roof-gutter curves, tightened the rear-screen rake and
+  rebuilt the rear side-window polygon around a flush body-colour C-pillar.
+  The exact marked rear game angle was recaptured and inspected; neither
+  protrusion remains. Production build and diff validation passed.

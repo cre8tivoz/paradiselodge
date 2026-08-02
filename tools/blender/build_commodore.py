@@ -173,19 +173,18 @@ def build_car():
     prism("commodore_belt", [(-2.28, 0.845, 0.72, 0.82), (-1.30, 0.91, 0.78, 0.91), (1.55, 0.91, 0.78, 0.91), (2.20, 0.84, 0.70, 0.80)], paint, root, 0.025)
     cabin("commodore_cabin", [
         (-0.95, 0.82, 0.69, 0.84, 1.45), (-0.25, 0.83, 0.72, 0.85, 1.54),
-        (0.72, 0.83, 0.71, 0.85, 1.52), (0.76, 0.82, 0.70, 0.84, 1.48),
+        (0.72, 0.83, 0.71, 0.85, 1.52), (0.99, 0.82, 0.68, 0.84, 1.43),
     ], paint, root, 0.035)
     # Side glass and the strong black B-pillar/triangular rear quarter shown in
     # the supplied front and rear three-quarter photographs.
     for side in (-1, 1):
         y = side * 0.858
         panel(f"commodore_front_side_glass_{side}", [(-1.29, y, 0.91), (-0.18, y, 0.92), (-0.20, side * 0.748, 1.47), (-0.93, side * 0.728, 1.42)], glass, root)
-        panel(f"commodore_rear_side_glass_{side}", [(-0.10, y, 0.92), (1.18, side * 0.834, 0.90), (1.22, side * 0.654, 1.27), (-0.05, side * 0.748, 1.47)], glass, root)
+        panel(f"commodore_rear_side_glass_{side}", [(-0.10, y, 0.92), (1.18, side * 0.834, 0.90), (1.07, side * 0.70, 1.39), (-0.05, side * 0.740, 1.49)], glass, root)
+        panel(f"commodore_c_pillar_{side}", [(0.98, side * 0.68, 1.43), (1.07, side * 0.70, 1.39), (1.18, side * 0.834, 0.90), (1.38, side * 0.63, 0.91)], paint, root)
         panel(f"commodore_a_pillar_fill_{side}", [(-1.37, side * 0.64, 0.91), (-1.28, y, 0.90), (-0.92, side * 0.728, 1.44), (-0.96, side * 0.70, 1.45)], dark, root)
         curve(f"commodore_a_pillar_{side}", [(-1.31, y, 0.88), (-0.94, side * 0.728, 1.44)], dark, root, 0.033)
-        curve(f"commodore_c_pillar_{side}", [(1.19, side * 0.844, 0.88), (1.24, side * 0.650, 1.28)], dark, root, 0.038)
         curve(f"commodore_window_sill_{side}", [(-1.30, y, 0.89), (1.20, side * 0.844, 0.89)], dark, root, 0.022)
-        curve(f"commodore_roof_gutter_{side}", [(-0.95, side * 0.724, 1.44), (-0.22, side * 0.750, 1.49), (0.70, side * 0.738, 1.47), (1.24, side * 0.650, 1.28)], dark, root, 0.018)
         box(f"commodore_b_pillar_{side}", (-0.18, y - 0.016, 0.88), (-0.02, y + 0.016, 1.54), dark, root)
         curve(f"commodore_front_door_seam_{side}", [(-1.14, side * 0.925, 0.35), (-1.14, side * 0.925, 0.86)], dark, root, 0.008)
         curve(f"commodore_rear_door_seam_{side}", [(0.02, side * 0.925, 0.32), (0.02, side * 0.925, 0.89)], dark, root, 0.008)
@@ -198,7 +197,7 @@ def build_car():
         box(f"commodore_mirror_{side}", (-1.30, side * 0.88, 0.91), (-1.04, side * 1.03, 1.04), dark, root, 0.035)
 
     panel("commodore_windscreen", [(-1.36, -0.64, 0.92), (-1.36, 0.64, 0.92), (-0.95, 0.71, 1.43), (-0.95, -0.71, 1.43)], glass, root)
-    panel("commodore_rear_screen", [(1.38, 0.63, 0.91), (1.38, -0.63, 0.91), (0.75, -0.72, 1.48), (0.75, 0.72, 1.48)], glass, root)
+    panel("commodore_rear_screen", [(1.38, 0.63, 0.91), (1.38, -0.63, 0.91), (0.98, -0.68, 1.43), (0.98, 0.68, 1.43)], glass, root)
 
     # The VP's rear is a low, broad boot below the fast rear screen—not a tall
     # separate box. These surfaces carry the screen into a shallow lid and then
