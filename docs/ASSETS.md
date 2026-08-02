@@ -84,7 +84,12 @@ The staircase, the doors, the skirtings and the picture rails are **built, not s
 ### 4. Room 1A
 Bed, dresser, chair, wardrobe, side table, sash window onto the verandah.
 
-**Current build state (31 July 2026): done and shipped.** Room 1A is fourteen sourced Sketchfab models assembled in Blender, baked in Cycles and loaded as one `.glb` with three lightmap atlases. 10.27MB. Crystal, the hand, Rosie and Moretti are modelled glTF. Every other space in the game is still kit primitives.
+**Current build state (2 August 2026): done and shipped inside the complete lodge
+interior.** Room 1A is fourteen sourced Sketchfab models assembled in Blender
+and baked in Cycles. Reception, parlour, staircase and first-floor hall now ship
+with it in `public/models/unit-a.glb`; the combined interior and five lightmaps
+are 34.12MB. Crystal, the hand, Rosie and Moretti remain separate modelled glTF.
+The street/facade, verandah and yard are the remaining Scene 1 placeholder art.
 
 ### Baked light per space
 

@@ -76,13 +76,20 @@ The player is Detective Graham Miller. You never see him until the last shot of 
 
 ## Status
 
-Last updated 2 August 2026. **Scene 1's engine is finished and Unit A step 6 is done.** All five lodge-interior spaces have final 256-sample indirect-light atlases. Update this whenever work resumes.
+Last updated 2 August 2026. The canonical active plan is
+`docs/ROADMAP.md`. Report work by deliverable name, never by an unqualified step
+number.
+
+**Current position:** Scene 1 gameplay is complete and its Blender-authored
+lodge interior is integrated. The next deliverable is **Scene 1 lodge
+exterior**: replace the placeholder street/facade, verandah and yard art without
+changing gameplay. After that comes the **Scene 1 release candidate** pass.
+Scenes 2–5 are designed but not implemented as playable scenes.
 
 Gameplay is correct and is not to be touched. `src/interact`, `src/case`, `src/dialogue`, `src/npc`, `src/core`, `src/player`, `src/ui`, `src/audio` are closed. Evidence copy, gate order and the event bus are closed. The live job is `src/materials`, `src/render`, and the geometry in `src/world`. See *The render reset* below before anything else.
 
-**The live job is Unit A: the lodge interior, one Blender scene, one bake.** Room 1A proved the pipeline and its process is not repeated per room. See *Extending the pipeline* at the bottom of this file.
-
-Steps 1 and 2 are done and neither produced anything walkable, which is the shape of this unit: the shared surfaces and the shared joinery are made once so four rooms can draw on them. **Steps 3 through 6 are done: the complete interior is assembled, furnished, unwrapped and baked. Next is step 7, the single optimized GLB export and runtime handoff.**
+The old numbered engine and asset-pipeline plans below are retained as technical
+history only. They are not the active roadmap.
 
 Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Live at `https://paradiselodge-game.pages.dev` (Cloudflare Pages project `paradiselodge-game`). Custom domain `lodge.billyhaddad.au` not wired yet. Deploys are manual: `npm run build && wrangler pages deploy dist --project-name paradiselodge-game --branch main`.
 
@@ -154,11 +161,10 @@ are settled and the reasons are load-bearing.
   float carries indirect irradiance — which tops out around 20 — with decimal
   places to spare. **The furniture textures inside the `.glb` are JPEG** at
   quality 82, capped at 1024, and 512 for normal and roughness
-- **`environmentIntensity` is 0.3, not the 1 this document predicted.** The
-  prediction assumed the bake would say how much sky each surface sees. It does,
-  for 1A. The environment is scene-wide and 1A is the only baked room in the
-  building, so 1 would flood everything else. **It goes to 1 when Unit A lands**
-  and the whole interior is baked
+- **`environmentIntensity` is 0.3, not the 1 this document predicted.** Unit A
+  has now landed, but the environment and lightmap intensities must be judged
+  together against the completed exterior. That coupled balance is part of the
+  Scene 1 release-candidate deliverable; do not change either value in isolation
 - **Geometry was never the cost.** The room came back at 42MB with the geometry
   accounting for almost none of it. Textures are the entire budget. Reduce
   resolution before you reduce triangles, every time
@@ -307,7 +313,7 @@ Two `AmbientLight`s and a `HemisphereLight` used to stand in for bounce. **Flat 
 - **The HDRI is Poly Haven `balcony`, 2k, CC0.** `public/env/`. Partly cloudy morning-afternoon on a suburban deck: trees and a tiled roof, which is both plausible fill and a plausible thing to see out a first floor sash
 - **Raw equirect on `scene.background`, PMREM output on `scene.environment`.** The prefiltered chain is small and smears if you use it as the backdrop. Two textures on purpose
 - **Rotated 0.62π on both.** That puts the bright quarter of the sky on +X, which is the side 1A's sash faces and where the sun comes from, so the fill agrees with the beam instead of fighting it. It is also what puts trees rather than a blue shutter in the window
-- **`environmentIntensity` is 0.3, not 1.** Three applies an environment map **with no occlusion at all**, so a wall two rooms deep takes the full open sky the same as the verandah does. At 1 the interior floods and goes flat, which is the ambient failure again, better coloured. It was 0.45 and came down to 0.3 when 1A's bake landed and started supplying that room's fill honestly. **It goes to 1 when Unit A lands** and every interior surface has a lightmap saying how much sky it can see. Not before: the environment is scene-wide and four of the five interiors are still unbaked
+- **`environmentIntensity` is currently 0.3, not 1.** Three applies an environment map **with no occlusion at all**, so a wall two rooms deep takes the full open sky the same as the verandah does. At 1 the interior can flood and go flat. The complete interior is now baked; final environment/lightmap balance waits for the completed exterior and belongs to the release-candidate pass
 - **`LIGHTMAP_INTENSITY` is 14, in `room1a.ts`.** The bake as measured is 1. This is the dial between a physically correct map and a room that reads right, and it is high because `environmentIntensity` is low. **The two move together.** When the environment goes to 1 this comes down
 - **AgX, not ACES.** Both stop the sun clipping. ACES pulls saturated highlights toward orange, and on nicotine walls under a warm sun that made every lit surface the same amber. AgX desaturates as it rolls off, so a blown sash stays white and the bedspread stays rose where the beam is on it
 - **Exposure lives in `renderer.ts`, not `core/config.ts`, and is set last.** 1.0, after the environment intensity and the sun. It is not a designer tunable, it only means anything alongside those two
@@ -606,7 +612,7 @@ Settled. Do not re-litigate these without a reason.
 - **A ceiling has to cast shadow.** A lid built without `castShadow` lets the 3pm sun straight through it and lights the wall below from above, in a hard slab that reads as a render fault. Found on a hall ceiling, will recur on every room built from here
 - **Fill is an HDRI, never an `AmbientLight`.** Reset step 1. Flat fill has no direction, so it lights a wall facing the window and a wall facing away from it identically. See *The light rig is an HDRI and one sun*
 - **Tone mapping is AgX and exposure lives in `render/renderer.ts`.** Not ACES, and not in `core/config.ts`. Exposure is set after the environment intensity and the sun, never before
-- **`environmentIntensity` below 1 is a stand-in for occlusion, not a taste call.** Three applies an environment map with no occlusion, so interiors flood at 1. It is 0.3 and it goes to 1 when **every** interior is baked, which is the end of Unit A, not the end of 1A
+- **`environmentIntensity` below 1 is a stand-in for occlusion, not a taste call.** Three applies an environment map with no occlusion, so interiors can flood at 1. It remains 0.3 until the completed exterior and baked interior are balanced together in the Scene 1 release-candidate pass
 - **Indirect light is a lightmap on `uv1` with `Texture.channel = 1` and `flipY = true`.** Both are wrong by default for a map that arrives beside a `.glb` rather than inside one. See *Room 1A ships as one file*
 - **Lightmaps are half float EXR, not KTX2.** No encoder on this machine and rule 9 says not to add one. `EXRLoader` is already in the `three` package
 - **A baked room is a `.glb` and a loader, never a geometry builder.** `room1a.ts` is the shape every other space copies: same signature, same registry, no primitives except look pads
@@ -625,7 +631,7 @@ Assumptions, flagged, cheap to change:
 - **Overlays own their own hiding.** The look line hides itself on `casefile:open` and `dialogue:start`. The pointer lock prompt asks `dialogue.isActive`, not `dialoguePanel.isOpen`, because the runner sets its state *before* it emits and the panel opens on the callback *after*, so a panel check runs one step too early
 - **Examine is press F, run to completion.** Hold-to-cancel and cancel-on-`look:exit` made the verb dead under pointer lock. Esc cancels. BRIEF.md still says hold; the implementation that ships is press-to-start
 - **Visual upgrades need sourced glTF and a bake.** Not image-gen tiles, not more light tuning. Hand, Crystal, Rosie, Moretti and the whole of room 1A are through that route; the rest of the lodge is not
-- **`LIGHTMAP_INTENSITY` is 14 against a bake measured at 1.** It is high because `environmentIntensity` is low, and the two come back together at the end of Unit A
+- **`LIGHTMAP_INTENSITY` is 14 against a bake measured at 1.** It is high because `environmentIntensity` is low. Adjust the two together, once, in the Scene 1 release-candidate pass
 
 ---
 
@@ -874,19 +880,19 @@ The navmesh landed with step 9, as a set of walkable boxes rather than triangles
 
 **The engine build order is finished.** Steps 1 to 15 all landed. Nothing on that list is open.
 
-### What comes next is not step 16
+### Historical visual-production sequence after the engine
 
-The render reset is done and it covered one room. Scene 2 does not start until the
-rest of scene 1 is through the same pipeline. **Next is Unit A**, below.
+The interior package described below is complete. The remaining exterior work
+is **Scene 1 lodge exterior** in `docs/ROADMAP.md`.
 
 ---
 
-## Extending the pipeline to the rest of scene 1
+## Scene 1 visual-production notes
 
-**Room 1A is the proof. Do not repeat its process per room.** Two units follow,
-and Unit A comes entirely before Unit B.
+**Room 1A was the proof.** The work used two internal asset-package labels. They
+are retained below only because the Blender files use them.
 
-### UNIT A — the lodge interior. One Blender scene, one bake.
+### Lodge interior package — complete (formerly “Unit A”)
 
 Reception, parlour, central staircase, first-floor hallway, room 1A.
 
@@ -972,7 +978,7 @@ Order of work:
    The old lodge interior kit is detached only after Unit A has loaded; its
    collision, walk regions, facade and exterior gameplay remain unchanged
 
-### UNIT B — exteriors. No baking. Next.
+### Lodge exterior package — remaining (formerly “Unit B”)
 
 Street and facade, verandah, back yard.
 
@@ -986,7 +992,7 @@ The facade needs the neon sign as an emissive material, the police tape, the
 Commodore and the marble steps. Everything else out there is silhouette and can
 be low poly.
 
-### Rules for both units
+### Rules for both asset packages
 
 - **Unit A entirely before Unit B**
 - **Do not re-source a material that exists in `materials.blend`. Link it**

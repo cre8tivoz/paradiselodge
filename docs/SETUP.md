@@ -162,7 +162,9 @@ claude
 
 CLAUDE.md loads itself. It carries the status, the build order and the rules, and it is the file to read first. `docs/BRIEF.md` is the design spec and `docs/ASSETS.md` is the art and audio list; both are locked.
 
-**One step per session, and say which one.** The engine build order is finished and the live job is the asset pipeline — Unit A, one space per session, at the bottom of CLAUDE.md. A prompt that says "do the parlour" is the right size. A prompt that says "do Unit A" is three days of work in one context window and it will come back half done.
+**One deliverable slice per session, and name it.** The active plan is
+`docs/ROADMAP.md`. Report a concrete outcome such as “Scene 1 lodge exterior —
+facade accepted”; do not use an unqualified step number.
 
 Check it in the browser between every step.
 

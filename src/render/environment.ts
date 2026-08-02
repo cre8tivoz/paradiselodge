@@ -37,9 +37,9 @@ const HDRI_URL = 'env/balcony_2k.hdr'
  * same as the verandah does. At 1 the interior floods and goes flat, which is
  * the same failure the ambient lights had, only better coloured.
  *
- * This is the number that goes back up to 1 once room 1A carries a baked
- * indirect map, because at that point the bake is what says how much of the sky
- * each surface can actually see.
+ * The complete interior now carries baked indirect maps. Keep this paired with
+ * the lightmap intensity until the authored exterior is complete, then balance
+ * both once in the Scene 1 release-candidate pass.
  */
 const INTENSITY = 0.3
 

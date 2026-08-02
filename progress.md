@@ -1,5 +1,9 @@
 Original prompt: Lets get started with the next phases.
 
+Historical implementation log only. Current scope and status live in
+`docs/ROADMAP.md`; the step numbers below came from the retired interior asset
+pipeline and are not current project phases.
+
 ## 1 August 2026
 
 - Scope: Unit A step 3, reception assembly first. Preserve all closed gameplay systems.
