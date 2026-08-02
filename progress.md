@@ -178,3 +178,10 @@ pipeline and are not current project phases.
   unchanged.
 - Unit A step 7 is complete. Next scoped task: Unit B exterior art, realtime
   only, beginning with the street and facade. Do not bake Unit B.
+- Added the seven book-companion concept frames under `images/concept-art/`.
+  The two lodge-front images are now the exterior architecture/material target:
+  Victorian silhouette, arched openings, iron lace, distressed render, pink and
+  cyan neon and wet-looking street. Preserve the fixed 3pm playable lighting.
+- Project constraint clarified: this is a short independent companion piece for
+  a book release, not a commercial game. Visual quality is the priority; no new
+  systems or production pipeline are justified by the exterior deliverable.

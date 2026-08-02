@@ -68,7 +68,15 @@ When a step is done, say one line: what changed and whether it runs.
 
 ## What this is
 
-A first-person detective game. St Kilda, 26 February 1994. Five scenes. No combat.
+A short independent companion piece for a book release. It is not a commercial
+game and must not accumulate commercial-game systems, breadth or production
+process. The value is atmosphere, visual confidence and a concise authored
+experience.
+
+It is a first-person detective game. St Kilda, 26 February 1994. Five scenes.
+No combat. The visual quality target is the standard demonstrated by *Claude of
+Duty*: a small, focused experience can still look exceptional. Scope is not an
+excuse for generic or visibly placeholder presentation.
 
 The player is Detective Graham Miller. You never see him until the last shot of the game.
 

@@ -3,6 +3,14 @@
 This is the canonical project plan. Progress is reported by deliverable name,
 never by an unqualified step number.
 
+## Product constraint
+
+This is an independent companion piece for a book release, not a commercial
+game. The priority is a short, authored experience with a visual standard that
+stands beside *Claude of Duty*. Do not trade that visual ambition for feature
+breadth, and do not introduce commercial-game infrastructure, mechanics or
+pipelines that the companion piece does not need.
+
 ## Current position
 
 The game design covers five scenes. Only Scene 1 is currently playable.
@@ -32,6 +40,25 @@ These labels are retired from active progress reporting.
 | **6. Scene 3 — Victor chase** | **Not started** | Playable location and fixed scripted chase with the designed forced outcome; no pursuit AI or failure state |
 | **7. Scene 4 — Interrogation** | **Not started** | Playable evidence-presentation interrogation with the defined Sterling reveal path |
 | **8. Scene 5 — Mahoney's and ending** | **Not started** | Playable bar sequence, scripted background fight, Sterling arrest, cell-door ending and final Miller/Moretti shot |
+
+## Scene 1 lodge exterior acceptance
+
+The primary facade references are
+`images/concept-art/01-title-card-the-paradise-lodge.png` and
+`images/concept-art/02-miller-at-the-lodge-exterior.png`.
+
+The exterior succeeds when it has:
+
+- the strong two-storey Victorian silhouette, arched openings and full-width
+  iron-lace balcony shown in the references
+- distressed cream render, damp staining, exposed side brick and enough surface
+  variation to hold close first-person views
+- pink Paradise Lodge neon, cyan Rooms to Let neon, marble entry and
+  wet-looking street reflections
+- the current fixed 3pm story light; the references guide architecture,
+  materials and colour contrast, not a change to dusk or rain
+- one authored exterior asset integrated over the existing collision and
+  gameplay route; no new mechanics, baking system or engine work
 
 ## Immediate remaining work
 
