@@ -28,7 +28,8 @@ export interface UnitA {
   }
 }
 
-const MODEL_URL = '/models/unit-a.glb'
+const MODEL_URL =
+  'https://pub-fb1257653b9c4da0a314baa163938921.r2.dev/models/unit-a-4ae83b93.glb'
 const BAKE_URL = '/textures/bake'
 const SPACES: UnitASpace[] = ['room1a', 'parlour', 'reception', 'staircase', 'hallway']
 const LIGHTMAP_INTENSITY = 14

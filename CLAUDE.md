@@ -101,6 +101,13 @@ history only. They are not the active roadmap.
 
 Repo is `github.com/cre8tivoz/paradiselodge`, branch `main`. Live at `https://paradiselodge-game.pages.dev` (Cloudflare Pages project `paradiselodge-game`). Custom domain `lodge.billyhaddad.au` not wired yet. Deploys are manual: `npm run build && wrangler pages deploy dist --project-name paradiselodge-game --branch main`.
 
+The oversized Unit A interior is stored in the APAC Standard R2 bucket
+`paradise-lodge-assets` as the immutable object
+`models/unit-a-4ae83b93.glb`. `src/world/unit-a.ts` owns its public URL and
+`vite.config.mjs` removes the local export source from `dist`; do not remove
+that build guard or Pages will reject the 31.14MB file. The bucket's public
+read-only CORS source is `cloudflare/r2-cors.json`.
+
 | Step | State |
 |---|---|
 | 1. Player controller | Done. Walk, crouch, lean, mouse look, pointer lock |
@@ -978,11 +985,13 @@ Order of work:
    space atlases independently on Metal; final bake-only checks are under
    `shots/unit-a-bake-final-*.jpg`
 7. **Export as one `.glb`. Done.** `tools/blender/export_unit_a.py` writes the
-   complete Blender-authored interior to `public/models/unit-a.glb`, caps source
-   textures before export and converts the five accepted bakes to compact
-   half-float EXRs. The shipped set is 34.12MB combined, below the 60MB budget.
-   `src/world/unit-a.ts` loads it once behind the title card, restores the five
-   atlases on `TEXCOORD_1`, and preserves every existing gameplay object ID.
+   complete Blender-authored interior source to `public/models/unit-a.glb`, caps
+   source textures before export and converts the five accepted bakes to compact
+   half-float EXRs. The 31.14MB GLB ships from R2 because Pages has a 25MiB
+   per-file limit; the five EXRs remain in the Pages build. The shipped set is
+   34.12MB combined, below the 60MB runtime budget. `src/world/unit-a.ts` loads
+   the GLB once behind the title card, restores the five atlases on `TEXCOORD_1`,
+   and preserves every existing gameplay object ID.
    The old lodge interior kit is detached only after Unit A has loaded; its
    collision, walk regions, facade and exterior gameplay remain unchanged
 

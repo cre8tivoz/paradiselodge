@@ -229,3 +229,14 @@ pipeline and are not current project phases.
 - Production build and project-native reception capture passed before the
   current build was committed for Cloudflare Pages. The generic web-game
   client remains blocked by its own unresolved Playwright package import.
+- Created the dedicated APAC Standard R2 bucket `paradise-lodge-assets` and
+  uploaded the 31.14MB Unit A model as the immutable versioned object
+  `models/unit-a-4ae83b93.glb`. The runtime now loads that R2 object, while a
+  Vite build guard removes the local source copy from `dist` so Cloudflare
+  Pages stays below its 25MiB single-file limit. The public read-only bucket
+  CORS policy is retained under `cloudflare/r2-cors.json`.
+- Production build passed at 47MB with no file above 20MB. The R2 object returned
+  31,139,300 bytes with the correct glTF MIME type, immutable cache header and
+  browser CORS header. Cloudflare Pages deployment `15bc055a` completed, and
+  the canonical live site was opened in a real browser: the R2-backed lodge
+  rendered with no console or request errors.
