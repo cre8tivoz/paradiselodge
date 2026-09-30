@@ -6,7 +6,10 @@ import { Input } from './core/input.ts'
 import { Loop } from './core/loop.ts'
 import { createViewport } from './render/renderer.ts'
 import { loadEnvironment } from './render/environment.ts'
+import type { Environment } from './render/environment.ts'
 import { buildSceneLighting } from './render/lighting.ts'
+import { readLookMode } from './render/look-mode.ts'
+import { installDuskLook } from './render/dusk.ts'
 import { buildLodge } from './world/lodge.ts'
 import { loadLodgeExterior } from './world/lodge-exterior.ts'
 import { loadCommodore } from './world/commodore.ts'
@@ -118,19 +121,31 @@ async function main(): Promise<void> {
   scene.add(lighting.group)
 
   /*
-   * The HDRI is both the fill and the backdrop. It replaces the flat sky colour
-   * that used to sit behind the building and the ambient lights that used to
-   * stand in for bounce.
-   *
-   * The procedural LUT grade pass that used to run here is gone with them. It
-   * was built to correct ACES on a scene lit by ambient; over AgX and an
-   * environment map it was correcting a problem that no longer exists.
+   * Dusk is the default: code practicals, a sky dome and the film grade.
+   * `?look=day` keeps the 3pm HDRI, the single sun and the baked lightmaps.
    */
-  const environment = await loadEnvironment(renderer)
-  environment.apply(scene)
+  const lookMode = readLookMode()
+  let environment: Environment | undefined
+  let dusk: Awaited<ReturnType<typeof installDuskLook>> | undefined
+  if (lookMode === 'day') {
+    environment = await loadEnvironment(renderer)
+    environment.apply(scene)
+  } else {
+    dusk = await installDuskLook({
+      renderer,
+      scene,
+      camera,
+      interior: unitA.scene,
+      lodge: lodge.group,
+      exterior: lodgeExterior.scene,
+      commodore,
+      sun: lighting.sun,
+    })
+  }
 
   const draw = (): void => {
-    renderer.render(scene, camera)
+    if (dusk !== undefined) dusk.render()
+    else renderer.render(scene, camera)
   }
 
   // The camera has to be in the scene graph or its children never get traversed.
@@ -897,6 +912,7 @@ async function main(): Promise<void> {
   const loop = new Loop((delta) => {
     elapsed += delta
     lodge.update(elapsed, player.position)
+    if (dusk !== undefined) dusk.update(elapsed, player.position)
     // Ambience crossfades on where he is standing, which is not an event.
     audio.update(player.position)
     // Ahead of the notebook and dialogue early-outs. She is on screen for the
@@ -1014,6 +1030,8 @@ async function main(): Promise<void> {
       lighting,
       audio,
       environment,
+      lookMode,
+      dusk,
       scenes,
       clips: CLIPS,
       Vector3,

@@ -143,8 +143,10 @@ export function buildLodge(): Lodge {
     color: 0xffffff,
     map: tiled('render-cream', 4.5, 3.2),
     roughness: 0.94,
+    name: 'lodge_render',
   })
   const stain = mat(EXTERIOR.renderStain, 0.96)
+  stain.name = 'lodge_stain'
   const marble = new MeshStandardMaterial({
     color: 0xffffff,
     map: tiled('marble-step', 2.2, 1.4),
@@ -152,6 +154,7 @@ export function buildLodge(): Lodge {
   })
   const iron = mat(EXTERIOR.ironLace, 0.55, 0.4)
   const bitumen = mat(EXTERIOR.bitumen, 0.62)
+  bitumen.name = 'lodge_bitumen'
   const nicotine = mat(INTERIOR.nicotine, 0.95)
   const carpet = new MeshStandardMaterial({
     color: 0xffffff,
@@ -162,6 +165,7 @@ export function buildLodge(): Lodge {
     color: 0xffffff,
     map: tiled('timber-dark', 1.6, 2.0),
     roughness: 0.76,
+    name: 'lodge_timber',
   })
   const brass = mat(INTERIOR.brassVerdigris, 0.42, 0.55)
   const maroon = mat(INTERIOR.curtainMaroon, 0.9)
@@ -282,6 +286,7 @@ export function buildLodge(): Lodge {
     transparent: true,
     opacity: 0.12,
     depthWrite: false,
+    name: 'lodge_glass',
   })
 
   for (const o of openings) {
