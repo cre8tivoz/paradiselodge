@@ -5,6 +5,20 @@ import { defineConfig } from 'vite'
 const r2Assets = ['models/unit-a.glb']
 
 export default defineConfig({
+  // Game entry only. tools/lookdev is a separate harness with its own index.html.
+  build: {
+    rollupOptions: {
+      input: resolve('index.html'),
+    },
+  },
+  optimizeDeps: {
+    entries: ['index.html'],
+  },
+  server: {
+    watch: {
+      ignored: ['**/tools/lookdev/**', '**/art-source/**'],
+    },
+  },
   plugins: [
     {
       name: 'exclude-r2-assets-from-pages',

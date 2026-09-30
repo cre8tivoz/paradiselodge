@@ -148,7 +148,7 @@ Cell door, corridor, and the only third-person camera in the game.
 |---|---|---|
 | **Miller** | Hands only, until the last shot | Gloves in scene 1. Cuff state per scene. Face matters once. **Hand mesh done:** source `assets/blender/miller-hand.blend`, shipped `public/models/miller-hand.glb`, ref `images/characters/miller-hands.png` |
 | **Moretti** | Full, mid distance | Uniform constable. Never closer than two metres. **Mesh done:** `assets/blender/moretti.blend`, `public/models/moretti.glb` |
-| **Rosie** | Full, close | Mid 50s, shoulder-length red and grey, ugly cardigan, cigarette always lit. **Mesh done:** `assets/blender/rosie.blend`, `public/models/rosie.glb`. Two stations, procedural idle |
+| **Rosie** | Full, close | Mid 50s, shoulder-length red and grey, ugly cardigan, cigarette always lit. **Live mesh:** `public/models/rosie.glb` (the game still loads this). **Rigged replacement, not wired:** `public/models/rosie-rigged.glb`, source in `art-source/characters/rosie/`. See `docs/MOVING-FORWARD.md` |
 | **Crystal** | Full, very close | 28, blonde, petite, well dressed. Twelve hours dead. Lividity and rigor visible. **Mesh done:** `assets/blender/crystal.blend`, `public/models/crystal.glb`. On the bed in room 1A |
 | **Mark** | Full, mid | Bouncer build, black shirt, ponytail. Matches the photo exactly |
 | **Victor** | Full, distance and interview | Seen running, then across a table |

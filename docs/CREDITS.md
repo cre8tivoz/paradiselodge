@@ -134,3 +134,15 @@ one gets scaled and placed by hand when the room is assembled at step 4.
 
 `public/textures/*.jpg` are authored in `images/assets/`. Not third party. They
 are stand-ins for sourced PBR sets and go as each one is replaced.
+
+## Rosie v2
+
+Not loaded by the game yet. The character design is the project's own sheet,
+`images/characters/rosie-sheet.png`. Shape, rig and the shipped mesh:
+
+| File | Source | Licence note |
+|---|---|---|
+| `public/models/rosie-rigged.glb` | Hunyuan3D-2 shape (free Hugging Face Space), texture projected from the sheet, Mixamo auto-rig, `idle` and `walk` | Generated mesh plus Mixamo clips. Mixamo's terms allow the clips inside this project and do not allow reselling them as a bare animation pack. Hunyuan3D weights stay under Tencent's Hunyuan licence; this repo ships the output mesh, not the weights |
+| `art-source/characters/rosie/rosie3d-v2-mixamo.fbx` | A-pose uploaded to Mixamo | Same |
+| `art-source/characters/rosie/mixamo/*.fbx` | [Mixamo](https://www.mixamo.com/) idle and walk downloads | Same |
+| `art-source/characters/rosie/rosie-v2-*.png`, `apose-*.png` | Baked and drawn from the project sheet | Project art |
