@@ -105,6 +105,45 @@ const SHOTS: Record<string, ShotFn> = {
     hands.setVisible(false)
     player.place(new Vector3(0.92, 3.45, 9.62), 0.03, -0.03)
   },
+
+  /** Dusk look stills. Feet on the floor under the look-test cameras. */
+  'look-reception': ({ player, hands, hudRoot }) => {
+    hudRoot.style.display = 'none'
+    hands.setVisible(false)
+    const aim = lookAim(new Vector3(5.05, 1.7, 0.55), new Vector3(3.95, 1.4, 3.1))
+    player.place(new Vector3(5.05, 0, 0.55), aim.yaw, aim.pitch)
+  },
+
+  'look-hall': ({ player, hands, hudRoot }) => {
+    hudRoot.style.display = 'none'
+    hands.setVisible(false)
+    const aim = lookAim(new Vector3(0.9, 1.7, 0.6), new Vector3(-0.8, 2.0, 7.8))
+    player.place(new Vector3(0.9, 0, 0.6), aim.yaw, aim.pitch)
+  },
+
+  'look-parlour': ({ player, hands, hudRoot }) => {
+    hudRoot.style.display = 'none'
+    hands.setVisible(false)
+    const aim = lookAim(new Vector3(-3.5, 1.7, 4.95), new Vector3(-5.1, 0.95, 1.0))
+    player.place(new Vector3(-3.5, 0, 4.95), aim.yaw, aim.pitch)
+  },
+
+  'look-exterior': ({ player, hands, hudRoot }) => {
+    hudRoot.style.display = 'none'
+    hands.setVisible(false)
+    const aim = lookAim(new Vector3(-13.5, 0.85, -9.5), new Vector3(2.0, 2.9, -2.0))
+    player.place(new Vector3(-13.5, -0.85, -9.5), aim.yaw, aim.pitch)
+  },
+}
+
+function lookAim(eye: Vector3, target: Vector3): { yaw: number; pitch: number } {
+  const dx = target.x - eye.x
+  const dy = target.y - eye.y
+  const dz = target.z - eye.z
+  return {
+    yaw: Math.atan2(-dx, -dz),
+    pitch: Math.atan2(dy, Math.hypot(dx, dz)),
+  }
 }
 
 export function listShots(): string[] {

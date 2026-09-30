@@ -28,11 +28,10 @@ You will not be the one that gets it right.
 3. **The build order is the build order.** Scene 1 is 80% of the engine.
    Do not scaffold scene 2. Do not suggest refactoring for reusability.
    Do not leave hooks for things that do not exist yet.
-4. **`three` plus loaders and compression. Nothing else.** Loaders, KTX2 and
-   Meshopt are in. A framework, a physics engine, a state library, a post stack
-   or anything with a UI in it is out. Do not evaluate one. Do not mention one.
-   (This rule used to read "one runtime dependency". The render reset revoked
-   that half of it and nothing else.)
+4. **`three` plus loaders, compression, and three's own post passes.** Loaders,
+   KTX2 and Meshopt are in. The film stack in `src/render/post.ts` (GTAO, bloom,
+   grade) is in. A framework, a physics engine, a state library, or anything
+   with a UI runtime of its own is out. Do not evaluate one. Do not mention one.
 5. **No physics engine.** No Rapier, no Cannon, no Ammo. Miller walks on a
    navmesh and raycasts at things. That is the whole system.
 6. **No combat.** Not in the lodge, not in the chase, not in the bar.
@@ -46,17 +45,29 @@ You will not be the one that gets it right.
 10. **Do not leave TODO comments.** If something cannot be done now, say so
     in the commit message and move on. A TODO in code is a promise you will
     not keep.
-11. **Source assets. Do not generate them and do not model them.** Poly Haven
-    and Sketchfab, filtered to downloadable and CC or CC-BY, recorded in
-    `docs/CREDITS.md` as you go. Prefer low to mid poly with clean UVs over
-    high-poly photogrammetry: a scan has unusable UVs and will not bake. If
-    nothing suitable exists, say so and stop. Do not improvise a kit box, do not
-    generate a texture procedurally, and do not spend a session modelling
-    furniture by hand.
-12. **Stop tuning lights.** The look target is `images/mood/1a-target.png` and
-    it is a photograph. It is reached by baking indirect light in Cycles, not by
-    another pass over sun intensity, fill, or exposure. If you find yourself
-    reaching for an `AmbientLight`, you have misread the reset.
+11. **Code-first look, sourced meshes, image-to-3D characters allowed.** Practicals,
+    materials, haze and the grade are code. Image-to-3D and rigged characters are
+    allowed. Do not require a Blender session or a Mac Cycles bake to change the
+    look. Poly Haven and Sketchfab remain the path when a downloadable CC mesh
+    is the right object, credited in `docs/CREDITS.md`. Do not spend a session
+    hand-modelling furniture that already exists as a mesh.
+12. **Dusk is the default look.** Tungsten practicals, nicotine walls, height
+    haze, and outside a wet street at golden hour into dusk. The 3pm daylight
+    rig (HDRI, one sun, baked lightmaps, AgX, no post) stays available at
+    `?look=day`. Do not bake a new lightmap to chase the dusk picture, and do
+    not put an `AmbientLight` back. Room 1A still carries its existing bake.
+
+## Look direction — September 2026
+
+Billy overturned the bans on post-processing, fill lights, generated surfaces
+and image-to-3D. The paragraphs further down that describe the render reset are
+history for room 1A's bake. They are not a reason to strip `src/render/dusk.ts`.
+
+- **Default is dusk.** `readLookMode()` returns `'day'` only for `?look=day` or `?daylight=1`.
+- **Code lighting** in reception, the hall, the stairs and the parlour. Lightmaps there are retired while dusk is on. Room 1A keeps its maps, at a lower intensity under the film curve.
+- **Post** is GTAO, bloom and one grade pass. DOF is off in play. Composer pixel ratio is capped at 1.25. Shadow maps update on a stride, not every frame. Lights in rooms the player is not in are switched off.
+- **Characters are not part of this pass.** A rigged Rosie follows separately. Do not retopologise Rosie, Moretti or Crystal in a look change.
+- **No new Blender bake is required** for this look. Do not start one.
 
 ## Output style
 
@@ -88,13 +99,9 @@ Last updated 2 August 2026. The canonical active plan is
 `docs/ROADMAP.md`. Report work by deliverable name, never by an unqualified step
 number.
 
-**Current position:** Scene 1 gameplay is complete and its Blender-authored
-lodge interior is integrated. The next deliverable is **Scene 1 lodge
-exterior**: replace the placeholder street/facade, verandah and yard art without
-changing gameplay. After that comes the **Scene 1 release candidate** pass.
-Scenes 2–5 are designed but not implemented as playable scenes.
+**Current position:** Scene 1 gameplay is complete. The default picture is the dusk code look (practicals, grade, wet street). `?look=day` restores the 3pm HDRI and the baked interior. Characters are unchanged; a rigged Rosie is a later pass. The lodge exterior package in the historical notes is still the sourced-mesh job for verandah and yard. Do not revert the dusk look to chase that package.
 
-Gameplay is correct and is not to be touched. `src/interact`, `src/case`, `src/dialogue`, `src/npc`, `src/core`, `src/player`, `src/ui`, `src/audio` are closed. Evidence copy, gate order and the event bus are closed. The live job is `src/materials`, `src/render`, and the geometry in `src/world`. See *The render reset* below before anything else.
+Gameplay is correct and is not to be touched. `src/interact`, `src/case`, `src/dialogue`, `src/npc`, `src/core`, `src/player`, `src/ui`, `src/audio` are closed. Evidence copy, gate order and the event bus are closed. The live picture is `src/render/dusk.ts`, `src/render/post.ts` and `src/materials/look.ts`. The render reset below is how room 1A was baked. It is not the dusk path.
 
 The old numbered engine and asset-pipeline plans below are retained as technical
 history only. They are not the active roadmap.
@@ -625,8 +632,9 @@ Settled. Do not re-litigate these without a reason.
 - No new events were added. A run is told from a walk by the `speed` already carried in `player:footstep`
 - **`BoxCollisionSolver` is height-aware, and the walkable set is what decides where Miller can stand.** It used to resolve in XZ only, which made every solid a full-height wall wherever it sat and meant a door lintel bricked up a doorway at floor level. That is fixed and it is what a two-storey building needed. See *Where the floor is* above. It is still boxes and still a pushout rather than a swept test
 - **A ceiling has to cast shadow.** A lid built without `castShadow` lets the 3pm sun straight through it and lights the wall below from above, in a hard slab that reads as a render fault. Found on a hall ceiling, will recur on every room built from here
-- **Fill is an HDRI, never an `AmbientLight`.** Reset step 1. Flat fill has no direction, so it lights a wall facing the window and a wall facing away from it identically. See *The light rig is an HDRI and one sun*
-- **Tone mapping is AgX and exposure lives in `render/renderer.ts`.** Not ACES, and not in `core/config.ts`. Exposure is set after the environment intensity and the sun, never before
+- **Dusk code look is the default, September 2026.** Practicals, world-projected nicotine and timber, height fog, a sky dome, wet road, neon spill, and the film grade in `src/render/post.ts`. Lightmaps stay on room 1A only. `?look=day` is the 3pm HDRI, AgX, no post. DOF stays off. Post pixel ratio caps at 1.25. Do not bake Cycles to get this picture back.
+- **Fill is an HDRI in day mode, a sky probe plus practicals at dusk.** Never an `AmbientLight`. Flat fill has no direction. See *The light rig is an HDRI and one sun* for the day path only.
+- **Tone mapping is AgX only in `?look=day`.** Dusk sets `NoToneMapping` and the film pass owns the curve. Exposure for that pass lives on the grade, not in `core/config.ts`.
 - **`environmentIntensity` below 1 is a stand-in for occlusion, not a taste call.** Three applies an environment map with no occlusion, so interiors can flood at 1. It remains 0.3 until the completed exterior and baked interior are balanced together in the Scene 1 release-candidate pass
 - **Indirect light is a lightmap on `uv1` with `Texture.channel = 1` and `flipY = true`.** Both are wrong by default for a map that arrives beside a `.glb` rather than inside one. See *Room 1A ships as one file*
 - **Lightmaps are half float EXR, not KTX2.** No encoder on this machine and rule 9 says not to add one. `EXRLoader` is already in the `three` package
@@ -645,8 +653,8 @@ Assumptions, flagged, cheap to change:
 - **The stair is 18 risers at 0.19.** Steepish for a grand staircase, and it is what fits a 3.45 floor-to-floor in a hall this deep. `RISE` is fenced by `stepUp` and `stepDown` at both ends
 - **Overlays own their own hiding.** The look line hides itself on `casefile:open` and `dialogue:start`. The pointer lock prompt asks `dialogue.isActive`, not `dialoguePanel.isOpen`, because the runner sets its state *before* it emits and the panel opens on the callback *after*, so a panel check runs one step too early
 - **Examine is press F, run to completion.** Hold-to-cancel and cancel-on-`look:exit` made the verb dead under pointer lock. Esc cancels. BRIEF.md still says hold; the implementation that ships is press-to-start
-- **Visual upgrades need sourced glTF and a bake.** Not image-gen tiles, not more light tuning. Hand, Crystal, Rosie, Moretti and the whole of room 1A are through that route; the rest of the lodge is not
-- **`LIGHTMAP_INTENSITY` is 14 against a bake measured at 1.** It is high because `environmentIntensity` is low. Adjust the two together, once, in the Scene 1 release-candidate pass
+- **Image-to-3D and rigged characters are allowed.** The dusk pass did not change Rosie, Moretti or Crystal. A rigged Rosie is the next character step. Do not start it inside a lighting change.
+- **`LIGHTMAP_INTENSITY` is 14 in day mode, and room 1A is pulled down under the dusk grade.** The day pair with `environmentIntensity` 0.3 is unchanged. Do not retune one without the other while `?look=day` is what you are judging.
 
 ---
 
@@ -700,11 +708,12 @@ Language    TypeScript, strict. No any, no ! assertions
 Build       Vite
 Deploy      Cloudflare Pages, static, own project on a subdomain of billyhaddad.au
             Not inside the author site's Astro build
-Lighting    HDRI through PMREM, one directional sun, AgX. Indirect is baked
-            in Cycles, offline, and shipped as a map. No realtime GI
-Assets      Sourced. Poly Haven and Sketchfab, CC0 / CC-BY, credited
-            glTF 2.0. Textures JPEG inside the .glb, lightmaps half
-            float EXR beside it. KTX2 the day there is an encoder
+Lighting    Dusk default: code practicals, sky probe, film grade (GTAO, bloom,
+            split-tone). `?look=day` is the HDRI, one sun, AgX, baked indirect.
+            No realtime GI. No Blender bake required for the dusk picture
+Assets      Sourced meshes where a CC download exists. Code materials and
+            image-to-3D / rigged characters are allowed. glTF 2.0. Room 1A
+            lightmaps remain half float EXR. KTX2 the day there is an encoder
 Audio       Web Audio API
 Physics     None. No library, no engine
 ```
@@ -713,7 +722,7 @@ Physics     None. No library, no engine
 
 **No framework.** No React, no Vue. The HUD is DOM and CSS over the canvas.
 
-**`three` plus loaders and compression.** GLTFLoader, KTX2Loader, RGBELoader and the Meshopt decoder are in, and they all ship inside the `three` package already. Anything with a runtime of its own is out.
+**`three` plus loaders, compression, and the post passes that ship in three.** GLTFLoader, KTX2Loader, RGBELoader, the Meshopt decoder, EffectComposer, GTAO and bloom. Anything with a runtime of its own is out.
 
 ---
 
@@ -729,7 +738,7 @@ This list exists because the genre invites all of it and none of it belongs.
 - Fail states. The player cannot lose. They can only be slow
 - Procedurally generated *layout*. Every room is authored and placed by hand. This is not the revoked rule: what was revoked is authoring every surface and mesh yourself, not authoring the level
 - A map or quest marker. Rosie points, the geometry does the rest
-- Realtime GI, SSAO, or any other attempt to compute bounce at 60fps. It is baked in Cycles and shipped as a map
+- Realtime GI is out. Screen-space AO and bloom in `src/render/post.ts` are the dusk grade, not a bounce solver. Do not add a second GI system.
 
 ---
 
@@ -1025,9 +1034,9 @@ be low poly.
 
 ## Performance target
 
-60 fps at 1080p. These are small interiors with a fixed sun and no dynamic combat. If you are under 60, you have over-built the render pipeline, not under-optimised it.
+60 fps at 1080p on a base M1. The dusk post stack is capped at pixel ratio 1.25, DOF is off, and shadow maps do not update every frame. If you are under 60, cut lights and post cost before you add technique.
 
-Do not add TAA, GTAA, cascaded shadow maps, motion blur, SSAO, or any realtime GI. **One directional light with a shadow map, an HDRI through PMREM, and a baked indirect map** is enough and it is the correct amount. Everything expensive happens in Cycles, once, on the author's machine.
+`?look=day` is still one directional light, an HDRI through PMREM, and the baked indirect maps, under AgX. Do not add TAA, cascaded shadow maps, motion blur, or realtime GI on top of either path.
 
 Budget for room 1A was **under 25MB** of glTF and lightmap together. It ships at 10.27. The whole lodge interior out of Unit A gets **60MB**, loaded once behind the title card.
 
