@@ -1,5 +1,6 @@
 import {
   Color,
+  LoadingManager,
   MeshStandardMaterial,
   NoColorSpace,
   RepeatWrapping,
@@ -41,8 +42,30 @@ vec3 ld_tri2(sampler2D t, vec3 p, vec3 n, float s){
   return texture2D(t, r*p.zy*s + 0.37).rgb*b.x + texture2D(t, r*p.xz*s + 0.37).rgb*b.y + texture2D(t, r*p.xy*s+0.37).rgb*b.z; }
 `
 
-const loader = new TextureLoader()
+let gate: Promise<void> = Promise.resolve()
+let releaseGate: () => void = () => {}
+let idle = true
+
+const manager = new LoadingManager()
+manager.onStart = () => {
+  if (!idle) return
+  idle = false
+  gate = new Promise<void>((resolve) => {
+    releaseGate = resolve
+  })
+}
+manager.onLoad = () => {
+  idle = true
+  releaseGate()
+}
+
+const loader = new TextureLoader(manager)
 const cache = new Map<string, Texture>()
+
+/** Resolves when every look texture requested so far has finished or failed. */
+export function whenLookTexturesReady(): Promise<void> {
+  return gate
+}
 
 function tex(url: string, srgb = true): Texture {
   const key = `${url}:${srgb ? 1 : 0}`

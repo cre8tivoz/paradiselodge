@@ -101,10 +101,13 @@ try {
   )
 
   // One more explicit render after the settle, so shadows and the last
-  // camera sync land before the PNG is written.
+  // camera sync land before the PNG is written. Dusk draws through its
+  // composer; a bare renderer.render would wipe the grade off the canvas.
   await page.evaluate(() => {
     const L = window.__lodge
-    if (L?.grade && L?.scene && L?.camera && L?.renderer) {
+    if (typeof L?.dusk?.render === 'function') {
+      L.dusk.render()
+    } else if (L?.grade && L?.scene && L?.camera && L?.renderer) {
       L.grade.render(L.renderer, L.scene, L.camera)
     } else if (L?.renderer && L?.scene && L?.camera) {
       L.renderer.render(L.scene, L.camera)

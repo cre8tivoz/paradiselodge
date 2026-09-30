@@ -2,7 +2,6 @@ import {
   Box3,
   BoxGeometry,
   Color,
-  DefaultLoadingManager,
   DirectionalLight,
   FogExp2,
   Group,
@@ -26,6 +25,7 @@ import {
   isStandard,
   upholsteryMaterial,
   wallMaterial,
+  whenLookTexturesReady,
 } from '../materials/look.ts'
 import {
   bankersLamp,
@@ -459,20 +459,11 @@ function restyleInterior(root: Object3D): void {
 }
 
 function waitForTextures(): Promise<void> {
-  const manager = DefaultLoadingManager as unknown as { itemsLoaded?: number; itemsTotal?: number }
-  const pending = (): boolean => {
-    const loaded = manager.itemsLoaded
-    const total = manager.itemsTotal
-    return typeof loaded === 'number' && typeof total === 'number' && loaded < total
-  }
-  if (!pending()) return Promise.resolve()
   return new Promise((resolve) => {
-    const started = performance.now()
-    const timer = window.setInterval(() => {
-      if (!pending() || performance.now() - started > 8000) {
-        window.clearInterval(timer)
-        resolve()
-      }
-    }, 40)
+    const timer = window.setTimeout(resolve, 8000)
+    void whenLookTexturesReady().then(() => {
+      window.clearTimeout(timer)
+      resolve()
+    })
   })
 }
