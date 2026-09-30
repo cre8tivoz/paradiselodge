@@ -1,0 +1,26 @@
+<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0}</style>
+<script type="importmap">{"imports":{"three":"../../node_modules/three/build/three.module.js","three/addons/":"../../node_modules/three/examples/jsm/"}}</script>
+</head><body><script type="module">
+// Plain-GLTFLoader check of the exported game GLB: frame n -> clip (n<4 idle at t=n*1.5, else walk at t=(n-4)*0.25), front + side view.
+import * as THREE from 'three'; import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); r.setSize(1280, 720); r.outputColorSpace = THREE.SRGBColorSpace; r.toneMapping = THREE.AgXToneMapping; document.body.appendChild(r.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x1c1a18);
+scene.add(new THREE.HemisphereLight(0xfff1e0, 0x3a3028, 1.5)); const k = new THREE.DirectionalLight(0xffe6c8, 2); k.position.set(2, 4, 3); scene.add(k);
+const g = await new GLTFLoader().loadAsync(new URLSearchParams(location.search).get('f') || '../../out/phase2/v2/rosie-rigged.glb'); scene.add(g.scene);
+const q = new URLSearchParams(location.search); const names = [];
+g.scene.traverse((o) => { if (o.isMesh) { o.frustumCulled = false; names.push(o.name + '|' + o.material.name + '|' + o.material.alphaMode + '|' + o.material.alphaTest + '|' + o.material.transparent); if (q.get('hide') && o.material.name.includes(q.get('hide'))) o.visible = false; } });
+console.log('meshes', names.join(' ; '));
+const mixer = new THREE.AnimationMixer(g.scene); const A = Object.fromEntries(g.animations.map((c) => [c.name, mixer.clipAction(c)]));
+const cam = new THREE.PerspectiveCamera(30, 640 / 720, 0.05, 50);
+window.__info = { clips: g.animations.map((c) => c.name + ':' + c.duration.toFixed(2)), bbox: new THREE.Box3().setFromObject(g.scene).max.y };
+window.__renderFrame = async (n) => {
+  mixer.stopAllAction(); const walk = n >= 4; const a = walk ? A.walk : A.idle; if (!q.get('noanim')) { a.reset().play(); mixer.setTime(walk ? (n - 4) * 0.25 : n * 1.5); }
+  if (n === 0) { const bones = []; g.scene.traverse((o) => { if (o.isBone && /Neck|Head/.test(o.name)) { const s = new THREE.Vector3(), p = new THREE.Vector3(); o.getWorldPosition(p); o.getWorldScale(s); bones.push(o.name + ' p' + p.toArray().map((x) => x.toFixed(2)) + ' s' + s.toArray().map((x) => x.toFixed(3))); } }); console.log('bones', bones.join(' ; ')); }
+  const hips = g.scene.getObjectByName('mixamorigHips'); const hp = new THREE.Vector3(); hips.getWorldPosition(hp);
+  r.setScissorTest(true);
+  [0, Math.PI / 2].forEach((ang, v) => { const d = q.get('head') ? 0.9 : 4.2, y = q.get('head') ? 1.5 : 1.0, ty = q.get('head') ? 1.5 : 0.85; cam.position.set(hp.x + Math.sin(ang) * d, y, hp.z + Math.cos(ang) * d); cam.lookAt(hp.x, ty, hp.z);
+    r.setViewport(v * 640, 0, 640, 720); r.setScissor(v * 640, 0, 640, 720); r.render(scene, cam); });
+  r.setScissorTest(false); return r.domElement.toDataURL('image/png');
+};
+window.__ready = true;
+</script></body></html>

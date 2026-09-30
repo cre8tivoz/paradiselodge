@@ -4,8 +4,8 @@ For handing off to Claude Code. Follow in order.
 
 **Steps 1 to 5 are history.** The repo exists, it is scaffolded, it is deployed.
 They are kept because they record what the stack is and why. If you are picking
-the project up today, what you actually need is *What you need installed*, then
-*The asset pipeline* at the bottom, then CLAUDE.md.
+the project up today, read `CLAUDE.md` and `docs/MOVING-FORWARD.md`. The picture
+and the characters no longer require a Blender session or a Cycles bake on a Mac.
 
 ---
 
@@ -19,8 +19,8 @@ the project up today, what you actually need is *What you need installed*, then
 | **GitHub account** | Hosts the repo | you have one |
 | **Cloudflare account** | Hosts the game | dash.cloudflare.com, free |
 | **Claude Code** | Builds it | `npm install -g @anthropic-ai/claude-code` then `claude login` |
-| **Blender 5.1** | Builds, bakes and exports every room from here | — |
-| **BlenderMCP addon** | How Claude Code drives Blender | TCP `localhost:9876`, started from the addon panel |
+| **Blender 5.1** | Only if you are rebuilding the historical Room 1A / Unit A blends. Not required for the dusk picture or for characters | — |
+| **BlenderMCP addon** | Only for those historical blends | TCP `localhost:9876`, started from the addon panel |
 | **A Sketchfab API key** | Sourcing models through the addon | Pasted into the BlenderMCP panel. It lives **on the scene**, so anything that wipes the scene wipes the key |
 | **`wrangler`** | Manual deploys | `npx wrangler --version` |
 
@@ -160,7 +160,7 @@ From the project root:
 claude
 ```
 
-CLAUDE.md loads itself. It carries the status, the build order and the rules, and it is the file to read first. `docs/BRIEF.md` is the design spec and `docs/ASSETS.md` is the art and audio list; both are locked.
+CLAUDE.md loads itself. Read it first, then `docs/MOVING-FORWARD.md`, which supersedes the old art bans. `docs/BRIEF.md` is the story and `docs/ASSETS.md` is the art list.
 
 **One deliverable slice per session, and name it.** The active plan is
 `docs/ROADMAP.md`. Report a concrete outcome such as “Scene 1 lodge exterior —

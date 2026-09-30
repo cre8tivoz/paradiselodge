@@ -1,7 +1,12 @@
 # Paradise Lodge — Delivery Roadmap
 
-This is the canonical project plan. Progress is reported by deliverable name,
-never by an unqualified step number.
+This is the canonical project plan for what is playable and what is not.
+Progress is reported by deliverable name, never by an unqualified step number.
+
+Visual direction, the character pipeline and the next picture wins are in
+`docs/MOVING-FORWARD.md`. That plan supersedes older lines in this file that
+lock the exterior to a 3pm daylight rig, or that treat a Blender primitive
+mesh or a Mac Cycles bake as required.
 
 ## Product constraint
 
@@ -54,11 +59,11 @@ The exterior succeeds when it has:
 - distressed cream render, damp staining, exposed side brick and enough surface
   variation to hold close first-person views
 - pink Paradise Lodge neon, cyan Rooms to Let neon, marble entry and
-  wet-looking street reflections
-- the current fixed 3pm story light; the references guide architecture,
-  materials and colour contrast, not a change to dusk or rain
+  wet-road reflections, including crisp neon streaks
+- dusk as the default picture, golden hour into dusk. `?look=day` keeps the
+  3pm rig. The references guide architecture, materials and colour
 - one authored exterior asset integrated over the existing collision and
-  gameplay route; no new mechanics, baking system or engine work
+  gameplay route; no new mechanics. No new Mac bake
 
 ## Immediate remaining work
 
