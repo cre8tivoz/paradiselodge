@@ -37,7 +37,11 @@ export class Save {
   }
 
   write(data: SaveData): void {
-    localStorage.setItem(KEY, JSON.stringify(data))
+    try {
+      localStorage.setItem(KEY, JSON.stringify(data))
+    } catch {
+      // Quota or private-mode failures must not crash the scene boundary.
+    }
   }
 
   /** Mark a scene finished and persist the current case file. */
