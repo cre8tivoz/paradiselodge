@@ -79,6 +79,7 @@ export class Notebook {
       document.exitPointerLock()
     }
     this.refresh()
+    this.focusSelected()
     emit('casefile:open', {})
   }
 
@@ -90,6 +91,21 @@ export class Notebook {
     this.panel.classList.remove('is-open')
     this.panel.setAttribute('aria-hidden', 'true')
     emit('casefile:close', {})
+    const canvas = document.getElementById('game')
+    if (canvas instanceof HTMLElement) {
+      canvas.focus()
+    }
+  }
+
+  /** Put keyboard focus on the selected list item, or the panel if empty. */
+  private focusSelected(): void {
+    const selected = this.list.querySelector('.notebook-item.is-selected')
+    if (selected instanceof HTMLElement) {
+      selected.focus()
+      return
+    }
+    this.panel.tabIndex = -1
+    this.panel.focus()
   }
 
   /** Move selection in the filed list. */

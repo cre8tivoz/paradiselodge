@@ -345,3 +345,15 @@ body {
   letter-spacing: 0.15em;
   opacity: 0.7;
 }
+
+/*
+ * Title card and scene fade are the only heavy timed fades. Snap them when the
+ * player asks for less motion. Look-line opacity is the same treatment.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .title-card,
+  .scene-fade,
+  .look-line {
+    transition: none;
+  }
+}

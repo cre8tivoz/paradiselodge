@@ -99,15 +99,18 @@ export class DialoguePanel {
         this.choicesEl.appendChild(item)
       }
       this.hintEl.textContent = '1-9 choose · Esc leave'
+      this.focusFirstControl()
       return
     }
 
     if (node.next !== undefined) {
       this.hintEl.textContent = 'Space or F continue · Esc leave'
+      this.focusPanel()
       return
     }
 
     this.hintEl.textContent = 'Space or F close · Esc leave'
+    this.focusPanel()
   }
 
   private hide(): void {
@@ -115,6 +118,22 @@ export class DialoguePanel {
     this.panel.classList.remove('is-open')
     this.panel.setAttribute('aria-hidden', 'true')
     this.choicesEl.replaceChildren()
+    restoreGameFocus()
+  }
+
+  /** Move keyboard focus onto the first choice button when choices are up. */
+  private focusFirstControl(): void {
+    const first = this.choicesEl.querySelector('button')
+    if (first instanceof HTMLButtonElement) {
+      first.focus()
+      return
+    }
+    this.focusPanel()
+  }
+
+  private focusPanel(): void {
+    this.panel.tabIndex = -1
+    this.panel.focus()
   }
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
@@ -183,3 +202,11 @@ function choiceIndex(code: string): number | undefined {
       return undefined
   }
 }
+
+function restoreGameFocus(): void {
+  const canvas = document.getElementById('game')
+  if (canvas instanceof HTMLElement) {
+    canvas.focus()
+  }
+}
+
