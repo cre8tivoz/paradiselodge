@@ -55,6 +55,13 @@ import {
 import { buildLaneway, type LanewayWorld } from './world/scene3-laneway.ts'
 import { Scene3GateTracker } from './case/gates-scene3.ts'
 import { SCENE3_RADIO_ARREST, SCENE3_THEORISE_LAST_NODE } from './dialogue/graphs/scene3-radio.ts'
+import { buildInterviewRoom, type InterviewWorld } from './world/scene4-interview.ts'
+import { Scene4GateTracker } from './case/gates-scene4.ts'
+import {
+  SCENE4_TAPE_CAUTION,
+  SCENE4_VICTOR_INTERROGATION,
+  SCENE4_THEORISE_LAST_NODE,
+} from './dialogue/graphs/scene4-interrogation.ts'
 import { SoundtrackPlayer } from './audio/soundtrack.ts'
 import { applyShot, listShots } from './dev/shots.ts'
 import { SceneManager } from './core/scene.ts'
@@ -92,9 +99,13 @@ async function main(): Promise<void> {
   const isScene3 =
     scenes.currentId === 'scene3' ||
     (requestedShot !== null && requestedShot.startsWith('laneway-'))
+  const isScene4 =
+    scenes.currentId === 'scene4' ||
+    (requestedShot !== null && requestedShot.startsWith('interview-'))
 
   let station: StationWorld | undefined
   let laneway: LanewayWorld | undefined
+  let interview: InterviewWorld | undefined
   let lodge: ReturnType<typeof buildLodge> | undefined
   let rosie: Rosie | undefined
   let dusk: Awaited<ReturnType<typeof installDuskLook>> | undefined
@@ -102,6 +113,7 @@ async function main(): Promise<void> {
   let gates: GateTracker | undefined
   let gates2: Scene2GateTracker | undefined
   let gates3: Scene3GateTracker | undefined
+  let gates4: Scene4GateTracker | undefined
   let leapTerminal: LeapTerminal | undefined
 
   const solids: Box3[] = []
@@ -111,7 +123,55 @@ async function main(): Promise<void> {
   const lookables: Lookable[] = []
   const graphs = new Map<string, DialogueGraph>()
 
-  if (isScene3) {
+  if (isScene4) {
+    interview = buildInterviewRoom()
+    world.add(interview.group)
+    solids.push(...interview.solids)
+    floors.push(...interview.floors)
+    spawnPos = interview.spawn
+    spawnYaw = interview.spawnYaw
+
+    gates4 = new Scene4GateTracker(caseFile)
+
+    lookables.push(
+      {
+        id: 'interview.tape',
+        description: 'Realistic CTR-80 dual-cassette police recorder. Red recording LED glowing.',
+        examine: 'Formal caution and record of interview under Section 464A.',
+        dialogueId: 'scene4.tape.caution',
+        clipId: 'leanIn',
+        evidenceId: 'tape_caution',
+        object: interview.props.tapeRecorder,
+      },
+      {
+        id: 'interview.folder',
+        description: 'Manila case folder stamped ST KILDA CID. Crime scene photos and forensics reports.',
+        examine: 'Forensics report: latent hammer prints match Rakov. Window mud matches Rakov size 10 workboots.',
+        clipId: 'liftNote',
+        object: interview.props.caseFolder,
+      },
+      {
+        id: 'interview.victor',
+        description: 'Victor Rakov seated across the table. Defensive posture, bruised denim jacket.',
+        examine: 'Interrogate Victor Rakov.',
+        dialogueId: 'scene4.victor.interrogation',
+        object: interview.props.victorActor,
+      },
+      {
+        id: 'interview.moretti',
+        description: 'Constable Moretti seated by the wall, recording notes on a clipboard.',
+        object: interview.props.morettiObserver,
+      },
+      {
+        id: 'interview.door',
+        description: 'Soundproof steel fire door. Wire-glass observation pane looking into the corridor.',
+        object: interview.props.interviewDoor,
+      },
+    )
+
+    graphs.set(SCENE4_TAPE_CAUTION.id, SCENE4_TAPE_CAUTION)
+    graphs.set(SCENE4_VICTOR_INTERROGATION.id, SCENE4_VICTOR_INTERROGATION)
+  } else if (isScene3) {
     laneway = buildLaneway()
     world.add(laneway.group)
     solids.push(...laneway.solids)
@@ -608,16 +668,16 @@ async function main(): Promise<void> {
 
   const audio = new Audio()
   const soundtrack = new SoundtrackPlayer()
-  soundtrack.play(isScene3 ? 'scene3' : isScene2 ? 'scene2' : 'scene1')
+  soundtrack.play(isScene4 ? 'scene4' : isScene3 ? 'scene3' : isScene2 ? 'scene2' : 'scene1')
 
   const input = new Input(canvas)
   const solver = new BoxCollisionSolver(solids, floors)
   const player = new PlayerController(camera, input, solver, spawnPos, spawnYaw)
 
-  const morettiSpawn = isScene2 ? new Vector3(1.2, 0, 0.8) : isScene3 ? new Vector3(0, -100, 0) : undefined
+  const morettiSpawn = isScene2 ? new Vector3(1.2, 0, 0.8) : (isScene3 || isScene4) ? new Vector3(0, -100, 0) : undefined
   const morettiYaw = isScene2 ? Math.PI : undefined
   const moretti = await buildMoretti(solver, morettiSpawn, morettiYaw)
-  if (!isScene3) {
+  if (!isScene3 && !isScene4) {
     world.add(moretti.root)
     solids.push(...moretti.solids)
   }
@@ -642,12 +702,12 @@ async function main(): Promise<void> {
       object: rosie.root,
     })
   }
-  if (!isScene2 && !isScene3 && rosie !== undefined) {
+  if (!isScene2 && !isScene3 && !isScene4 && rosie !== undefined) {
     registerRosie()
   }
 
   const registerMoretti = (): void => {
-    if (isScene3) {
+    if (isScene3 || isScene4) {
       registry.remove('moretti')
       return
     }
@@ -671,7 +731,7 @@ async function main(): Promise<void> {
       object: moretti.root,
     })
   }
-  if (!isScene3) {
+  if (!isScene3 && !isScene4) {
     registerMoretti()
   }
 
@@ -682,7 +742,7 @@ async function main(): Promise<void> {
   const dialoguePanel = new DialoguePanel(hudRoot, dialogue)
 
   const hud = new Hud(hudRoot, (id) => {
-    if (!isScene2 && !isScene3 && rosie !== undefined && id === 'lodge.desk' && rosie.station === 'reception') {
+    if (!isScene2 && !isScene3 && !isScene4 && rosie !== undefined && id === 'lodge.desk' && rosie.station === 'reception') {
       return 'Reception desk. A woman behind it.'
     }
     return registry.get(id)?.description
@@ -696,11 +756,11 @@ async function main(): Promise<void> {
 
   new TitleCard(
     hudRoot,
-    isScene3 ? '14 REGENT STREET, PRAHRAN' : isScene2 ? 'ST KILDA PRECINCT' : 'ST KILDA',
-    isScene3 ? '26 FEBRUARY 1994 &middot; 22:30' : isScene2 ? '26 FEBRUARY 1994 &middot; 21:15' : '26 FEBRUARY 1994',
+    isScene4 ? 'ST KILDA CID &middot; INTERVIEW ROOM 1' : isScene3 ? '14 REGENT STREET, PRAHRAN' : isScene2 ? 'ST KILDA PRECINCT' : 'ST KILDA',
+    isScene4 ? '26 FEBRUARY 1994 &middot; 22:50' : isScene3 ? '26 FEBRUARY 1994 &middot; 22:30' : isScene2 ? '26 FEBRUARY 1994 &middot; 21:15' : '26 FEBRUARY 1994',
   )
 
-  let coldOpenDone = isScene2 || isScene3 ? true : false
+  let coldOpenDone = isScene2 || isScene3 || isScene4 ? true : false
 
   const targetWorld = new Vector3()
   const targetBounds = new Box3()
@@ -724,7 +784,7 @@ async function main(): Promise<void> {
    * door leaf, still in the entry bay. Capture mode skips it so the shot is clean.
    */
   const tryGlovesOn = (): void => {
-    if (isScene2 || isScene3 || glovesDone || captureMode || hands.isPlaying || lodge === undefined) {
+    if (isScene2 || isScene3 || isScene4 || glovesDone || captureMode || hands.isPlaying || lodge === undefined) {
       return
     }
     const p = player.position
@@ -751,6 +811,7 @@ async function main(): Promise<void> {
     if (
       !isScene2 &&
       !isScene3 &&
+      !isScene4 &&
       rosie !== undefined &&
       target !== undefined &&
       target.dialogueId === undefined &&
@@ -868,6 +929,10 @@ async function main(): Promise<void> {
       const g = graphs.get(lookable.dialogueId)
       if (g) dialogue.start(g)
     }
+    if (objectId === 'interview.tape' && lookable?.dialogueId !== undefined) {
+      const g = graphs.get(lookable.dialogueId)
+      if (g) dialogue.start(g)
+    }
     examiningId = undefined
   }
 
@@ -883,11 +948,28 @@ async function main(): Promise<void> {
   events.on('dialogue:start', ({ nodeId, speaker }) => {
     console.debug('dialogue', speaker, nodeId)
   })
+  events.on('dialogue:choice', ({ optionId }) => {
+    if (optionId === 'slip') {
+      caseFile.file('victor_confession', 'interview.victor')
+    }
+    if (optionId === 'sterling') {
+      caseFile.file('sterlings_orders', 'interview.victor')
+    }
+  })
   events.on('dialogue:end', ({ nodeId }) => {
     console.debug('dialogue end', nodeId)
     if (nodeId === 'mark.end') {
       caseFile.file('mark_statement', 'station.mark')
       caseFile.file('mahoneys_lead', 'station.mark')
+    }
+    if (nodeId === 'record_on') {
+      caseFile.file('tape_caution', 'interview.tape')
+    }
+    if (nodeId === 'slip_break4') {
+      caseFile.file('victor_confession', 'interview.victor')
+    }
+    if (nodeId === 'sterling_ans2') {
+      caseFile.file('sterlings_orders', 'interview.victor')
     }
     if (nodeId === 'wait' || nodeId === 'take') {
       if (gates2 !== undefined && !gates2.has('drop_hammer')) {
@@ -905,7 +987,7 @@ async function main(): Promise<void> {
     if (sceneComplete) {
       return
     }
-    if (!isScene2 && !isScene3 && nodeId === THEORISE_LAST_NODE) {
+    if (!isScene2 && !isScene3 && !isScene4 && nodeId === THEORISE_LAST_NODE) {
       sceneComplete = true
       registry.remove('moretti')
       hud.clearExamine()
@@ -923,6 +1005,13 @@ async function main(): Promise<void> {
       hud.clearExamine()
       updatePrompt()
       emit('scene:complete', { id: 'scene3' })
+    } else if (isScene4 && nodeId === SCENE4_THEORISE_LAST_NODE) {
+      sceneComplete = true
+      caseFile.file('victor_confession', 'interview.victor')
+      caseFile.file('sterlings_orders', 'interview.victor')
+      hud.clearExamine()
+      updatePrompt()
+      emit('scene:complete', { id: 'scene4' })
     }
   })
 
@@ -956,6 +1045,12 @@ async function main(): Promise<void> {
   if (gates3 !== undefined) {
     gates3.onUnlocked = (gateId) => {
       console.debug('gate3', gateId)
+    }
+  }
+
+  if (gates4 !== undefined) {
+    gates4.onUnlocked = (gateId) => {
+      console.debug('gate4', gateId)
     }
   }
 
@@ -1037,7 +1132,9 @@ async function main(): Promise<void> {
 
   const loop = new Loop((delta) => {
     elapsed += delta
-    if (isScene3 && laneway !== undefined) {
+    if (isScene4 && interview !== undefined) {
+      interview.update(delta)
+    } else if (isScene3 && laneway !== undefined) {
       laneway.update(delta, player.position)
     } else if (isScene2 && station !== undefined) {
       station.update(elapsed, player.position)
@@ -1047,7 +1144,7 @@ async function main(): Promise<void> {
       if (rosie !== undefined) rosie.update(delta, player.position)
     }
     audio.update(player.position)
-    if (!isScene3) {
+    if (!isScene3 && !isScene4) {
       moretti.update(delta, player.position)
     }
 
@@ -1138,11 +1235,13 @@ async function main(): Promise<void> {
       lodge,
       station,
       laneway,
+      interview,
       rosie,
       moretti,
       gates,
       gates2,
       gates3,
+      gates4,
       solver,
       audio,
       soundtrack,
@@ -1151,7 +1250,7 @@ async function main(): Promise<void> {
       Vector3,
     })
 
-    const shotCtx = { player, hands, hud, hudRoot, rosie, station, laneway }
+    const shotCtx = { player, hands, hud, hudRoot, rosie, station, laneway, interview }
     Reflect.set(window, '__SHOTS__', Object.fromEntries(listShots().map((n) => [n, true])))
     Reflect.set(window, '__APPLY_SHOT__', (name: string) => applyShot(name, shotCtx))
 

@@ -159,10 +159,38 @@ export const SCENE3_EVIDENCE: readonly EvidenceDef[] = [
   },
 ]
 
+export const SCENE4_EVIDENCE: readonly EvidenceDef[] = [
+  {
+    id: 'tape_caution',
+    label: 'Police interview tape caution',
+    look: 'Realistic dual-cassette police recorder on the laminate table.',
+    examine:
+      'Victoria Police record of interview under Section 464A Crimes Act 1958. Victor Rakov cautioned and advised of legal rights.',
+    landsIn: ['S5'],
+  },
+  {
+    id: 'victor_confession',
+    label: "Victor's confession",
+    look: 'Victor slouched across the table, head in his hands.',
+    examine:
+      'Admits breaking into Room 1A through the window to steal the black diary for Sterling. Swears Crystal was already dead on the bed.',
+    landsIn: ['S5'],
+  },
+  {
+    id: 'sterlings_orders',
+    label: "Sterling's orders: Mahoney's cellar",
+    look: 'Notes linking the receipt slip, the black notebook, and Victor\'s testimony.',
+    examine:
+      'Sterling operates out of the locked back room and cellar at Mahoney\'s Bar on Fitzroy Street. Clearing out tonight before CID moves in.',
+    landsIn: ['S5'],
+  },
+]
+
 export const ALL_EVIDENCE: readonly EvidenceDef[] = [
   ...SCENE1_EVIDENCE,
   ...SCENE2_EVIDENCE,
   ...SCENE3_EVIDENCE,
+  ...SCENE4_EVIDENCE,
 ]
 
 const byId = new Map(ALL_EVIDENCE.map((entry) => [entry.id, entry]))

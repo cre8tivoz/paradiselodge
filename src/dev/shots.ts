@@ -5,6 +5,7 @@ import type { Hud } from '../ui/hud.ts'
 import type { Rosie } from '../npc/rosie.ts'
 import type { StationWorld } from '../world/scene2-station.ts'
 import type { LanewayWorld } from '../world/scene3-laneway.ts'
+import type { InterviewWorld } from '../world/scene4-interview.ts'
 
 /**
  * Named camera poses for `tools/shot.mjs`. Capture mode only.
@@ -21,6 +22,7 @@ export interface ShotContext {
   readonly rosie?: Rosie
   readonly station?: StationWorld
   readonly laneway?: LanewayWorld
+  readonly interview?: InterviewWorld
 }
 
 type ShotFn = (ctx: ShotContext) => void
@@ -205,6 +207,27 @@ const SHOTS: Record<string, ShotFn> = {
     hands.setVisible(false)
     const aim = lookAim(new Vector3(0.6, 1.7, -17.5), new Vector3(0.6, 0.1, -19.6))
     player.place(new Vector3(0.6, 0, -17.5), aim.yaw, aim.pitch)
+  },
+
+  'interview-room': ({ player, hands, hudRoot }) => {
+    hudRoot.style.display = 'none'
+    hands.setVisible(false)
+    const aim = lookAim(new Vector3(-1.8, 1.6, -1.8), new Vector3(0.2, 0.9, 0.4))
+    player.place(new Vector3(-1.8, 0, -1.8), aim.yaw, aim.pitch)
+  },
+
+  'interview-victor': ({ player, hands, hudRoot }) => {
+    hudRoot.style.display = 'none'
+    hands.setVisible(false)
+    const aim = lookAim(new Vector3(0, 1.4, -0.9), new Vector3(0, 1.15, 0.82))
+    player.place(new Vector3(0, 0, -0.9), aim.yaw, aim.pitch)
+  },
+
+  'interview-recorder': ({ player, hands, hudRoot }) => {
+    hudRoot.style.display = 'none'
+    hands.setVisible(false)
+    const aim = lookAim(new Vector3(-0.3, 1.4, -0.6), new Vector3(-0.3, 0.8, 0.0))
+    player.place(new Vector3(-0.3, 0, -0.6), aim.yaw, aim.pitch)
   },
 }
 
