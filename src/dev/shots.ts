@@ -4,6 +4,7 @@ import type { Hands } from '../player/hands/hands.ts'
 import type { Hud } from '../ui/hud.ts'
 import type { Rosie } from '../npc/rosie.ts'
 import type { StationWorld } from '../world/scene2-station.ts'
+import type { LanewayWorld } from '../world/scene3-laneway.ts'
 
 /**
  * Named camera poses for `tools/shot.mjs`. Capture mode only.
@@ -19,6 +20,7 @@ export interface ShotContext {
   readonly hudRoot: HTMLElement
   readonly rosie?: Rosie
   readonly station?: StationWorld
+  readonly laneway?: LanewayWorld
 }
 
 type ShotFn = (ctx: ShotContext) => void
@@ -182,6 +184,27 @@ const SHOTS: Record<string, ShotFn> = {
     hands.setVisible(false)
     const aim = lookAim(new Vector3(5.35, 1.7, -2.4), new Vector3(5.35, 1.0, -3.98))
     player.place(new Vector3(5.35, 0, -2.4), aim.yaw, aim.pitch)
+  },
+
+  'laneway-street': ({ player, hands, hudRoot }) => {
+    hudRoot.style.display = 'none'
+    hands.setVisible(false)
+    const aim = lookAim(new Vector3(-2.2, 1.7, 12.0), new Vector3(-1.8, 1.2, 4.0))
+    player.place(new Vector3(-2.2, 0, 12.0), aim.yaw, aim.pitch)
+  },
+
+  'laneway-chase': ({ player, hands, hudRoot }) => {
+    hudRoot.style.display = 'none'
+    hands.setVisible(false)
+    const aim = lookAim(new Vector3(0.5, 1.7, 1.5), new Vector3(0.5, 1.3, -12.0))
+    player.place(new Vector3(0.5, 0, 1.5), aim.yaw, aim.pitch)
+  },
+
+  'laneway-fence': ({ player, hands, hudRoot }) => {
+    hudRoot.style.display = 'none'
+    hands.setVisible(false)
+    const aim = lookAim(new Vector3(0.6, 1.7, -17.5), new Vector3(0.6, 0.1, -19.6))
+    player.place(new Vector3(0.6, 0, -17.5), aim.yaw, aim.pitch)
   },
 }
 

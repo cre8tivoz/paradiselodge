@@ -132,7 +132,38 @@ export const SCENE2_EVIDENCE: readonly EvidenceDef[] = [
   },
 ]
 
-export const ALL_EVIDENCE: readonly EvidenceDef[] = [...SCENE1_EVIDENCE, ...SCENE2_EVIDENCE]
+export const SCENE3_EVIDENCE: readonly EvidenceDef[] = [
+  {
+    id: 'victor_bootprint',
+    label: 'Laneway bootprint',
+    look: 'Mud under the corrugated fence at the alley end.',
+    examine:
+      'Deep impression of a size 10 workboot in the clay. Heavy lug pattern matches the partial on the 1A windowsill.',
+    landsIn: ['S4'],
+  },
+  {
+    id: 'cottage_slip',
+    label: 'Handwritten slip',
+    look: 'Scrap of receipt paper on the cottage kitchen bench.',
+    examine:
+      'Pencil scribble: "Fitzroy St - grab the book. S." Sterling sent him for the diary.',
+    landsIn: ['S4', 'S5'],
+  },
+  {
+    id: 'radio_arrest',
+    label: 'Radio arrest report',
+    look: 'Shoulder radio crackling on Victoria Police VHF band.',
+    examine:
+      'Moretti: Victor Rakov apprehended on Commercial Road after climbing the back fence. Transported to station interview room.',
+    landsIn: ['S4'],
+  },
+]
+
+export const ALL_EVIDENCE: readonly EvidenceDef[] = [
+  ...SCENE1_EVIDENCE,
+  ...SCENE2_EVIDENCE,
+  ...SCENE3_EVIDENCE,
+]
 
 const byId = new Map(ALL_EVIDENCE.map((entry) => [entry.id, entry]))
 

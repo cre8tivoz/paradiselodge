@@ -52,6 +52,9 @@ import {
   MORETTI_STATION_EXIT,
   SCENE2_THEORISE_LAST_NODE,
 } from './dialogue/graphs/moretti-scene2.ts'
+import { buildLaneway, type LanewayWorld } from './world/scene3-laneway.ts'
+import { Scene3GateTracker } from './case/gates-scene3.ts'
+import { SCENE3_RADIO_ARREST, SCENE3_THEORISE_LAST_NODE } from './dialogue/graphs/scene3-radio.ts'
 import { SoundtrackPlayer } from './audio/soundtrack.ts'
 import { applyShot, listShots } from './dev/shots.ts'
 import { SceneManager } from './core/scene.ts'
@@ -86,14 +89,19 @@ async function main(): Promise<void> {
   const isScene2 =
     scenes.currentId === 'scene2' ||
     (requestedShot !== null && requestedShot.startsWith('station-'))
+  const isScene3 =
+    scenes.currentId === 'scene3' ||
+    (requestedShot !== null && requestedShot.startsWith('laneway-'))
 
   let station: StationWorld | undefined
+  let laneway: LanewayWorld | undefined
   let lodge: ReturnType<typeof buildLodge> | undefined
   let rosie: Rosie | undefined
   let dusk: Awaited<ReturnType<typeof installDuskLook>> | undefined
   let environment: Environment | undefined
   let gates: GateTracker | undefined
   let gates2: Scene2GateTracker | undefined
+  let gates3: Scene3GateTracker | undefined
   let leapTerminal: LeapTerminal | undefined
 
   const solids: Box3[] = []
@@ -103,7 +111,76 @@ async function main(): Promise<void> {
   const lookables: Lookable[] = []
   const graphs = new Map<string, DialogueGraph>()
 
-  if (isScene2) {
+  if (isScene3) {
+    laneway = buildLaneway()
+    world.add(laneway.group)
+    solids.push(...laneway.solids)
+    floors.push(...laneway.floors)
+    spawnPos = laneway.spawn
+    spawnYaw = laneway.spawnYaw
+
+    gates3 = new Scene3GateTracker(caseFile)
+
+    lookables.push(
+      {
+        id: 'laneway.commodore',
+        description: 'Unmarked Victoria Police fleet VP Commodore. Beige, slant-nosed, 3.8L V6.',
+        examine: 'The radio is squawking softly on the VHF dispatch frequency.',
+        object: laneway.props.commodore,
+      },
+      {
+        id: 'cottage.door',
+        description: '14 Regent Street. Weatherboard worker cottage, front door standing slightly ajar.',
+        examine: 'Warm light spilling into the porch. Smells like fried onions and stale tobacco.',
+        object: laneway.props.cottageDoor,
+      },
+      {
+        id: 'cottage.slip',
+        description: 'Small table on the porch with a discarded slip of receipt paper.',
+        examine: 'Pencil scribble: "Fitzroy St - grab the book. S." Sterling sent him for the diary.',
+        clipId: 'liftNote',
+        evidenceId: 'cottage_slip',
+        object: laneway.props.cottageSlip,
+      },
+      {
+        id: 'laneway.bin',
+        description: 'Council wheelie bin knocked sideways on the bluestone.',
+        examine: 'Fresh scuffs on the plastic lid. Victor clipped it as he sprinted past.',
+        object: laneway.props.wheelieBin,
+      },
+      {
+        id: 'laneway.pallets',
+        description: 'Stack of splintered pine pallets leaning against the fence.',
+        examine: 'Grease and road grit.',
+        object: laneway.props.pallets,
+      },
+      {
+        id: 'laneway.fence',
+        description: 'Dead-end corrugated iron fence. Commercial Road traffic humming on the other side.',
+        examine: 'Fresh clay smudges on the galvanised iron where Rakov scrambled over.',
+        object: laneway.props.lanewayFence,
+      },
+      {
+        id: 'laneway.bootprint',
+        description: 'Deep boot impression in the wet clay mud at the base of the fence.',
+        examine: 'Heavy lug pattern matches the partial on the Room 1A windowsill.',
+        clipId: 'leanIn',
+        evidenceId: 'victor_bootprint',
+        object: laneway.props.bootprint,
+      },
+      {
+        id: 'laneway.radio',
+        description: 'Victoria Police VHF radio unit. Moretti is calling on the divisional channel.',
+        examine: 'Answer Moretti on the radio.',
+        dialogueId: 'scene3.radio.arrest',
+        clipId: 'leanIn',
+        evidenceId: 'radio_arrest',
+        object: laneway.props.radio,
+      },
+    )
+
+    graphs.set(SCENE3_RADIO_ARREST.id, SCENE3_RADIO_ARREST)
+  } else if (isScene2) {
     station = buildStation()
     world.add(station.group)
     solids.push(...station.solids)
@@ -531,17 +608,19 @@ async function main(): Promise<void> {
 
   const audio = new Audio()
   const soundtrack = new SoundtrackPlayer()
-  soundtrack.play(isScene2 ? 'scene2' : 'scene1')
+  soundtrack.play(isScene3 ? 'scene3' : isScene2 ? 'scene2' : 'scene1')
 
   const input = new Input(canvas)
   const solver = new BoxCollisionSolver(solids, floors)
   const player = new PlayerController(camera, input, solver, spawnPos, spawnYaw)
 
-  const morettiSpawn = isScene2 ? new Vector3(1.2, 0, 0.8) : undefined
+  const morettiSpawn = isScene2 ? new Vector3(1.2, 0, 0.8) : isScene3 ? new Vector3(0, -100, 0) : undefined
   const morettiYaw = isScene2 ? Math.PI : undefined
   const moretti = await buildMoretti(solver, morettiSpawn, morettiYaw)
-  world.add(moretti.root)
-  solids.push(...moretti.solids)
+  if (!isScene3) {
+    world.add(moretti.root)
+    solids.push(...moretti.solids)
+  }
 
   const draw = (): void => {
     if (dusk !== undefined) dusk.render()
@@ -563,11 +642,15 @@ async function main(): Promise<void> {
       object: rosie.root,
     })
   }
-  if (!isScene2 && rosie !== undefined) {
+  if (!isScene2 && !isScene3 && rosie !== undefined) {
     registerRosie()
   }
 
   const registerMoretti = (): void => {
+    if (isScene3) {
+      registry.remove('moretti')
+      return
+    }
     registry.remove('moretti')
     let dialogueId = MORETTI_STANDBY.id
     if (isScene2) {
@@ -588,7 +671,9 @@ async function main(): Promise<void> {
       object: moretti.root,
     })
   }
-  registerMoretti()
+  if (!isScene3) {
+    registerMoretti()
+  }
 
   const look = new LookRaycaster(camera, registry, world)
   const hands = await Hands.create(camera)
@@ -597,7 +682,7 @@ async function main(): Promise<void> {
   const dialoguePanel = new DialoguePanel(hudRoot, dialogue)
 
   const hud = new Hud(hudRoot, (id) => {
-    if (!isScene2 && rosie !== undefined && id === 'lodge.desk' && rosie.station === 'reception') {
+    if (!isScene2 && !isScene3 && rosie !== undefined && id === 'lodge.desk' && rosie.station === 'reception') {
       return 'Reception desk. A woman behind it.'
     }
     return registry.get(id)?.description
@@ -611,11 +696,11 @@ async function main(): Promise<void> {
 
   new TitleCard(
     hudRoot,
-    isScene2 ? 'ST KILDA PRECINCT' : 'ST KILDA',
-    isScene2 ? '26 FEBRUARY 1994 &middot; 21:15' : '26 FEBRUARY 1994',
+    isScene3 ? '14 REGENT STREET, PRAHRAN' : isScene2 ? 'ST KILDA PRECINCT' : 'ST KILDA',
+    isScene3 ? '26 FEBRUARY 1994 &middot; 22:30' : isScene2 ? '26 FEBRUARY 1994 &middot; 21:15' : '26 FEBRUARY 1994',
   )
 
-  let coldOpenDone = isScene2 ? true : false
+  let coldOpenDone = isScene2 || isScene3 ? true : false
 
   const targetWorld = new Vector3()
   const targetBounds = new Box3()
@@ -639,7 +724,7 @@ async function main(): Promise<void> {
    * door leaf, still in the entry bay. Capture mode skips it so the shot is clean.
    */
   const tryGlovesOn = (): void => {
-    if (isScene2 || glovesDone || captureMode || hands.isPlaying || lodge === undefined) {
+    if (isScene2 || isScene3 || glovesDone || captureMode || hands.isPlaying || lodge === undefined) {
       return
     }
     const p = player.position
@@ -665,6 +750,7 @@ async function main(): Promise<void> {
     let target = look.target
     if (
       !isScene2 &&
+      !isScene3 &&
       rosie !== undefined &&
       target !== undefined &&
       target.dialogueId === undefined &&
@@ -778,6 +864,10 @@ async function main(): Promise<void> {
     if (objectId === 'station.coffee_urn' && gates2 !== undefined) {
       gates2.recordCoffee()
     }
+    if (objectId === 'laneway.radio' && lookable?.dialogueId !== undefined) {
+      const g = graphs.get(lookable.dialogueId)
+      if (g) dialogue.start(g)
+    }
     examiningId = undefined
   }
 
@@ -815,7 +905,7 @@ async function main(): Promise<void> {
     if (sceneComplete) {
       return
     }
-    if (!isScene2 && nodeId === THEORISE_LAST_NODE) {
+    if (!isScene2 && !isScene3 && nodeId === THEORISE_LAST_NODE) {
       sceneComplete = true
       registry.remove('moretti')
       hud.clearExamine()
@@ -827,6 +917,12 @@ async function main(): Promise<void> {
       hud.clearExamine()
       updatePrompt()
       emit('scene:complete', { id: 'scene2' })
+    } else if (isScene3 && nodeId === SCENE3_THEORISE_LAST_NODE) {
+      sceneComplete = true
+      caseFile.file('radio_arrest', 'laneway.radio')
+      hud.clearExamine()
+      updatePrompt()
+      emit('scene:complete', { id: 'scene3' })
     }
   })
 
@@ -854,6 +950,12 @@ async function main(): Promise<void> {
     gates2.onUnlocked = (gateId) => {
       console.debug('gate2', gateId)
       registerMoretti()
+    }
+  }
+
+  if (gates3 !== undefined) {
+    gates3.onUnlocked = (gateId) => {
+      console.debug('gate3', gateId)
     }
   }
 
@@ -935,7 +1037,9 @@ async function main(): Promise<void> {
 
   const loop = new Loop((delta) => {
     elapsed += delta
-    if (isScene2 && station !== undefined) {
+    if (isScene3 && laneway !== undefined) {
+      laneway.update(delta, player.position)
+    } else if (isScene2 && station !== undefined) {
       station.update(elapsed, player.position)
     } else if (lodge !== undefined) {
       lodge.update(elapsed, player.position)
@@ -943,7 +1047,9 @@ async function main(): Promise<void> {
       if (rosie !== undefined) rosie.update(delta, player.position)
     }
     audio.update(player.position)
-    moretti.update(delta, player.position)
+    if (!isScene3) {
+      moretti.update(delta, player.position)
+    }
 
     if (input.wasPressed('notebook')) {
       if (!coldOpenDone || dialogue.isActive || (leapTerminal !== undefined && leapTerminal.visible)) {
@@ -979,6 +1085,9 @@ async function main(): Promise<void> {
     }
     if (gates !== undefined) {
       gates.update(player.position)
+    }
+    if (gates3 !== undefined) {
+      gates3.update(player.position)
     }
 
     if (!coldOpenDone) {
@@ -1028,10 +1137,12 @@ async function main(): Promise<void> {
       graphs,
       lodge,
       station,
+      laneway,
       rosie,
       moretti,
       gates,
       gates2,
+      gates3,
       solver,
       audio,
       soundtrack,
@@ -1040,7 +1151,7 @@ async function main(): Promise<void> {
       Vector3,
     })
 
-    const shotCtx = { player, hands, hud, hudRoot, rosie, station }
+    const shotCtx = { player, hands, hud, hudRoot, rosie, station, laneway }
     Reflect.set(window, '__SHOTS__', Object.fromEntries(listShots().map((n) => [n, true])))
     Reflect.set(window, '__APPLY_SHOT__', (name: string) => applyShot(name, shotCtx))
 
