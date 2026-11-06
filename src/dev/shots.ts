@@ -6,6 +6,7 @@ import type { Rosie } from '../npc/rosie.ts'
 import type { StationWorld } from '../world/scene2-station.ts'
 import type { LanewayWorld } from '../world/scene3-laneway.ts'
 import type { InterviewWorld } from '../world/scene4-interview.ts'
+import type { PubWorld } from '../world/scene5-pub.ts'
 
 /**
  * Named camera poses for `tools/shot.mjs`. Capture mode only.
@@ -23,6 +24,7 @@ export interface ShotContext {
   readonly station?: StationWorld
   readonly laneway?: LanewayWorld
   readonly interview?: InterviewWorld
+  readonly pub?: PubWorld
 }
 
 type ShotFn = (ctx: ShotContext) => void
@@ -228,6 +230,25 @@ const SHOTS: Record<string, ShotFn> = {
     hands.setVisible(false)
     const aim = lookAim(new Vector3(-0.3, 1.4, -0.6), new Vector3(-0.3, 0.8, 0.0))
     player.place(new Vector3(-0.3, 0, -0.6), aim.yaw, aim.pitch)
+  },
+
+  'mahoneys-bar': ({ player, hands, hudRoot }) => {
+    hudRoot.style.display = 'none'
+    hands.setVisible(false)
+    player.place(new Vector3(0.0, 0, 3.5), 0.55, -0.06)
+  },
+
+  'mahoneys-pool': ({ player, hands, hudRoot }) => {
+    hudRoot.style.display = 'none'
+    hands.setVisible(false)
+    player.place(new Vector3(0.0, 0, 3.5), -0.55, -0.06)
+  },
+
+  'mahoneys-cellar': ({ player, hands, hudRoot }) => {
+    hudRoot.style.display = 'none'
+    hands.setVisible(false)
+    const aim = lookAim(new Vector3(-3.5, -0.6, -10.0), new Vector3(-3.5, -1.9, -13.0))
+    player.place(new Vector3(-3.5, -2.0, -10.0), aim.yaw, aim.pitch)
   },
 }
 

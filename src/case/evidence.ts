@@ -186,11 +186,39 @@ export const SCENE4_EVIDENCE: readonly EvidenceDef[] = [
   },
 ]
 
+export const SCENE5_EVIDENCE: readonly EvidenceDef[] = [
+  {
+    id: 'cellar_key',
+    label: "Sterling's cellar key",
+    look: "Heavy brass mortise key stamped 'M.B. - CELLAR'.",
+    examine:
+      "Pried from Kenneth Sterling's vest pocket during the collar grab. Unlocks the steel cellar gate behind the public bar.",
+    landsIn: ['S5'],
+  },
+  {
+    id: 'sterling_ledger',
+    label: 'Extortion ledger',
+    look: 'Black vinyl-bound ledger pulled from the floor safe beneath the keg racks.',
+    examine:
+      "Handwritten payments, loan sharks, and blackmail kickbacks. Crystal's name and room number are circled with a final payout figure.",
+    landsIn: ['S5'],
+  },
+  {
+    id: 'cell_arrest',
+    label: 'Charge sheet: Kenneth Sterling',
+    look: 'Victoria Police Form 10 charge sheet, countersigned by Constable Moretti.',
+    examine:
+      'Sterling remanded in custody at St Kilda Station watchhouse. Murder, extortion, conspiracy. The door slams shut.',
+    landsIn: ['S5'],
+  },
+]
+
 export const ALL_EVIDENCE: readonly EvidenceDef[] = [
   ...SCENE1_EVIDENCE,
   ...SCENE2_EVIDENCE,
   ...SCENE3_EVIDENCE,
   ...SCENE4_EVIDENCE,
+  ...SCENE5_EVIDENCE,
 ]
 
 const byId = new Map(ALL_EVIDENCE.map((entry) => [entry.id, entry]))

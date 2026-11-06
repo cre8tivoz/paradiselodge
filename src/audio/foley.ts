@@ -222,6 +222,66 @@ const BY_OBJECT: Readonly<Record<string, Voice>> = {
   'lodge.ashtray': glass,
 }
 
+/** Heavy steel cell door slam with metallic reverberation in a watchhouse corridor. */
+const cellDoorSlam: Voice = (mixer, at, bus) => {
+  const ctx = mixer.context
+
+  // 1. Initial latch metal rattle
+  for (let i = 0; i < 3; i += 1) {
+    const t = at + i * 0.03
+    const rattle = ctx.createOscillator()
+    rattle.type = 'triangle'
+    rattle.frequency.value = 1800 + i * 400
+    const gain = ctx.createGain()
+    rattle.connect(gain).connect(bus)
+    gain.gain.setValueAtTime(0, t)
+    gain.gain.linearRampToValueAtTime(0.08, t + 0.003)
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.06)
+    rattle.start(t)
+    rattle.stop(t + 0.07)
+  }
+
+  // 2. Heavy industrial sub-bass impact thump
+  const slamTime = at + 0.08
+  const thump = ctx.createOscillator()
+  thump.type = 'sine'
+  thump.frequency.setValueAtTime(140, slamTime)
+  thump.frequency.exponentialRampToValueAtTime(32, slamTime + 0.35)
+  const thumpGain = ctx.createGain()
+  thump.connect(thumpGain).connect(bus)
+  thumpGain.gain.setValueAtTime(0, slamTime)
+  thumpGain.gain.linearRampToValueAtTime(0.35, slamTime + 0.01)
+  thumpGain.gain.exponentialRampToValueAtTime(0.0001, slamTime + 0.8)
+  thump.start(slamTime)
+  thump.stop(slamTime + 0.85)
+
+  // 3. Heavy steel frame bandpass impact
+  const noise = mixer.noiseSource()
+  const noiseBand = mixer.filter('bandpass', 520, 1.8)
+  const noiseGain = ctx.createGain()
+  noise.connect(noiseBand).connect(noiseGain).connect(bus)
+  noiseGain.gain.setValueAtTime(0, slamTime)
+  noiseGain.gain.linearRampToValueAtTime(0.28, slamTime + 0.008)
+  noiseGain.gain.exponentialRampToValueAtTime(0.0001, slamTime + 0.45)
+  noise.start(slamTime, Math.random(), 0.5)
+  noise.stop(slamTime + 0.5)
+
+  // 4. Corridoral metallic resonance ringing out
+  const ringPitches = [340, 580, 890]
+  for (const hz of ringPitches) {
+    const ring = ctx.createOscillator()
+    ring.type = 'sine'
+    ring.frequency.value = hz
+    const ringGain = ctx.createGain()
+    ring.connect(ringGain).connect(bus)
+    ringGain.gain.setValueAtTime(0, slamTime)
+    ringGain.gain.linearRampToValueAtTime(0.09, slamTime + 0.015)
+    ringGain.gain.exponentialRampToValueAtTime(0.0001, slamTime + 1.8)
+    ring.start(slamTime)
+    ring.stop(slamTime + 1.85)
+  }
+}
+
 export class Foley {
   private readonly mixer: Mixer
   private readonly unsubscribes: Array<() => void> = []
@@ -253,6 +313,11 @@ export class Foley {
   /** Miller pulling his gloves on. Called by the world, not by an event. */
   glovesOn(): void {
     this.play(gloves)
+  }
+
+  /** Cell door slamming shut at St Kilda Watchhouse. */
+  cellSlam(): void {
+    this.play(cellDoorSlam)
   }
 
   dispose(): void {

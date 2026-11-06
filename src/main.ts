@@ -62,6 +62,14 @@ import {
   SCENE4_VICTOR_INTERROGATION,
   SCENE4_THEORISE_LAST_NODE,
 } from './dialogue/graphs/scene4-interrogation.ts'
+import { buildMahoneysBar, type PubWorld } from './world/scene5-pub.ts'
+import { Scene5GateTracker } from './case/gates-scene5.ts'
+import {
+  SCENE5_STERLING_CONFRONTATION,
+  SCENE5_CELLAR_SAFE,
+  SCENE5_FINAL_ARREST,
+} from './dialogue/graphs/scene5-mahoneys.ts'
+import { EndingScreen } from './ui/ending-screen.ts'
 import { SoundtrackPlayer } from './audio/soundtrack.ts'
 import { applyShot, listShots } from './dev/shots.ts'
 import { SceneManager } from './core/scene.ts'
@@ -102,10 +110,14 @@ async function main(): Promise<void> {
   const isScene4 =
     scenes.currentId === 'scene4' ||
     (requestedShot !== null && requestedShot.startsWith('interview-'))
+  const isScene5 =
+    scenes.currentId === 'scene5' ||
+    (requestedShot !== null && requestedShot.startsWith('mahoneys-'))
 
   let station: StationWorld | undefined
   let laneway: LanewayWorld | undefined
   let interview: InterviewWorld | undefined
+  let pub: PubWorld | undefined
   let lodge: ReturnType<typeof buildLodge> | undefined
   let rosie: Rosie | undefined
   let dusk: Awaited<ReturnType<typeof installDuskLook>> | undefined
@@ -114,6 +126,8 @@ async function main(): Promise<void> {
   let gates2: Scene2GateTracker | undefined
   let gates3: Scene3GateTracker | undefined
   let gates4: Scene4GateTracker | undefined
+  let gates5: Scene5GateTracker | undefined
+  let endingScreen: EndingScreen | undefined
   let leapTerminal: LeapTerminal | undefined
 
   const solids: Box3[] = []
@@ -123,7 +137,66 @@ async function main(): Promise<void> {
   const lookables: Lookable[] = []
   const graphs = new Map<string, DialogueGraph>()
 
-  if (isScene4) {
+  if (isScene5) {
+    pub = buildMahoneysBar()
+    world.add(pub.group)
+    solids.push(...pub.solids)
+    floors.push(...pub.floors)
+    spawnPos = pub.spawn
+    spawnYaw = pub.spawnYaw
+
+    gates5 = new Scene5GateTracker(caseFile)
+
+    lookables.push(
+      {
+        id: 'mahoneys.sterling',
+        description: 'Kenneth Sterling behind the mahogany bar. Smug expression, dark tweed vest.',
+        examine: 'Confront Kenneth Sterling.',
+        dialogueId: SCENE5_STERLING_CONFRONTATION.id,
+        object: pub.props.sterlingActor,
+      },
+      {
+        id: 'mahoneys.bar',
+        description: 'Dark mahogany bar counter with two chrome Carlton Draught fonts.',
+        examine: 'Beer mats, cigarette burns, and sticky varnished timber.',
+        object: pub.props.barCounter,
+      },
+      {
+        id: 'mahoneys.brawl',
+        description: 'Two punters brawling near the pool table over spilt Carlton pots.',
+        examine: 'Fists swinging, beer flying. Moretti has them pinned against the wall.',
+        dialogueId: SCENE5_STERLING_CONFRONTATION.id,
+        object: pub.props.brawlGroup,
+      },
+      {
+        id: 'cellar.grille',
+        description: 'Heavy security iron grille blocking the stairwell down to the beer cellar.',
+        examine: 'Locked with a heavy brass mortise padlock stamped M.B. - CELLAR.',
+        clipId: 'leanIn',
+        object: pub.props.cellarDoor,
+      },
+      {
+        id: 'cellar.safe',
+        description: 'Chub-pattern floor safe recessed into the wet bluestone foundation between the kegs.',
+        examine: 'Heavy steel tumbler flush with the cellar floor.',
+        dialogueId: SCENE5_CELLAR_SAFE.id,
+        clipId: 'openLookClose',
+        evidenceId: 'sterling_ledger',
+        object: pub.props.floorSafe,
+      },
+      {
+        id: 'mahoneys.exit',
+        description: 'Back fire exit leading into the bluestone alley.',
+        examine: 'Moretti intercepting Kenneth Sterling as he tries to flee.',
+        dialogueId: SCENE5_FINAL_ARREST.id,
+        object: pub.props.morettiActor,
+      },
+    )
+
+    graphs.set(SCENE5_STERLING_CONFRONTATION.id, SCENE5_STERLING_CONFRONTATION)
+    graphs.set(SCENE5_CELLAR_SAFE.id, SCENE5_CELLAR_SAFE)
+    graphs.set(SCENE5_FINAL_ARREST.id, SCENE5_FINAL_ARREST)
+  } else if (isScene4) {
     interview = buildInterviewRoom()
     world.add(interview.group)
     solids.push(...interview.solids)
@@ -668,16 +741,16 @@ async function main(): Promise<void> {
 
   const audio = new Audio()
   const soundtrack = new SoundtrackPlayer()
-  soundtrack.play(isScene4 ? 'scene4' : isScene3 ? 'scene3' : isScene2 ? 'scene2' : 'scene1')
+  soundtrack.play(isScene5 ? 'scene5' : isScene4 ? 'scene4' : isScene3 ? 'scene3' : isScene2 ? 'scene2' : 'scene1')
 
   const input = new Input(canvas)
   const solver = new BoxCollisionSolver(solids, floors)
   const player = new PlayerController(camera, input, solver, spawnPos, spawnYaw)
 
-  const morettiSpawn = isScene2 ? new Vector3(1.2, 0, 0.8) : (isScene3 || isScene4) ? new Vector3(0, -100, 0) : undefined
+  const morettiSpawn = isScene2 ? new Vector3(1.2, 0, 0.8) : (isScene3 || isScene4 || isScene5) ? new Vector3(0, -100, 0) : undefined
   const morettiYaw = isScene2 ? Math.PI : undefined
   const moretti = await buildMoretti(solver, morettiSpawn, morettiYaw)
-  if (!isScene3 && !isScene4) {
+  if (!isScene3 && !isScene4 && !isScene5) {
     world.add(moretti.root)
     solids.push(...moretti.solids)
   }
@@ -702,12 +775,12 @@ async function main(): Promise<void> {
       object: rosie.root,
     })
   }
-  if (!isScene2 && !isScene3 && !isScene4 && rosie !== undefined) {
+  if (!isScene2 && !isScene3 && !isScene4 && !isScene5 && rosie !== undefined) {
     registerRosie()
   }
 
   const registerMoretti = (): void => {
-    if (isScene3 || isScene4) {
+    if (isScene3 || isScene4 || isScene5) {
       registry.remove('moretti')
       return
     }
@@ -731,7 +804,7 @@ async function main(): Promise<void> {
       object: moretti.root,
     })
   }
-  if (!isScene3 && !isScene4) {
+  if (!isScene3 && !isScene4 && !isScene5) {
     registerMoretti()
   }
 
@@ -742,7 +815,7 @@ async function main(): Promise<void> {
   const dialoguePanel = new DialoguePanel(hudRoot, dialogue)
 
   const hud = new Hud(hudRoot, (id) => {
-    if (!isScene2 && !isScene3 && !isScene4 && rosie !== undefined && id === 'lodge.desk' && rosie.station === 'reception') {
+    if (!isScene2 && !isScene3 && !isScene4 && !isScene5 && rosie !== undefined && id === 'lodge.desk' && rosie.station === 'reception') {
       return 'Reception desk. A woman behind it.'
     }
     return registry.get(id)?.description
@@ -756,11 +829,27 @@ async function main(): Promise<void> {
 
   new TitleCard(
     hudRoot,
-    isScene4 ? 'ST KILDA CID &middot; INTERVIEW ROOM 1' : isScene3 ? '14 REGENT STREET, PRAHRAN' : isScene2 ? 'ST KILDA PRECINCT' : 'ST KILDA',
-    isScene4 ? '26 FEBRUARY 1994 &middot; 22:50' : isScene3 ? '26 FEBRUARY 1994 &middot; 22:30' : isScene2 ? '26 FEBRUARY 1994 &middot; 21:15' : '26 FEBRUARY 1994',
+    isScene5
+      ? "MAHONEY'S BAR &middot; FITZROY STREET"
+      : isScene4
+        ? 'ST KILDA CID &middot; INTERVIEW ROOM 1'
+        : isScene3
+          ? '14 REGENT STREET, PRAHRAN'
+          : isScene2
+            ? 'ST KILDA PRECINCT'
+            : 'ST KILDA',
+    isScene5
+      ? '27 FEBRUARY 1994 &middot; 00:30'
+      : isScene4
+        ? '26 FEBRUARY 1994 &middot; 22:50'
+        : isScene3
+          ? '26 FEBRUARY 1994 &middot; 22:30'
+          : isScene2
+            ? '26 FEBRUARY 1994 &middot; 21:15'
+            : '26 FEBRUARY 1994',
   )
 
-  let coldOpenDone = isScene2 || isScene3 || isScene4 ? true : false
+  let coldOpenDone = isScene2 || isScene3 || isScene4 || isScene5 ? true : false
 
   const targetWorld = new Vector3()
   const targetBounds = new Box3()
@@ -784,7 +873,7 @@ async function main(): Promise<void> {
    * door leaf, still in the entry bay. Capture mode skips it so the shot is clean.
    */
   const tryGlovesOn = (): void => {
-    if (isScene2 || isScene3 || isScene4 || glovesDone || captureMode || hands.isPlaying || lodge === undefined) {
+    if (isScene2 || isScene3 || isScene4 || isScene5 || glovesDone || captureMode || hands.isPlaying || lodge === undefined) {
       return
     }
     const p = player.position
@@ -812,6 +901,7 @@ async function main(): Promise<void> {
       !isScene2 &&
       !isScene3 &&
       !isScene4 &&
+      !isScene5 &&
       rosie !== undefined &&
       target !== undefined &&
       target.dialogueId === undefined &&
@@ -955,6 +1045,17 @@ async function main(): Promise<void> {
     if (optionId === 'sterling') {
       caseFile.file('sterlings_orders', 'interview.victor')
     }
+    if (optionId === 'take_key') {
+      caseFile.file('cellar_key', 'mahoneys.sterling')
+      if (pub) pub.setCellarUnlocked(true)
+    }
+    if (optionId === 'seize_ledger') {
+      caseFile.file('sterling_ledger', 'cellar.safe')
+      if (pub) pub.setSafeOpened(true)
+    }
+    if (optionId === 'credits_roll') {
+      caseFile.file('cell_arrest', 'mahoneys.exit')
+    }
   })
   events.on('dialogue:end', ({ nodeId }) => {
     console.debug('dialogue end', nodeId)
@@ -971,6 +1072,14 @@ async function main(): Promise<void> {
     if (nodeId === 'sterling_ans2') {
       caseFile.file('sterlings_orders', 'interview.victor')
     }
+    if (nodeId === 'key_taken') {
+      caseFile.file('cellar_key', 'mahoneys.sterling')
+      if (pub) pub.setCellarUnlocked(true)
+    }
+    if (nodeId === 'ledger_secured') {
+      caseFile.file('sterling_ledger', 'cellar.safe')
+      if (pub) pub.setSafeOpened(true)
+    }
     if (nodeId === 'wait' || nodeId === 'take') {
       if (gates2 !== undefined && !gates2.has('drop_hammer')) {
         gates2.recordHammerDrop()
@@ -984,10 +1093,27 @@ async function main(): Promise<void> {
         }
       }
     }
+    if (nodeId === 'final_blackout' || nodeId === 'watchhouse_ending') {
+      caseFile.file('cell_arrest', 'mahoneys.exit')
+      if (!sceneComplete) {
+        sceneComplete = true
+        audio.foley.cellSlam()
+        hud.clearExamine()
+        updatePrompt()
+        emit('scene:complete', { id: 'scene5' })
+        endingScreen = new EndingScreen(hudRoot, {
+          evidenceCount: caseFile.size,
+          onRestart: () => {
+            localStorage.removeItem('paradise-lodge.save')
+            window.location.search = ''
+          },
+        })
+      }
+    }
     if (sceneComplete) {
       return
     }
-    if (!isScene2 && !isScene3 && !isScene4 && nodeId === THEORISE_LAST_NODE) {
+    if (!isScene2 && !isScene3 && !isScene4 && !isScene5 && nodeId === THEORISE_LAST_NODE) {
       sceneComplete = true
       registry.remove('moretti')
       hud.clearExamine()
@@ -1051,6 +1177,12 @@ async function main(): Promise<void> {
   if (gates4 !== undefined) {
     gates4.onUnlocked = (gateId) => {
       console.debug('gate4', gateId)
+    }
+  }
+
+  if (gates5 !== undefined) {
+    gates5.onUnlocked = (gateId) => {
+      console.debug('gate5', gateId)
     }
   }
 
@@ -1132,7 +1264,9 @@ async function main(): Promise<void> {
 
   const loop = new Loop((delta) => {
     elapsed += delta
-    if (isScene4 && interview !== undefined) {
+    if (isScene5 && pub !== undefined) {
+      pub.update(delta)
+    } else if (isScene4 && interview !== undefined) {
       interview.update(delta)
     } else if (isScene3 && laneway !== undefined) {
       laneway.update(delta, player.position)
@@ -1144,7 +1278,7 @@ async function main(): Promise<void> {
       if (rosie !== undefined) rosie.update(delta, player.position)
     }
     audio.update(player.position)
-    if (!isScene3 && !isScene4) {
+    if (!isScene3 && !isScene4 && !isScene5) {
       moretti.update(delta, player.position)
     }
 
@@ -1236,12 +1370,15 @@ async function main(): Promise<void> {
       station,
       laneway,
       interview,
+      pub,
       rosie,
       moretti,
       gates,
       gates2,
       gates3,
       gates4,
+      gates5,
+      endingScreen,
       solver,
       audio,
       soundtrack,
@@ -1250,7 +1387,7 @@ async function main(): Promise<void> {
       Vector3,
     })
 
-    const shotCtx = { player, hands, hud, hudRoot, rosie, station, laneway, interview }
+    const shotCtx = { player, hands, hud, hudRoot, rosie, station, laneway, interview, pub }
     Reflect.set(window, '__SHOTS__', Object.fromEntries(listShots().map((n) => [n, true])))
     Reflect.set(window, '__APPLY_SHOT__', (name: string) => applyShot(name, shotCtx))
 
