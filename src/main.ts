@@ -36,10 +36,23 @@ import { DialoguePanel } from './dialogue/panel.ts'
 import { ROSIE_RECEPTION } from './dialogue/graphs/rosie-reception.ts'
 import { ROSIE_PARLOUR } from './dialogue/graphs/rosie-parlour.ts'
 import type { DialogueGraph } from './dialogue/graph.ts'
-import { buildRosie } from './npc/rosie.ts'
+import { buildRosie, type Rosie } from './npc/rosie.ts'
 import { buildMoretti } from './npc/moretti.ts'
 import { MORETTI_BAG } from './dialogue/graphs/moretti-bag.ts'
 import { MORETTI_STANDBY, MORETTI_THEORISE, THEORISE_LAST_NODE } from './dialogue/graphs/moretti-exit.ts'
+import { buildStation } from './world/scene2-station.ts'
+import type { StationWorld } from './world/scene2-station.ts'
+import { Scene2GateTracker } from './case/gates-scene2.ts'
+import { LeapTerminal } from './ui/leap-terminal.ts'
+import { FORENSICS_INTAKE, FORENSICS_DONE } from './dialogue/graphs/forensics-tech.ts'
+import { MARK_INTERVIEW } from './dialogue/graphs/mark-interview.ts'
+import {
+  MORETTI_STATION_STANDBY,
+  MORETTI_STATION_INTERVIEW,
+  MORETTI_STATION_EXIT,
+  SCENE2_THEORISE_LAST_NODE,
+} from './dialogue/graphs/moretti-scene2.ts'
+import { SoundtrackPlayer } from './audio/soundtrack.ts'
 import { applyShot, listShots } from './dev/shots.ts'
 import { SceneManager } from './core/scene.ts'
 import { TitleCard } from './ui/title-card.ts'
@@ -58,470 +71,490 @@ async function main(): Promise<void> {
   const { renderer, camera } = createViewport(canvas)
 
   const scene = new Scene()
-
-  /*
-   * Everything solid lives under `world`. Miller's hands are children of the
-   * camera, which is a sibling of it.
-   *
-   * That split is what keeps his own hands out of the look raycast. They sit
-   * inches from the lens, so a ray cast against the whole scene stops on a glove
-   * every time, and three raycasts objects whose `visible` is false, so hiding
-   * them is not enough. Excluding them by render layer would work for the ray
-   * and then quietly unlight them, since a light in three only illuminates
-   * objects that share its layer. That is the viewmodel bug SETUP.md warns about
-   * in the reference repo. Separate roots, one light rig, no drift.
-   */
   const world = new Group()
 
-  const lodge = buildLodge()
-  world.add(lodge.group)
-
-  const [unitA, lodgeExterior, commodore] = await Promise.all([
-    loadUnitA(),
-    loadLodgeExterior(),
-    loadCommodore(),
-  ])
-  lodge.interiorVisuals.removeFromParent()
-  world.add(lodgeExterior.scene)
-  lodge.props.neon.clear()
-  lodge.props.neon.add(lodgeExterior.neon)
-  lodge.props.commodore.clear()
-  lodge.props.commodore.add(commodore)
-
-  /*
-   * Room 1A, placed into the building rather than sitting at the origin.
-   *
-   * Rotated a quarter turn, so the room's local -Z door opens onto the
-   * first-floor hall at x = 1.7 and its local +Z sash looks out at x = 6.3,
-   * which is the side the verandah wraps onto and where the 3pm sun comes from.
-   * Front and side corner, per BRIEF.md.
-   */
-  const room = await buildRoom1A({
-    position: new Vector3(4.0, 3.45, 2.6),
-    rotationY: Math.PI / 2,
-  }, unitA.scene)
-  world.add(room.group)
-
-  const lodgeProps = { ...lodge.props, ...unitA.props }
-
-  const verandah = buildVerandah()
-  world.add(verandah.group)
-
-  const yard = buildYard()
-  world.add(yard.group)
-
-  // Under `world`, so the look raycast reaches her and her own hands are not a
-  // special case the way Miller's are.
-  const rosie = await buildRosie()
-  world.add(rosie.root)
-
-  scene.add(world)
-
-  const lighting = buildSceneLighting()
-  scene.add(lighting.group)
-
-  /*
-   * Dusk is the default: code practicals, a sky dome and the film grade.
-   * `?look=day` keeps the 3pm HDRI, the single sun and the baked lightmaps.
-   */
-  const lookMode = readLookMode()
-  let environment: Environment | undefined
-  let dusk: Awaited<ReturnType<typeof installDuskLook>> | undefined
-  if (lookMode === 'day') {
-    environment = await loadEnvironment(renderer)
-    environment.apply(scene)
-  } else {
-    dusk = await installDuskLook({
-      renderer,
-      scene,
-      camera,
-      interior: unitA.scene,
-      lodge: lodge.group,
-      exterior: lodgeExterior.scene,
-      commodore,
-      sun: lighting.sun,
-    })
+  const caseFile = new CaseFile()
+  const scenes = new SceneManager(hudRoot, caseFile)
+  if (scenes.stored?.evidence) {
+    for (const id of scenes.stored.evidence) {
+      caseFile.file(id, 'prior_save')
+    }
   }
+
+  const params = new URLSearchParams(window.location.search)
+  const requestedShot = params.get('shot')
+  const isScene2 =
+    scenes.currentId === 'scene2' ||
+    (requestedShot !== null && requestedShot.startsWith('station-'))
+
+  let station: StationWorld | undefined
+  let lodge: ReturnType<typeof buildLodge> | undefined
+  let rosie: Rosie | undefined
+  let dusk: Awaited<ReturnType<typeof installDuskLook>> | undefined
+  let environment: Environment | undefined
+  let gates: GateTracker | undefined
+  let gates2: Scene2GateTracker | undefined
+  let leapTerminal: LeapTerminal | undefined
+
+  const solids: Box3[] = []
+  const floors: any[] = []
+  let spawnPos: Vector3
+  let spawnYaw: number
+  const lookables: Lookable[] = []
+  const graphs = new Map<string, DialogueGraph>()
+
+  if (isScene2) {
+    station = buildStation()
+    world.add(station.group)
+    solids.push(...station.solids)
+    floors.push(...station.floors)
+    spawnPos = station.spawn
+    spawnYaw = station.spawnYaw
+
+    gates2 = new Scene2GateTracker(caseFile)
+    leapTerminal = new LeapTerminal(hudRoot, caseFile)
+
+    lookables.push(
+      {
+        id: 'station.forensics_hatch',
+        description: 'Forensics intake counter. Wire-glass hatch with a bell.',
+        examine: 'Drop the tagged hammer into the intake tray.',
+        dialogueId: 'forensics.intake',
+        clipId: 'leanIn',
+        object: station.props.forensicsHatch,
+      },
+      {
+        id: 'station.coffee_urn',
+        description: 'Stainless steel electric urn. Simmering on the break bench.',
+        examine: 'Pour a mug of instant coffee. Scalding, black, bitter.',
+        clipId: 'leanIn',
+        object: station.props.urn,
+      },
+      {
+        id: 'station.noticeboard',
+        description: 'Noticeboard. Shift rosters, union notices, and armed robbery photokits.',
+        object: station.props.noticeboard,
+      },
+      {
+        id: 'station.desk',
+        description: "Miller's desk. Metal drawers, blotter, and a banker's lamp.",
+        object: station.props.forensicsReport,
+      },
+      {
+        id: 'station.report',
+        description: 'Manila folder from Forensics. Wet ink stamp: MATCH FOUND.',
+        examine: 'Latent prints on the handle match Victor Rakov. Associated with the King Street Crew.',
+        clipId: 'liftNote',
+        evidenceId: 'hammer_report',
+        object: station.props.forensicsReport,
+      },
+      {
+        id: 'station.leap',
+        description: 'Green phosphor CRT terminal. Victoria Police LEAP mainframe.',
+        examine: 'Query Victor Rakov criminal record on the mainframe.',
+        clipId: 'leanIn',
+        evidenceId: 'rakov_profile',
+        object: station.props.leapTerminal,
+      },
+      {
+        id: 'station.mark',
+        description: 'Mark sitting in the interview cubicle, head down in his hands.',
+        dialogueId: 'mark.interview',
+        object: station.props.markActor,
+      },
+    )
+
+    graphs.set(FORENSICS_INTAKE.id, FORENSICS_INTAKE)
+    graphs.set(FORENSICS_DONE.id, FORENSICS_DONE)
+    graphs.set(MARK_INTERVIEW.id, MARK_INTERVIEW)
+    graphs.set(MORETTI_STATION_STANDBY.id, MORETTI_STATION_STANDBY)
+    graphs.set(MORETTI_STATION_INTERVIEW.id, MORETTI_STATION_INTERVIEW)
+    graphs.set(MORETTI_STATION_EXIT.id, MORETTI_STATION_EXIT)
+  } else {
+    lodge = buildLodge()
+    world.add(lodge.group)
+
+    const [unitA, lodgeExterior, commodore] = await Promise.all([
+      loadUnitA(),
+      loadLodgeExterior(),
+      loadCommodore(),
+    ])
+    lodge.interiorVisuals.removeFromParent()
+    world.add(lodgeExterior.scene)
+    lodge.props.neon.clear()
+    lodge.props.neon.add(lodgeExterior.neon)
+    lodge.props.commodore.clear()
+    lodge.props.commodore.add(commodore)
+
+    const room = await buildRoom1A(
+      {
+        position: new Vector3(4.0, 3.45, 2.6),
+        rotationY: Math.PI / 2,
+      },
+      unitA.scene,
+    )
+    world.add(room.group)
+
+    const lodgeProps = { ...lodge.props, ...unitA.props }
+
+    const verandah = buildVerandah()
+    world.add(verandah.group)
+
+    const yard = buildYard()
+    world.add(yard.group)
+
+    rosie = await buildRosie()
+    world.add(rosie.root)
+
+    const lighting = buildSceneLighting()
+    scene.add(lighting.group)
+
+    const lookMode = readLookMode()
+    if (lookMode === 'day') {
+      environment = await loadEnvironment(renderer)
+      environment.apply(scene)
+    } else {
+      dusk = await installDuskLook({
+        renderer,
+        scene,
+        camera,
+        interior: unitA.scene,
+        lodge: lodge.group,
+        exterior: lodgeExterior.scene,
+        commodore,
+        sun: lighting.sun,
+      })
+    }
+
+    solids.push(
+      ...lodge.solids,
+      ...room.solids,
+      ...verandah.solids,
+      ...yard.solids,
+      ...rosie.solids,
+    )
+    floors.push(...lodge.floors, ...room.floors, ...verandah.floors, ...yard.floors)
+    spawnPos = lodge.spawn
+    spawnYaw = lodge.spawnYaw
+    gates = new GateTracker(caseFile)
+
+    const needle = getEvidence('needle')
+    const temple = getEvidence('temple')
+    const sling = getEvidence('sling')
+    const frame = getEvidence('frame')
+    const sill = getEvidence('sill')
+    const lighter = getEvidence('lighter')
+    const diary = getEvidence('diary')
+    const hammer = getEvidence('hammer')
+    if (
+      needle === undefined ||
+      temple === undefined ||
+      sling === undefined ||
+      frame === undefined ||
+      sill === undefined ||
+      lighter === undefined ||
+      diary === undefined ||
+      hammer === undefined
+    ) {
+      throw new Error('Scene 1 evidence catalogue is missing an entry')
+    }
+
+    lookables.push(
+      {
+        id: '1a.bed',
+        description: 'Single bed. Chenille spread, dusty pink.',
+        object: room.props.bed,
+      },
+      {
+        id: '1a.crystal',
+        description: 'A woman on the bed. Cream dress.',
+        examine: temple.examine,
+        clipId: 'turnHead',
+        evidenceId: temple.id,
+        object: room.crystal.root,
+      },
+      {
+        id: '1a.temple',
+        description: temple.look,
+        examine: temple.examine,
+        clipId: 'turnHead',
+        evidenceId: temple.id,
+        object: room.crystal.head,
+      },
+      {
+        id: '1a.needle',
+        description: needle.look,
+        examine: needle.examine,
+        clipId: 'leanIn',
+        evidenceId: needle.id,
+        object: room.crystal.needle,
+      },
+      {
+        id: '1a.sling',
+        description: sling.look,
+        examine: sling.examine,
+        clipId: 'liftDrop',
+        evidenceId: sling.id,
+        object: room.crystal.sling,
+      },
+      {
+        id: '1a.dresser',
+        description: 'Timber dresser under the street window.',
+        object: room.props.dresser,
+      },
+      {
+        id: '1a.drawer',
+        description: 'Top drawer. Shut.',
+        examine: 'Socks. A spare toothbrush. Nothing with a name on it.',
+        clipId: 'openLookClose',
+        object: room.props.drawer,
+      },
+      {
+        id: '1a.wardrobe',
+        description: 'Tall wardrobe. Doors shut.',
+        examine: 'Three dresses. One empty hanger. A pair of sandals on the floor.',
+        clipId: 'openLookClose',
+        object: room.props.wardrobe,
+      },
+      {
+        id: '1a.chair',
+        description: 'Wooden chair by the window.',
+        object: room.props.chair,
+      },
+      {
+        id: '1a.sideTable',
+        description: 'Small table beside the dresser.',
+        object: room.props.sideTable,
+      },
+      {
+        id: '1a.sash',
+        description: "Sash window, open a hand's width.",
+        examine: 'It gives another inch. Stops. Paint on the runners is old.',
+        clipId: 'pushSash',
+        object: room.props.sash,
+      },
+      {
+        id: '1a.frontWindow',
+        description: 'The other sash, over the dresser. Shut, and painted in.',
+        object: room.props.frontWindow,
+      },
+      {
+        id: '1a.sill',
+        description: 'Windowsill. Timber, worn.',
+        examine: sill.examine,
+        clipId: 'sightSill',
+        evidenceId: sill.id,
+        object: room.props.sill,
+      },
+      {
+        id: '1a.frame',
+        description: 'Photo frame lying face down on the dresser.',
+        examine: frame.examine,
+        clipId: 'turnOver',
+        evidenceId: frame.id,
+        object: room.props.frame,
+      },
+      {
+        id: '1a.magazines',
+        description: 'Travel magazines. Covers faded.',
+        examine: 'Airlines. Beaches. Someone has dog-eared half of them.',
+        clipId: 'fanMagazines',
+        object: room.props.magazines,
+      },
+      {
+        id: '1a.map',
+        description: 'A map. Pins in it.',
+        examine: 'Pins in cities. None of them labelled. Do not move them.',
+        clipId: 'leanMap',
+        object: room.props.map,
+      },
+      {
+        id: '1a.note',
+        description: 'A note, her handwriting.',
+        examine: "fly out April 6th! Can't wait!",
+        clipId: 'liftNote',
+        object: room.props.note,
+      },
+      {
+        id: '1a.lighter',
+        description: lighter.look,
+        examine: lighter.examine,
+        clipId: 'turnLighter',
+        evidenceId: lighter.id,
+        object: room.props.lighter,
+      },
+      {
+        id: '1a.door',
+        description: 'Door to the hall. Standing open.',
+        object: room.props.door,
+      },
+      {
+        id: 'lodge.tape',
+        description: 'Police tape across the footpath. Lifted in the middle.',
+        object: lodge.props.tape,
+      },
+      {
+        id: 'lodge.neon',
+        description: 'Neon over the entrance. Two lines. One tube is crook.',
+        object: lodge.props.neon,
+      },
+      {
+        id: 'lodge.steps',
+        description: 'Marble steps. Hollowed out in the middle.',
+        object: lodge.props.steps,
+      },
+      {
+        id: 'lodge.frontDoor',
+        description: 'Front door, standing open.',
+        object: lodge.props.frontDoor,
+      },
+      {
+        id: 'lodge.desk',
+        description: 'Reception desk.',
+        object: lodgeProps.desk,
+      },
+      {
+        id: 'lodge.keyRack',
+        description: 'Pigeonholes. Most of them still have a key in them.',
+        object: lodgeProps.keyRack,
+      },
+      {
+        id: 'lodge.ledger',
+        description: 'Guest ledger, open on the desk.',
+        object: lodgeProps.ledger,
+      },
+      {
+        id: 'lodge.phone',
+        description: 'Bakelite phone. The cord is twisted right up.',
+        object: lodgeProps.phone,
+      },
+      {
+        id: 'lodge.ashtray',
+        description: 'Ashtray on the desk. Full.',
+        object: lodgeProps.ashtray,
+      },
+      {
+        id: 'lodge.stairs',
+        description: 'The staircase. Runner worn through on the treads.',
+        object: lodgeProps.stairs,
+      },
+      {
+        id: 'lodge.armchair',
+        description: 'Armchairs round a low table.',
+        object: lodgeProps.armchair,
+      },
+      {
+        id: 'lodge.parlourTable',
+        description: 'Low table in the middle of the parlour.',
+        object: lodgeProps.parlourTable,
+      },
+      {
+        id: 'lodge.diary',
+        description: diary.look,
+        examine: diary.examine,
+        clipId: 'liftNote',
+        evidenceId: diary.id,
+        taggable: true,
+        object: lodgeProps.diary,
+      },
+      {
+        id: 'lodge.television',
+        description: 'Television in the corner. Off.',
+        object: lodgeProps.television,
+      },
+      {
+        id: 'lodge.standardLamp',
+        description: 'Standard lamp. Shade gone yellow.',
+        object: lodgeProps.standardLamp,
+      },
+      {
+        id: 'lodge.commodore',
+        description: 'Beige Commodore. Unmarked, fleet spec.',
+        object: lodge.props.commodore,
+      },
+      {
+        id: 'lodge.uniforms',
+        description: 'Two uniforms at the tape. Summer blues.',
+        object: lodge.props.uniforms,
+      },
+      {
+        id: '1a.verandahDoor',
+        description: 'Door out to the verandah.',
+        object: room.props.verandahDoor,
+      },
+      {
+        id: 'verandah.lace',
+        description: 'Iron lace along the verandah. Paint flaking off it.',
+        object: verandah.props.lace,
+      },
+      {
+        id: 'verandah.stairs',
+        description: 'Timber stairs off the end of the verandah, down to the yard.',
+        object: verandah.props.stairs,
+      },
+      {
+        id: 'yard.hoist',
+        description: 'Hills hoist. Nothing on the line.',
+        object: yard.props.hoist,
+      },
+      {
+        id: 'yard.shed',
+        description: 'Corrugated iron shed. Door shut.',
+        object: yard.props.shed,
+      },
+      {
+        id: 'yard.fence',
+        description: 'Paling fence. Gate to the street is shut.',
+        object: yard.props.fence,
+      },
+      {
+        id: 'yard.hammer',
+        description: hammer.look,
+        examine: hammer.examine,
+        clipId: 'leanIn',
+        evidenceId: hammer.id,
+        taggable: true,
+        object: yard.props.hammer,
+      },
+    )
+
+    graphs.set(ROSIE_RECEPTION.id, ROSIE_RECEPTION)
+    graphs.set(ROSIE_PARLOUR.id, ROSIE_PARLOUR)
+    graphs.set(MORETTI_STANDBY.id, MORETTI_STANDBY)
+    graphs.set(MORETTI_THEORISE.id, MORETTI_THEORISE)
+    for (const graph of Object.values(MORETTI_BAG)) {
+      graphs.set(graph.id, graph)
+    }
+  }
+  scene.add(world)
+  scene.add(camera)
+
+  const audio = new Audio()
+  const soundtrack = new SoundtrackPlayer()
+  soundtrack.play(isScene2 ? 'scene2' : 'scene1')
+
+  const input = new Input(canvas)
+  const solver = new BoxCollisionSolver(solids, floors)
+  const player = new PlayerController(camera, input, solver, spawnPos, spawnYaw)
+
+  const morettiSpawn = isScene2 ? new Vector3(1.2, 0, 0.8) : undefined
+  const morettiYaw = isScene2 ? Math.PI : undefined
+  const moretti = await buildMoretti(solver, morettiSpawn, morettiYaw)
+  world.add(moretti.root)
+  solids.push(...moretti.solids)
 
   const draw = (): void => {
     if (dusk !== undefined) dusk.render()
     else renderer.render(scene, camera)
   }
 
-  // The camera has to be in the scene graph or its children never get traversed.
-  scene.add(camera)
-
-  /*
-   * Audio comes up before the world can emit anything at it. It stays silent
-   * until `unlock()`, which rides the same click as pointer lock, because a
-   * browser will not run an AudioContext before a user gesture and fails
-   * silently when you try.
-   */
-  const audio = new Audio()
-
-  const input = new Input(canvas)
-  // Rosie's box goes in by reference, not by copy. She relocates, and the
-  // solver reads min and max every frame with nothing precomputed, so she
-  // rewrites that one box in place and the solver follows her.
-  // Kept as a handle, because Moretti cannot be built until the solver exists
-  // and his box has to go into the same array once he has one. The solver holds
-  // it by reference and reads it every frame, so a later push is seen.
-  const solids = [
-    ...lodge.solids,
-    ...room.solids,
-    ...verandah.solids,
-    ...yard.solids,
-    ...rosie.solids,
-  ]
-  const solver = new BoxCollisionSolver(
-    solids,
-    [...lodge.floors, ...room.floors, ...verandah.floors, ...yard.floors],
-  )
-  const player = new PlayerController(camera, input, solver, lodge.spawn, lodge.spawnYaw)
-
-  /*
-   * Moretti is built after the solver because he walks on it, and his own box
-   * goes into it by reference the way Rosie's does. He collapses that box while
-   * he is moving, or the pushout would eject him from himself.
-   */
-  const moretti = await buildMoretti(solver)
-  world.add(moretti.root)
-  solids.push(...moretti.solids)
-
-  /*
-   * Look and examine copy for room 1A. Writing rules apply. Register Crystal's
-   * body first, then head / needle / sling so their meshes win the raycast map.
-   * Diary and hammer wait for the parlour and the yard.
-   */
-  const needle = getEvidence('needle')
-  const temple = getEvidence('temple')
-  const sling = getEvidence('sling')
-  const frame = getEvidence('frame')
-  const sill = getEvidence('sill')
-  const lighter = getEvidence('lighter')
-  const diary = getEvidence('diary')
-  const hammer = getEvidence('hammer')
-  if (
-    needle === undefined ||
-    temple === undefined ||
-    sling === undefined ||
-    frame === undefined ||
-    sill === undefined ||
-    lighter === undefined ||
-    diary === undefined ||
-    hammer === undefined
-  ) {
-    throw new Error('Scene 1 evidence catalogue is missing an entry')
-  }
-
-  const lookables: Lookable[] = [
-    {
-      id: '1a.bed',
-      description: 'Single bed. Chenille spread, dusty pink.',
-      object: room.props.bed,
-    },
-    {
-      id: '1a.crystal',
-      description: 'A woman on the bed. Cream dress.',
-      examine: temple.examine,
-      clipId: 'turnHead',
-      evidenceId: temple.id,
-      object: room.crystal.root,
-    },
-    {
-      id: '1a.temple',
-      description: temple.look,
-      examine: temple.examine,
-      clipId: 'turnHead',
-      evidenceId: temple.id,
-      object: room.crystal.head,
-    },
-    {
-      id: '1a.needle',
-      description: needle.look,
-      examine: needle.examine,
-      clipId: 'leanIn',
-      evidenceId: needle.id,
-      object: room.crystal.needle,
-    },
-    {
-      id: '1a.sling',
-      description: sling.look,
-      examine: sling.examine,
-      clipId: 'liftDrop',
-      evidenceId: sling.id,
-      object: room.crystal.sling,
-    },
-    {
-      id: '1a.dresser',
-      description: 'Timber dresser under the street window.',
-      object: room.props.dresser,
-    },
-    {
-      id: '1a.drawer',
-      description: 'Top drawer. Shut.',
-      examine: 'Socks. A spare toothbrush. Nothing with a name on it.',
-      clipId: 'openLookClose',
-      object: room.props.drawer,
-    },
-    {
-      id: '1a.wardrobe',
-      description: 'Tall wardrobe. Doors shut.',
-      examine: 'Three dresses. One empty hanger. A pair of sandals on the floor.',
-      clipId: 'openLookClose',
-      object: room.props.wardrobe,
-    },
-    {
-      id: '1a.chair',
-      description: 'Wooden chair by the window.',
-      object: room.props.chair,
-    },
-    {
-      id: '1a.sideTable',
-      description: 'Small table beside the dresser.',
-      object: room.props.sideTable,
-    },
-    {
-      id: '1a.sash',
-      description: "Sash window, open a hand's width.",
-      examine: 'It gives another inch. Stops. Paint on the runners is old.',
-      clipId: 'pushSash',
-      object: room.props.sash,
-    },
-    {
-      id: '1a.frontWindow',
-      // Look only. The verandah sash is the one that matters and it already
-      // carries the `sill` evidence; a second examinable window would read as a
-      // second answer to a question the room has already answered.
-      description: 'The other sash, over the dresser. Shut, and painted in.',
-      object: room.props.frontWindow,
-    },
-    {
-      id: '1a.sill',
-      description: 'Windowsill. Timber, worn.',
-      examine: sill.examine,
-      clipId: 'sightSill',
-      evidenceId: sill.id,
-      object: room.props.sill,
-    },
-    {
-      id: '1a.frame',
-      description: 'Photo frame lying face down on the dresser.',
-      examine: frame.examine,
-      clipId: 'turnOver',
-      evidenceId: frame.id,
-      object: room.props.frame,
-    },
-    {
-      id: '1a.magazines',
-      description: 'Travel magazines. Covers faded.',
-      examine: 'Airlines. Beaches. Someone has dog-eared half of them.',
-      clipId: 'fanMagazines',
-      object: room.props.magazines,
-    },
-    {
-      id: '1a.map',
-      description: 'A map. Pins in it.',
-      examine: 'Pins in cities. None of them labelled. Do not move them.',
-      clipId: 'leanMap',
-      object: room.props.map,
-    },
-    {
-      id: '1a.note',
-      description: 'A note, her handwriting.',
-      examine: "fly out April 6th! Can't wait!",
-      clipId: 'liftNote',
-      object: room.props.note,
-    },
-    {
-      id: '1a.lighter',
-      description: lighter.look,
-      examine: lighter.examine,
-      clipId: 'turnLighter',
-      evidenceId: lighter.id,
-      object: room.props.lighter,
-    },
-    {
-      id: '1a.door',
-      description: 'Door to the hall. Standing open.',
-      object: room.props.door,
-    },
-
-    /*
-     * The lodge. Tier one only: none of this is evidence, and per BRIEF.md the
-     * parlour table only starts mattering on the way back down.
-     *
-     * The reception talk stub that used to hang off 1A's door is gone. Rosie
-     * belongs at this desk and she arrives at step 11; until then nothing in
-     * the building talks, which is better than her voice coming out of a door
-     * upstairs.
-     */
-    {
-      id: 'lodge.tape',
-      description: 'Police tape across the footpath. Lifted in the middle.',
-      object: lodge.props.tape,
-    },
-    {
-      id: 'lodge.neon',
-      description: 'Neon over the entrance. Two lines. One tube is crook.',
-      object: lodge.props.neon,
-    },
-    {
-      id: 'lodge.steps',
-      description: 'Marble steps. Hollowed out in the middle.',
-      object: lodge.props.steps,
-    },
-    {
-      id: 'lodge.frontDoor',
-      description: 'Front door, standing open.',
-      object: lodge.props.frontDoor,
-    },
-    {
-      id: 'lodge.desk',
-      description: 'Reception desk.',
-      object: lodgeProps.desk,
-    },
-    {
-      id: 'lodge.keyRack',
-      description: 'Pigeonholes. Most of them still have a key in them.',
-      object: lodgeProps.keyRack,
-    },
-    {
-      id: 'lodge.ledger',
-      description: 'Guest ledger, open on the desk.',
-      object: lodgeProps.ledger,
-    },
-    {
-      id: 'lodge.phone',
-      description: 'Bakelite phone. The cord is twisted right up.',
-      object: lodgeProps.phone,
-    },
-    {
-      id: 'lodge.ashtray',
-      description: 'Ashtray on the desk. Full.',
-      object: lodgeProps.ashtray,
-    },
-    {
-      id: 'lodge.stairs',
-      description: 'The staircase. Runner worn through on the treads.',
-      object: lodgeProps.stairs,
-    },
-    {
-      id: 'lodge.armchair',
-      description: 'Armchairs round a low table.',
-      object: lodgeProps.armchair,
-    },
-    {
-      id: 'lodge.parlourTable',
-      description: 'Low table in the middle of the parlour.',
-      object: lodgeProps.parlourTable,
-    },
-    {
-      id: 'lodge.diary',
-      description: diary.look,
-      examine: diary.examine,
-      // Gate 6. Examine files it, the way every other clue in the game does.
-      // Tag is separate and it is Moretti carrying the object away.
-      clipId: 'liftNote',
-      evidenceId: diary.id,
-      taggable: true,
-      object: lodgeProps.diary,
-    },
-    {
-      id: 'lodge.television',
-      description: 'Television in the corner. Off.',
-      object: lodgeProps.television,
-    },
-    {
-      id: 'lodge.standardLamp',
-      description: 'Standard lamp. Shade gone yellow.',
-      object: lodgeProps.standardLamp,
-    },
-    {
-      id: 'lodge.commodore',
-      description: 'Beige Commodore. Unmarked, fleet spec.',
-      object: lodge.props.commodore,
-    },
-    {
-      id: 'lodge.uniforms',
-      description: 'Two uniforms at the tape. Summer blues.',
-      object: lodge.props.uniforms,
-    },
-
-    // The verandah and the yard.
-    {
-      id: '1a.verandahDoor',
-      description: 'Door out to the verandah.',
-      object: room.props.verandahDoor,
-    },
-    {
-      id: 'verandah.lace',
-      description: 'Iron lace along the verandah. Paint flaking off it.',
-      object: verandah.props.lace,
-    },
-    {
-      id: 'verandah.stairs',
-      // Gate 4. It only has to be seen; the gate logic lands at step 13.
-      description: 'Timber stairs off the end of the verandah, down to the yard.',
-      object: verandah.props.stairs,
-    },
-    {
-      id: 'yard.hoist',
-      description: 'Hills hoist. Nothing on the line.',
-      object: yard.props.hoist,
-    },
-    {
-      id: 'yard.shed',
-      description: 'Corrugated iron shed. Door shut.',
-      object: yard.props.shed,
-    },
-    {
-      id: 'yard.fence',
-      description: 'Paling fence. Gate to the street is shut.',
-      object: yard.props.fence,
-    },
-    {
-      id: 'yard.hammer',
-      description: hammer.look,
-      examine: hammer.examine,
-      /*
-       * `leanIn` is the needle's clip: get down close, hands off. It is the
-       * right shape for a bloodied hammer at a scene, and it saves a bespoke
-       * animation for an object Moretti will be bagging at step 12 anyway.
-       */
-      clipId: 'leanIn',
-      evidenceId: hammer.id,
-      // Gate 7.
-      taggable: true,
-      object: yard.props.hammer,
-    },
-  ]
-
-  const graphs = new Map<string, DialogueGraph>([
-    [ROSIE_RECEPTION.id, ROSIE_RECEPTION],
-    [ROSIE_PARLOUR.id, ROSIE_PARLOUR],
-    [MORETTI_STANDBY.id, MORETTI_STANDBY],
-    [MORETTI_THEORISE.id, MORETTI_THEORISE],
-    ...Object.values(MORETTI_BAG).map((graph) => [graph.id, graph] as const),
-  ])
-
-  const caseFile = new CaseFile()
-  // Ahead of the registry, because Moretti's entry reads the gate state to pick
-  // which of his two graphs he has.
-  const gates = new GateTracker(caseFile)
-
   const registry = new LookRegistry()
   for (const lookable of lookables) {
     registry.add(lookable)
   }
 
-  /*
-   * Rosie is not in the static list, because her look line and her graph both
-   * change when she relocates and `Lookable` is readonly by design. Re-register
-   * rather than mutate: the registry indexes descendants by object id, so
-   * swapping the entry is the supported way to change one.
-   */
   const registerRosie = (): void => {
+    if (rosie === undefined) return
     registry.remove('rosie')
     registry.add({
       id: 'rosie',
@@ -530,21 +563,28 @@ async function main(): Promise<void> {
       object: rosie.root,
     })
   }
-  registerRosie()
+  if (!isScene2 && rosie !== undefined) {
+    registerRosie()
+  }
 
-  /*
-   * Moretti is talkable, and which graph he has depends on the gates. Same
-   * re-registration as Rosie and for the same reason: `Lookable` is readonly.
-   *
-   * He is the objective display. No map, no marker, no checklist: you turn round
-   * and ask the constable.
-   */
   const registerMoretti = (): void => {
     registry.remove('moretti')
+    let dialogueId = MORETTI_STANDBY.id
+    if (isScene2) {
+      if (gates2?.allUnlocked) {
+        dialogueId = MORETTI_STATION_EXIT.id
+      } else if (gates2?.has('hammer_report')) {
+        dialogueId = MORETTI_STATION_INTERVIEW.id
+      } else {
+        dialogueId = MORETTI_STATION_STANDBY.id
+      }
+    } else if (gates?.allUnlocked) {
+      dialogueId = MORETTI_THEORISE.id
+    }
     registry.add({
       id: 'moretti',
       description: 'Constable Moretti.',
-      dialogueId: gates.allUnlocked ? MORETTI_THEORISE.id : MORETTI_STANDBY.id,
+      dialogueId,
       object: moretti.root,
     })
   }
@@ -556,35 +596,26 @@ async function main(): Promise<void> {
   const dialogue = new DialogueRunner()
   const dialoguePanel = new DialoguePanel(hudRoot, dialogue)
 
-  // Built before examine wiring so tier-two text can land on it.
-  // The prompt is appended after so its scrim sits behind the description line.
-  // Asks the registry rather than a snapshot map, because Rosie's line changes
-  // when she relocates and a map built from the static list would go stale.
   const hud = new Hud(hudRoot, (id) => {
-    if (id === 'lodge.desk' && rosie.station === 'reception') {
+    if (!isScene2 && rosie !== undefined && id === 'lodge.desk' && rosie.station === 'reception') {
       return 'Reception desk. A woman behind it.'
     }
     return registry.get(id)?.description
   })
 
-  /** Set once the theorise conversation reaches its last node. */
   let sceneComplete = false
-  /** BRIEF.md: gloves go on at the front door. Once per scene entry. */
   let glovesDone = false
   const captureMode = new URLSearchParams(window.location.search).get('capture') === '1'
 
-  const scenes = new SceneManager(hudRoot, caseFile)
   scenes.start()
 
-  new TitleCard(hudRoot)
+  new TitleCard(
+    hudRoot,
+    isScene2 ? 'ST KILDA PRECINCT' : 'ST KILDA',
+    isScene2 ? '26 FEBRUARY 1994 &middot; 21:15' : '26 FEBRUARY 1994',
+  )
 
-  /**
-   * Cold open. BRIEF.md: no interaction, walk, look, listen. The verbs stay
-   * locked until Miller crosses the hall threshold (gate 0's box). The prompt
-   * is hidden too, because a "click to look around" scrim over a title card is
-   * the wrong first impression.
-   */
-  let coldOpenDone = false
+  let coldOpenDone = isScene2 ? true : false
 
   const targetWorld = new Vector3()
   const targetBounds = new Box3()
@@ -608,7 +639,7 @@ async function main(): Promise<void> {
    * door leaf, still in the entry bay. Capture mode skips it so the shot is clean.
    */
   const tryGlovesOn = (): void => {
-    if (glovesDone || captureMode || hands.isPlaying) {
+    if (isScene2 || glovesDone || captureMode || hands.isPlaying || lodge === undefined) {
       return
     }
     const p = player.position
@@ -623,16 +654,18 @@ async function main(): Promise<void> {
   }
 
   function tryTalk(): boolean {
-    if (hands.isPlaying || notebook.isOpen || dialogue.isActive) {
+    if (
+      hands.isPlaying ||
+      notebook.isOpen ||
+      dialogue.isActive ||
+      (leapTerminal !== undefined && leapTerminal.visible)
+    ) {
       return false
     }
     let target = look.target
-    /*
-     * Reception. The desk sits between the doorway and Rosie, so the nearest
-     * hit is almost always timber. Looking at the desk while she is behind it
-     * is looking at her, and F must open her graph.
-     */
     if (
+      !isScene2 &&
+      rosie !== undefined &&
       target !== undefined &&
       target.dialogueId === undefined &&
       rosie.station === 'reception' &&
@@ -656,36 +689,13 @@ async function main(): Promise<void> {
     return true
   }
 
-  /**
-   * Tag. Miller calls Moretti over and Moretti bags it.
-   *
-   * It files nothing. Examine already did that and the case file holds
-   * knowledge, not objects. What this changes is that the object leaves in a
-   * bag, which is what gates 6 and 7 read at step 13.
-   *
-   * Deliberately not gated on having examined it first. The player who tags
-   * something they have not looked at still has to look at it to know it is
-   * there, and a refusal with no stated reason is worse than a wasted walk.
-   *
-   * ## It answers, even when the answer is no
-   *
-   * Two objects in scene 1 are taggable and nothing marks which, so G on the
-   * other twenty eight used to do nothing at all: no sound, no line, no
-   * movement. Play-tested, that reads as a dead key rather than as an answer,
-   * and a player who thinks the verb is broken stops pressing it.
-   *
-   * So it says so, on the same line the examine text uses, which already
-   * clears itself when the player looks away. Miller decides not to call
-   * Moretti over and tells you that, in the same voice as everything else.
-   * It is a response to a verb the player pressed, not a marker: nothing here
-   * announces the two that do work, and looking at the hammer still tells you
-   * only what a hammer looks like.
-   *
-   * Aimed at nothing, it stays silent. The verb has no object and a line about
-   * empty air is noise.
-   */
   function tryTag(): void {
-    if (hands.isPlaying || notebook.isOpen || dialogue.isActive) {
+    if (
+      hands.isPlaying ||
+      notebook.isOpen ||
+      dialogue.isActive ||
+      (leapTerminal !== undefined && leapTerminal.visible)
+    ) {
       return
     }
     const target = look.target
@@ -696,7 +706,7 @@ async function main(): Promise<void> {
       hud.showExamine(target.id, 'Nothing here to bag.')
       return
     }
-    if (gates.isBagged(target.id)) {
+    if (gates !== undefined && gates.isBagged(target.id)) {
       hud.showExamine(target.id, "Moretti's got that one.")
       return
     }
@@ -710,11 +720,23 @@ async function main(): Promise<void> {
   }
 
   function tryExamine(): void {
-    if (hands.isPlaying || notebook.isOpen || dialogue.isActive) {
+    if (
+      hands.isPlaying ||
+      notebook.isOpen ||
+      dialogue.isActive ||
+      (leapTerminal !== undefined && leapTerminal.visible)
+    ) {
       return
     }
     const target = look.target
-    if (target === undefined || target.examine === undefined) {
+    if (target === undefined) {
+      return
+    }
+    if (target.id === 'station.leap' && leapTerminal !== undefined) {
+      leapTerminal.open()
+      return
+    }
+    if (target.examine === undefined) {
       return
     }
     if (target.clipId === undefined || !isClipId(target.clipId)) {
@@ -732,10 +754,7 @@ async function main(): Promise<void> {
   }
 
   moretti.onBagged = (objectId) => {
-    // The tracker records it off the bus, so nothing here keeps a second list.
     emit('tag:bagged', { objectId })
-    // The object goes with him. Hiding it is the whole point of the verb, and
-    // it is also what stops the player tagging the same hammer twice.
     const lookable = registry.get(objectId)
     if (lookable !== undefined) {
       lookable.object.visible = false
@@ -756,11 +775,12 @@ async function main(): Promise<void> {
     if (lookable?.evidenceId !== undefined) {
       caseFile.file(lookable.evidenceId, objectId)
     }
+    if (objectId === 'station.coffee_urn' && gates2 !== undefined) {
+      gates2.recordCoffee()
+    }
     examiningId = undefined
   }
 
-  // Nothing listens for these yet. The audio mixer comes later. Wired now so the
-  // controller is not the thing that has to change when it does.
   events.on('player:footstep', ({ surface, speed }) => {
     console.debug('footstep', surface, speed.toFixed(2))
   })
@@ -775,31 +795,64 @@ async function main(): Promise<void> {
   })
   events.on('dialogue:end', ({ nodeId }) => {
     console.debug('dialogue end', nodeId)
+    if (nodeId === 'mark.end') {
+      caseFile.file('mark_statement', 'station.mark')
+      caseFile.file('mahoneys_lead', 'station.mark')
+    }
+    if (nodeId === 'wait' || nodeId === 'take') {
+      if (gates2 !== undefined && !gates2.has('drop_hammer')) {
+        gates2.recordHammerDrop()
+        const hatch = registry.get('station.forensics_hatch')
+        if (hatch !== undefined) {
+          registry.remove('station.forensics_hatch')
+          registry.add({
+            ...hatch,
+            dialogueId: 'forensics.done',
+          })
+        }
+      }
+    }
+    if (sceneComplete) {
+      return
+    }
+    if (!isScene2 && nodeId === THEORISE_LAST_NODE) {
+      sceneComplete = true
+      registry.remove('moretti')
+      hud.clearExamine()
+      updatePrompt()
+      emit('scene:complete', { id: 'scene1' })
+    } else if (isScene2 && nodeId === SCENE2_THEORISE_LAST_NODE) {
+      sceneComplete = true
+      registry.remove('moretti')
+      hud.clearExamine()
+      updatePrompt()
+      emit('scene:complete', { id: 'scene2' })
+    }
   })
 
-  gates.onUnlocked = (gateId) => {
-    console.debug('gate', gateId)
+  if (gates !== undefined) {
+    gates.onUnlocked = (gateId) => {
+      console.debug('gate', gateId)
 
-    if (gateId === 'entry' && !coldOpenDone) {
-      coldOpenDone = true
-      updatePrompt()
+      if (gateId === 'entry' && !coldOpenDone) {
+        coldOpenDone = true
+        updatePrompt()
+      }
+
+      if (gateId === 'body' && rosie !== undefined && rosie.station === 'reception') {
+        rosie.setStation('parlour')
+        registerRosie()
+      }
+
+      if (gates.allUnlocked) {
+        registerMoretti()
+      }
     }
+  }
 
-    /*
-     * Rosie moves on gate 1, not on a position check.
-     *
-     * Gate 1 is Miller working the body, so he is in 1A with his back to the
-     * door and the move cannot be seen from anywhere. It also honours what she
-     * told him at the desk: she is in the parlour by the time he comes back
-     * down, because she went while he was busy.
-     */
-    if (gateId === 'body' && rosie.station === 'reception') {
-      rosie.setStation('parlour')
-      registerRosie()
-    }
-
-    // The last gate is what gives Moretti the exit conversation.
-    if (gates.allUnlocked) {
+  if (gates2 !== undefined) {
+    gates2.onUnlocked = (gateId) => {
+      console.debug('gate2', gateId)
       registerMoretti()
     }
   }
@@ -812,18 +865,17 @@ async function main(): Promise<void> {
     'WASD move &middot; Shift run &middot; C crouch &middot; F examine or talk &middot; G tag &middot; N case file &middot; Esc cancel / release mouse'
 
   const updatePrompt = (): void => {
-    // Ask the runner, not the panel. The runner sets its state before it emits
-    // dialogue:start, and the panel opens on the callback after it, so a panel
-    // check here runs one step too early and leaves the prompt over the scene.
-    if (input.isLocked || notebook.isOpen || dialogue.isActive || sceneComplete || !coldOpenDone) {
+    if (
+      input.isLocked ||
+      notebook.isOpen ||
+      dialogue.isActive ||
+      sceneComplete ||
+      !coldOpenDone ||
+      (leapTerminal !== undefined && leapTerminal.visible)
+    ) {
       prompt.style.display = 'none'
       return
     }
-    /*
-     * After the cold open, never full-screen scrim. A 45% black overlay was
-     * burying the look line, which is the only feedback look has. Top hint bar
-     * until pointer lock; same treatment as the lock-refused fallback.
-     */
     prompt.style.display = 'flex'
     prompt.classList.add('is-hint')
     prompt.innerHTML = input.isLockRefused
@@ -833,16 +885,9 @@ async function main(): Promise<void> {
       : `<strong>Click to look around</strong><span>${CONTROLS}</span><span class="prompt-note">Aim at a thing. Press F. Watch the hands. Then open N for the case file.</span>`
   }
 
-  /*
-   * Sound starts on the same gesture that asks for pointer lock.
-   *
-   * All three of these, because the click is the normal path, the mousedown is
-   * the drag-to-look fallback in documents that refuse the lock, and the keydown
-   * catches a player who reaches for WASD before clicking anything. `unlock` is
-   * idempotent.
-   */
   const unlockAudio = (): void => {
     audio.unlock()
+    soundtrack.unlock()
   }
   canvas.addEventListener('click', unlockAudio)
   canvas.addEventListener('mousedown', unlockAudio)
@@ -853,13 +898,6 @@ async function main(): Promise<void> {
   updatePrompt()
 
   events.on('look:exit', ({ objectId }) => {
-    /*
-     * Do not cancel an examine here. Under pointer lock the mouse is always
-     * turning the view, so holding F and wobbling a few pixels used to fire
-     * look:exit and kill the clip before evidence could file. That is why F
-     * looked like a dead key: look text appeared, examine never finished.
-     * Cancel is on F release only (below), and only while examining.
-     */
     if (examiningId !== undefined) {
       return
     }
@@ -872,26 +910,12 @@ async function main(): Promise<void> {
   events.on('dialogue:start', updatePrompt)
   events.on('dialogue:end', updatePrompt)
 
-  /*
-   * The scene exit. Reaching the last node of the theorise graph ends scene 1.
-   * SceneManager owns the fade and the save written on that boundary.
-   */
-  events.on('dialogue:end', ({ nodeId }) => {
-    if (sceneComplete || nodeId !== THEORISE_LAST_NODE) {
-      return
-    }
-    sceneComplete = true
-    registry.remove('moretti')
-    hud.clearExamine()
-    updatePrompt()
-    emit('scene:complete', { id: 'scene1' })
-  })
-
-  // Esc closes the notebook without going through Input, so we do not
-  // preventDefault on Escape and trap pointer lock. Dialogue handles its own Esc.
-  // Esc also cancels an in-progress examine.
   const onEscape = (event: KeyboardEvent): void => {
     if (event.code !== 'Escape') {
+      return
+    }
+    if (leapTerminal !== undefined && leapTerminal.visible) {
+      leapTerminal.close()
       return
     }
     if (examiningId !== undefined) {
@@ -911,21 +935,18 @@ async function main(): Promise<void> {
 
   const loop = new Loop((delta) => {
     elapsed += delta
-    lodge.update(elapsed, player.position)
-    if (dusk !== undefined) dusk.update(elapsed, player.position)
-    // Ambience crossfades on where he is standing, which is not an event.
+    if (isScene2 && station !== undefined) {
+      station.update(elapsed, player.position)
+    } else if (lodge !== undefined) {
+      lodge.update(elapsed, player.position)
+      if (dusk !== undefined) dusk.update(elapsed, player.position)
+      if (rosie !== undefined) rosie.update(delta, player.position)
+    }
     audio.update(player.position)
-    // Ahead of the notebook and dialogue early-outs. She is on screen for the
-    // whole conversation and a figure that freezes the moment you talk to her
-    // is worse than one that never moved.
-    rosie.update(delta, player.position)
-    // Ahead of the early-outs with Rosie, and for the same reason: he is on
-    // screen walking toward something when the panel opens on him arriving.
     moretti.update(delta, player.position)
 
     if (input.wasPressed('notebook')) {
-      if (!coldOpenDone || dialogue.isActive) {
-        // Cold open: walk, look, listen. Notebook waits with the other verbs.
+      if (!coldOpenDone || dialogue.isActive || (leapTerminal !== undefined && leapTerminal.visible)) {
         input.endFrame()
         draw()
         return
@@ -937,7 +958,7 @@ async function main(): Promise<void> {
       notebook.toggle()
     }
 
-    if (notebook.isOpen || dialogue.isActive) {
+    if (notebook.isOpen || dialogue.isActive || (leapTerminal !== undefined && leapTerminal.visible)) {
       if (notebook.isOpen) {
         if (input.wasPressed('forward')) {
           notebook.moveSelection(-1)
@@ -945,7 +966,6 @@ async function main(): Promise<void> {
           notebook.moveSelection(1)
         }
       }
-      // Still render. Do not move, look, or examine under the book or talk.
       hands.update(delta)
       draw()
       input.endFrame()
@@ -954,19 +974,13 @@ async function main(): Promise<void> {
 
     player.update(delta)
     tryGlovesOn()
-    // Freeze the look target while an examine runs. Otherwise pointer-lock
-    // mouse drift swaps the target mid-clip and the look line flickers off.
     if (examiningId === undefined) {
       look.update()
     }
-    gates.update(player.position)
+    if (gates !== undefined) {
+      gates.update(player.position)
+    }
 
-    /*
-     * Cold open. Walk, look, listen. No verbs until Miller is inside the hall.
-     * The look raycast still runs so the player can see descriptions of the
-     * tape, the neon, the car, but nothing can be examined, talked to, or
-     * tagged, and the notebook stays shut.
-     */
     if (!coldOpenDone) {
       hands.update(delta)
       draw()
@@ -974,13 +988,8 @@ async function main(): Promise<void> {
       return
     }
 
-    /*
-     * Examine is press F to start, clip runs to the end, evidence files.
-     * BRIEF.md says hold; under pointer lock a hold that cancels on release or
-     * on look-exit made the verb unusable. Cancel with Esc only.
-     */
     if (hands.isPlaying && examiningId !== undefined) {
-      // Clip owns the frame. Esc cancel is handled below via examiningId.
+      // Clip owns the frame. Esc cancel is handled via examiningId.
     } else if (input.wasPressed('examine')) {
       if (!tryTalk()) {
         tryExamine()
@@ -999,8 +1008,6 @@ async function main(): Promise<void> {
   loop.start()
 
   if (import.meta.env.DEV) {
-    // Dev only, stripped from the production bundle. The screenshot and profiler
-    // tooling will want a handle like this too.
     Reflect.set(window, '__lodge', {
       player,
       camera,
@@ -1020,24 +1027,20 @@ async function main(): Promise<void> {
       dialoguePanel,
       graphs,
       lodge,
-      room,
-      verandah,
-      yard,
+      station,
       rosie,
       moretti,
       gates,
+      gates2,
       solver,
-      lighting,
       audio,
-      environment,
-      lookMode,
-      dusk,
+      soundtrack,
       scenes,
       clips: CLIPS,
       Vector3,
     })
 
-    const shotCtx = { player, hands, hud, hudRoot, rosie }
+    const shotCtx = { player, hands, hud, hudRoot, rosie, station }
     Reflect.set(window, '__SHOTS__', Object.fromEntries(listShots().map((n) => [n, true])))
     Reflect.set(window, '__APPLY_SHOT__', (name: string) => applyShot(name, shotCtx))
 

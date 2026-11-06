@@ -1,5 +1,5 @@
 import { emit } from '../core/events.ts'
-import { SCENE1_EVIDENCE, getEvidence } from './evidence.ts'
+import { ALL_EVIDENCE, getEvidence } from './evidence.ts'
 import type { EvidenceDef } from './evidence.ts'
 
 /**
@@ -38,7 +38,7 @@ export class CaseFile {
   /** Filed entries, catalogue order. */
   list(): EvidenceDef[] {
     const out: EvidenceDef[] = []
-    for (const def of SCENE1_EVIDENCE) {
+    for (const def of ALL_EVIDENCE) {
       if (this.filed.has(def.id)) {
         out.push(def)
       }

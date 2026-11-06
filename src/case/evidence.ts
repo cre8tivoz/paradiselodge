@@ -97,7 +97,44 @@ export const SCENE1_EVIDENCE: readonly EvidenceDef[] = [
   },
 ]
 
-const byId = new Map(SCENE1_EVIDENCE.map((entry) => [entry.id, entry]))
+export const SCENE2_EVIDENCE: readonly EvidenceDef[] = [
+  {
+    id: 'hammer_report',
+    label: 'Forensics report: hammer',
+    look: 'Manila folder from Forensics. Wet ink on the cover.',
+    examine:
+      'Latent prints on the handle match Victor Rakov. Priors: assault, armed robbery. Associated with the King Street Crew.',
+    landsIn: ['S3', 'S4'],
+  },
+  {
+    id: 'rakov_profile',
+    label: 'LEAP: Victor Rakov',
+    look: 'CRT screen glowing green phosphor. Offender summary: RAKOV, Victor.',
+    examine:
+      'Victor Rakov, b. 1968. Known to carry a bricklayer hammer. Last recorded address: 14 Regent Street, Prahran.',
+    landsIn: ['S3', 'S4'],
+  },
+  {
+    id: 'mark_statement',
+    label: "Mark's statement",
+    look: 'Mark sitting in the interview cubicle, head down.',
+    examine:
+      "Met Crystal for lunch at Mahoney's Tuesday 3pm. Left her at the bar around seven. Worked the door at the Prince all night; door roster and bouncers confirm it.",
+    landsIn: ['S4', 'S5'],
+  },
+  {
+    id: 'mahoneys_lead',
+    label: "Mahoney's Bar lead",
+    look: "The link between the lighter, the diary note, and Mark's testimony.",
+    examine:
+      'Crystal stayed at Mahoney\'s past 7pm Tuesday talking to Sterling in the back booth. Publican is Sterling. Known associate of King St Crew.',
+    landsIn: ['S4', 'S5'],
+  },
+]
+
+export const ALL_EVIDENCE: readonly EvidenceDef[] = [...SCENE1_EVIDENCE, ...SCENE2_EVIDENCE]
+
+const byId = new Map(ALL_EVIDENCE.map((entry) => [entry.id, entry]))
 
 export function getEvidence(id: string): EvidenceDef | undefined {
   return byId.get(id)

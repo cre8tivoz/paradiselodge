@@ -15,6 +15,7 @@ export type Surface = 'marble' | 'carpet' | 'floorboard' | 'verandah' | 'bitumen
 export interface GameEvents {
   'scene:load': { id: string }
   'scene:complete': { id: string }
+  'scene:transition': { from: string; to: string }
   'gate:unlocked': { gateId: string }
 
   'look:enter': { objectId: string }
@@ -23,6 +24,9 @@ export interface GameEvents {
   'examine:complete': { objectId: string }
   'tag:requested': { objectId: string }
   'tag:bagged': { objectId: string }
+
+  'leap:opened': Record<string, never>
+  'leap:closed': Record<string, never>
 
   'evidence:filed': { evidenceId: string; sourceObject: string }
   'casefile:open': Record<string, never>

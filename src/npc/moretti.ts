@@ -134,14 +134,21 @@ export interface Moretti {
   update(delta: number, playerFeet: Vector3): void
 }
 
-export async function buildMoretti(solver: CollisionSolver): Promise<Moretti> {
+export async function buildMoretti(
+  solver: CollisionSolver,
+  spawnPosition?: Vector3,
+  spawnYaw?: number,
+): Promise<Moretti> {
   const gltf = await new GLTFLoader().loadAsync(MODEL_URL)
+
+  const initialPos = spawnPosition !== undefined ? spawnPosition.clone() : SPAWN.clone()
+  const initialYaw = spawnYaw !== undefined ? spawnYaw : SPAWN_YAW
 
   const root = new Group()
   root.name = 'moretti'
   root.add(gltf.scene)
-  root.position.copy(SPAWN)
-  root.rotation.y = SPAWN_YAW
+  root.position.copy(initialPos)
+  root.rotation.y = initialYaw
 
   gltf.scene.traverse((object) => {
     const mesh = object as Mesh
@@ -171,14 +178,14 @@ export async function buildMoretti(solver: CollisionSolver): Promise<Moretti> {
   const hipsY = hips.position.y
 
   const solids: Box3[] = [new Box3()]
-  const position = SPAWN.clone()
+  const position = initialPos.clone()
 
   const crumbs: Vector3[] = []
-  const lastCrumb = new Vector3().copy(SPAWN)
+  const lastCrumb = new Vector3().copy(initialPos)
   let hasCrumbed = false
 
   let state: MorettiState = 'waiting'
-  let yaw = SPAWN_YAW
+  let yaw = initialYaw
   let elapsed = 0
   let stridePhase = 0
   let headYaw = 0

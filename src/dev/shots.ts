@@ -3,6 +3,7 @@ import type { PlayerController } from '../player/controller.ts'
 import type { Hands } from '../player/hands/hands.ts'
 import type { Hud } from '../ui/hud.ts'
 import type { Rosie } from '../npc/rosie.ts'
+import type { StationWorld } from '../world/scene2-station.ts'
 
 /**
  * Named camera poses for `tools/shot.mjs`. Capture mode only.
@@ -17,6 +18,7 @@ export interface ShotContext {
   readonly hud: Hud
   readonly hudRoot: HTMLElement
   readonly rosie?: Rosie
+  readonly station?: StationWorld
 }
 
 type ShotFn = (ctx: ShotContext) => void
@@ -144,6 +146,42 @@ const SHOTS: Record<string, ShotFn> = {
     hands.setVisible(false)
     const aim = lookAim(new Vector3(-13.5, 0.85, -9.5), new Vector3(2.0, 2.9, -2.0))
     player.place(new Vector3(-13.5, -0.85, -9.5), aim.yaw, aim.pitch)
+  },
+
+  /* --- Scene 2 Station Shots --- */
+  'station-bullpen': ({ player, hands, hudRoot }) => {
+    hudRoot.style.display = 'none'
+    hands.setVisible(false)
+    const aim = lookAim(new Vector3(-1.5, 1.7, 3.6), new Vector3(0.5, 1.2, -1.0))
+    player.place(new Vector3(-1.5, 0, 3.6), aim.yaw, aim.pitch)
+  },
+
+  'station-desk': ({ player, hands, hudRoot }) => {
+    hudRoot.style.display = 'none'
+    hands.setVisible(false)
+    const aim = lookAim(new Vector3(-1.85, 1.7, -0.1), new Vector3(-1.85, 0.95, 1.05))
+    player.place(new Vector3(-1.85, 0, -0.1), aim.yaw, aim.pitch)
+  },
+
+  'station-forensics': ({ player, hands, hudRoot }) => {
+    hudRoot.style.display = 'none'
+    hands.setVisible(false)
+    const aim = lookAim(new Vector3(-2.5, 1.7, -2.8), new Vector3(-2.5, 1.2, -4.3))
+    player.place(new Vector3(-2.5, 0, -2.8), aim.yaw, aim.pitch)
+  },
+
+  'station-urn': ({ player, hands, hudRoot }) => {
+    hudRoot.style.display = 'none'
+    hands.setVisible(false)
+    const aim = lookAim(new Vector3(-4.8, 1.7, 1.5), new Vector3(-6.15, 1.25, 1.5))
+    player.place(new Vector3(-4.8, 0, 1.5), aim.yaw, aim.pitch)
+  },
+
+  'station-interview': ({ player, hands, hudRoot }) => {
+    hudRoot.style.display = 'none'
+    hands.setVisible(false)
+    const aim = lookAim(new Vector3(5.35, 1.7, -2.4), new Vector3(5.35, 1.0, -3.98))
+    player.place(new Vector3(5.35, 0, -2.4), aim.yaw, aim.pitch)
   },
 }
 

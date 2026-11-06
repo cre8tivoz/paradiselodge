@@ -1,14 +1,9 @@
 import { emit, on } from './events.ts'
-import { Save } from './save.ts'
+import { Save, isSceneId } from './save.ts'
 import type { SceneId } from './save.ts'
 
 /**
- * Scene manager. Owns the fade and the save written on a scene boundary.
- *
- * Step 14. The exit fade used to live in main.ts as scaffolding; this is what
- * owns it. Scene 2 is not built, so completing scene 1 blacks out, saves, and
- * holds. No title card — ASSETS.md allows two in the whole game and neither is
- * here.
+ * Scene manager. Owns the fade, scene progression, and the save written on a scene boundary.
  */
 
 export interface SceneEvidenceSource {
@@ -36,6 +31,13 @@ export class SceneManager {
       this.current = stored.current
     }
 
+    if (typeof window !== 'undefined') {
+      const param = new URLSearchParams(window.location.search).get('scene')
+      if (isSceneId(param)) {
+        this.current = param
+      }
+    }
+
     this.unsub = on('scene:complete', ({ id }) => {
       this.onComplete(id)
     })
@@ -49,7 +51,7 @@ export class SceneManager {
     return this.completed
   }
 
-  /** Prior save, if any. Boot still loads scene 1 until scene 2 exists. */
+  /** Prior save, if any. */
   get stored(): ReturnType<Save['read']> {
     return this.save.read()
   }
@@ -59,13 +61,22 @@ export class SceneManager {
     emit('scene:load', { id: this.current })
   }
 
+  fadeIn(): void {
+    this.fade.classList.remove('is-out')
+  }
+
+  fadeOut(): void {
+    this.fade.classList.add('is-out')
+  }
+
   private onComplete(id: string): void {
     if (this.completed || id !== this.current) {
       return
     }
     this.completed = true
-    this.save.completeScene(this.current, this.evidence.listIds())
+    const saved = this.save.completeScene(this.current, this.evidence.listIds())
     this.fade.classList.add('is-out')
+    emit('scene:transition', { from: this.current, to: saved.current })
   }
 
   dispose(): void {

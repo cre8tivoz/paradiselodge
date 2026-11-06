@@ -7,7 +7,27 @@
  * save is the boundary record, not a teleporter.
  */
 
-export type SceneId = 'scene1'
+export type SceneId = 'scene1' | 'scene2' | 'scene3' | 'scene4' | 'scene5'
+
+export const SCENE_ORDER: readonly SceneId[] = [
+  'scene1',
+  'scene2',
+  'scene3',
+  'scene4',
+  'scene5',
+]
+
+export function getNextScene(current: SceneId): SceneId | undefined {
+  const index = SCENE_ORDER.indexOf(current)
+  if (index === -1 || index >= SCENE_ORDER.length - 1) {
+    return undefined
+  }
+  return SCENE_ORDER[index + 1]
+}
+
+export function isSceneId(value: unknown): value is SceneId {
+  return typeof value === 'string' && SCENE_ORDER.includes(value as SceneId)
+}
 
 export interface SaveData {
   readonly version: 1
@@ -44,14 +64,15 @@ export class Save {
     }
   }
 
-  /** Mark a scene finished and persist the current case file. */
+  /** Mark a scene finished and advance the current scene pointer. */
   completeScene(id: SceneId, evidenceIds: readonly string[]): SaveData {
     const existing = this.read()
     const completed = new Set<SceneId>(existing?.completed ?? [])
     completed.add(id)
+    const next = getNextScene(id) ?? id
     const data: SaveData = {
       version: VERSION,
-      current: id,
+      current: next,
       completed: [...completed],
       evidence: [...evidenceIds],
     }
@@ -69,11 +90,11 @@ function isSaveData(value: unknown): value is SaveData {
     return false
   }
   const v = value as Record<string, unknown>
-  if (v.version !== 1 || v.current !== 'scene1') {
+  if (v.version !== 1 || !isSceneId(v.current)) {
     return false
   }
   if (!Array.isArray(v.completed) || !Array.isArray(v.evidence)) {
     return false
   }
-  return v.completed.every((id) => id === 'scene1') && v.evidence.every((id) => typeof id === 'string')
+  return v.completed.every(isSceneId) && v.evidence.every((id) => typeof id === 'string')
 }

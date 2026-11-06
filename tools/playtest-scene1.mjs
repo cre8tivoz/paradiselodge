@@ -273,7 +273,7 @@ try {
   assert(completed.sceneManagerComplete, 'SceneManager marked Scene 1 complete')
   assert(completed.save !== null, 'Save data written to localStorage')
   assert(completed.save?.version === 1, 'Save data version is 1')
-  assert(completed.save?.current === 'scene1', "Save current scene is 'scene1'")
+  assert(completed.save?.current === 'scene2', "Save current scene advances to 'scene2'")
   assert(completed.save?.completed?.includes('scene1'), "Save completed list includes 'scene1'")
   assert(completed.save?.evidence?.length >= 6, `Filed evidence persisted (${completed.save?.evidence?.length} items)`)
   assert(completed.isFadedOut, 'Scene exit fade blackout active (.scene-fade.is-out)')

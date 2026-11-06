@@ -14,10 +14,10 @@
 export class TitleCard {
   private readonly el: HTMLDivElement
 
-  constructor(parent: HTMLElement) {
+  constructor(parent: HTMLElement, line1 = 'ST KILDA', line2 = '26 FEBRUARY 1994') {
     this.el = document.createElement('div')
     this.el.className = 'title-card'
-    this.el.innerHTML = '<span>ST KILDA</span><span>26 FEBRUARY 1994</span>'
+    this.el.innerHTML = `<span>${line1}</span><span>${line2}</span>`
     parent.appendChild(this.el)
 
     requestAnimationFrame(() => {
