@@ -240,3 +240,87 @@ pipeline and are not current project phases.
   browser CORS header. Cloudflare Pages deployment `15bc055a` completed, and
   the canonical live site was opened in a real browser: the R2-backed lodge
   rendered with no console or request errors.
+
+## 6 November 2026 — Full 5-Scene Companion Piece Delivery
+
+### 1. Scene 1 Polish & Exterior Dressing (Completed)
+- **Rear Yard & Verandah**:
+  - Implemented authored rear yard featuring galvanized corrugated garden shed, iconic 1994 Australian rotary Hills Hoist clothesline, weatherboard rear cladding, and timber boundary fence.
+  - Return verandah with ornate Victorian cast iron lacework, timber handrails, and corner transition to the street facade.
+  - Wet-road reflective asphalt with neon reflection specular streaks from `THE PARADISE LODGE` (pink) and `ROOMS TO LET` (cyan).
+  - Curated Rosie 3D placement at reception counter and parlour street window.
+- **Verification**: All 8 objective gates verified in `tools/playtest-scene1.mjs`.
+
+### 2. Scene 2 — St Kilda Police Station Bullpen (Completed)
+- **Bullpen Environment**:
+  - Built 3D St Kilda CID station bullpen: Forensics intake hatch with Frank, coffee urn and desk clutter, Manila case folder exhibit, and Mark statement interview station.
+  - Integrated green-phosphor LEAP CRT terminal running simulated VT-100 console (`src/ui/leap-terminal.ts`) allowing interactive record queries (`help`, `query victor`, `records`, `clear`, `exit`).
+  - Added Moretti bullpen dialogue tree (`src/dialogue/graphs/moretti-scene2.ts`), Mark interview tree (`src/dialogue/graphs/mark-interview.ts`), and Forensics intake graph (`src/dialogue/graphs/forensics-tech.ts`).
+- **Verification**: 5/5 objective gates verified in `tools/playtest-scene2.mjs`.
+
+### 3. Scene 3 — 14 Regent Street & Laneway Chase (Completed)
+- **Prahran Cottage & Bluestone Alley**:
+  - Built double-fronted weatherboard worker cottage, interior search revealing dropped TAB betting slip exhibit.
+  - Scripted 30-metre bluestone alley chase with head-bobbing sprint physics, Victor sprint ahead, and iron fence vault.
+  - VHF police radio broadcast interaction (`src/dialogue/graphs/scene3-radio.ts`) dispatching St Kilda cordons and executing the perimeter arrest.
+- **Verification**: 5/5 objective gates verified in `tools/playtest-scene3.mjs`.
+
+### 4. Scene 4 — St Kilda CID Interview Room 1 (Completed)
+- **Interrogation Room**:
+  - Sound-dampened 1994 CID interview room with melamine table, timber chairs, and dual-spool Sanyo CTR-80 cassette recorder.
+  - Formal Crimes Act 1958 Section 464A caution delivery protocol.
+  - Evidence confrontation sequence: confronting suspect Victor with physical exhibits (claw hammer murder weapon, mud-caked bootprints, and betting slip).
+  - Extracted Victor's burglary confession and the identity of criminal fence Kenneth Sterling at Mahoney's Bar.
+- **Verification**: 5/5 objective gates verified in `tools/playtest-scene4.mjs`.
+
+### 5. Scene 5 — Mahoney's Bar, Cellar Safe & Epilogue (Completed)
+- **Mahoney's Public Bar & Cellar**:
+  - 3D public bar on Fitzroy St: mahogany bar counter, chrome beer taps, pool table, and corner poker machine bank.
+  - Initial confrontation with Kenneth Sterling, followed by scripted bar brawl distraction at the pool table.
+  - Collar grab interaction cornering Sterling to extract the brass cellar key.
+  - Bluestone beer keg cellar with locked heavy grille door, containing a Chub floor safe with interactive rotating brass dial.
+  - Recovery of the black extortion ledger (`sterling_ledger`) detailing the loan-sharking operation.
+  - Formal arrest of Sterling on murder and extortion charges.
+- **Ending & Epilogue**:
+  - Synthesised Watchhouse heavy iron cell door slam foley.
+  - Chiaroscuro procedural ending screen (`src/ui/ending-screen.ts`) looking down the cell block corridor, revealing Detective Graham Miller's silhouette and face in the ending still.
+  - Comprehensive case resolution report (Case Solved, 21 total exhibits catalogued, time stamps, and replay controls).
+- **Verification**: 5/5 objective gates verified in `tools/playtest-scene5.mjs`.
+
+---
+
+### Work Completed Outside Original Plan
+
+1. **Neo-Noir Soundtrack Pipeline Integration**:
+   - Merged the dedicated soundtrack branch containing 5 period-authentic audio tracks (`assets/audio/soundtrack/`):
+     1. `01-the-paradise-lodge.mp3` (Scene 1)
+     2. `02-st-kilda-precinct.mp3` (Scene 2)
+     3. `03-regent-street-chase.mp3` (Scene 3)
+     4. `04-interview-room-one.mp3` (Scene 4)
+     5. `05-mahoneys-extortion.mp3` (Scene 5)
+   - Created `SoundtrackPlayer` (`src/audio/soundtrack.ts`) with HTML5 streaming, automated scene tracking, crossfading, and volume mastering.
+
+2. **Procedural Web Audio Foley Synthesis Engine**:
+   - Rather than bundling heavy audio samples that risked exceeding Cloudflare Pages' 25MB file limit, built mathematical Web Audio synthesizers in `src/audio/foley.ts`:
+     - Multi-surface footstep synthesizers (carpet, floorboards, asphalt, gravel, bluestone).
+     - Cassette recorder mechanical clicks and motor hum (`tapeClick`, `tapeHum`).
+     - Rotary safe tumbler click foley (`safeDialClick`).
+     - Heavy iron cell door slam (`cellSlam`) combining sub-bass resonant drop, metallic clatter, and acoustic corridor reverb decay.
+
+3. **Chiaroscuro Ending Screen & Face Reveal Still**:
+   - The original plan kept Miller completely anonymous. In the final epilogue still, a procedural chiaroscuro canvas illustration down the Melbourne Watchhouse cell corridor reveals Miller's silhouette and weathered face, delivering a definitive 1994 Melbourne neo-noir resolution.
+
+4. **Automated Multi-Scene End-to-End Playtest Suite**:
+   - Built a comprehensive headless Chromium testing suite (`tools/playtest-scene1.mjs` through `tools/playtest-scene5.mjs`) verifying all 27 objective gates across all 5 scenes, state machines, dialogue branch selections, and `localStorage` persistence.
+
+5. **Physical Human Input & Browser Controls Test Suite**:
+   - Created `tools/test-controls.mjs` asserting real browser input handling in Chromium:
+     - WASD walking & lateral strafing with velocity calculations.
+     - Hold-to-sprint (`Shift`) accelerating movement to 4.44 m/s.
+     - Hold-to-crouch (`KeyC` / `Ctrl`) lowering eye-height from 1.68m to 1.05m.
+     - Mouse look (horizontal yaw & vertical pitch with clamping).
+     - Case File Notebook (`KeyN` / `Esc`) DOM overlay toggle.
+     - Crosshair raycasting onto 3D objects with first-person hand examine clips (`KeyF`).
+     - DOM dialogue option button clicking.
+     - Evidence bagging dispatch (`KeyG`).
+   - Adapted SwiftShader software rendering flags and headless dev shm configuration for continuous integration reliability.

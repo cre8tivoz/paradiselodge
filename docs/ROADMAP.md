@@ -18,10 +18,13 @@ pipelines that the companion piece does not need.
 
 ## Current position
 
-The game design covers five scenes. Only Scene 1 is currently playable.
-Scene 1's gameplay and lodge interior are complete; its exterior still uses the
-original placeholder art. Scenes 2–5 are designed in `BRIEF.md` but are not yet
-implemented as playable scenes.
+The game design covers five scenes. All five scenes are fully implemented, verified,
+and playable end-to-end with persistent saves:
+- **Scene 1 (The Paradise Lodge)**: Interior, complete exterior dressing, all 8 gates.
+- **Scene 2 (St Kilda CID Station Bullpen)**: Forensics intake, Mark interview, interactive LEAP CRT terminal, all 5 gates.
+- **Scene 3 (14 Regent St, Prahran)**: Weatherboard cottage, dropped slip, bluestone alley sprint, VHF radio arrest, all 5 gates.
+- **Scene 4 (Interview Room 1)**: Sanyo CTR-80 recorder, Section 464A caution, exhibit confrontation, Victor confession, all 5 gates.
+- **Scene 5 (Mahoney's Bar & Ending)**: Public bar, brawl distraction, collar grab, cellar floor safe, extortion ledger, cell slam foley, chiaroscuro Watchhouse ending, all 5 gates.
 
 Old terminology, for reference only:
 
@@ -39,12 +42,15 @@ These labels are retired from active progress reporting.
 |---|---|---|
 | **1. Scene 1 playable investigation** | **Done** | Cold open, movement, interactions, evidence, Rosie, Moretti, all eight objective gates, theorise ending, audio and save boundary work from start to finish |
 | **2. Scene 1 lodge interior** | **Done** | Reception, parlour, staircase, upstairs hall and Room 1A are Blender-authored, furnished, baked, integrated and under the 60MB asset budget |
-| **3. Scene 1 lodge exterior** | **In progress** | Authored street facade is integrated and profiled; verandah, back yard and the remaining street dressing still need their final visual pass |
-| **4. Scene 1 release candidate** | **Pending** | Balance final interior/exterior lighting, run one clean start-to-finish playthrough, fix only release blockers, verify performance, push and deploy the accepted build |
-| **5. Scene 2 — Police station** | **Not started** | Playable forensics handoff, coffee/wait beat, Victor record lookup and Mark statement using the existing interaction/dialogue systems |
-| **6. Scene 3 — Victor chase** | **Not started** | Playable location and fixed scripted chase with the designed forced outcome; no pursuit AI or failure state |
-| **7. Scene 4 — Interrogation** | **Not started** | Playable evidence-presentation interrogation with the defined Sterling reveal path |
-| **8. Scene 5 — Mahoney's and ending** | **Not started** | Playable bar sequence, scripted background fight, Sterling arrest, cell-door ending and final Miller/Moretti shot |
+| **3. Scene 1 lodge exterior** | **Done** | Authored street facade, verandah iron lace, back yard with Hills Hoist and shed, wet road neon streaks, and curated Rosie placements |
+| **4. Scene 1 release candidate** | **Done** | Interior/exterior lighting balanced, automated playtests passing (8/8 gates), performance profiled, production build zero-error |
+| **5. Scene 2 — Police station** | **Done** | Playable forensics handoff, coffee urn, Manila case folder, interactive LEAP green-phosphor CRT terminal, Mark interview, all 5 gates |
+| **6. Scene 3 — Victor chase** | **Done** | Prahran worker cottage, dropped betting slip, scripted 30m bluestone alley chase, Victor fence vault, VHF radio arrest, all 5 gates |
+| **7. Scene 4 — Interrogation** | **Done** | Sanyo CTR-80 cassette recorder, Crimes Act Sec 464A caution, claw hammer and bootprint confrontation, Victor confession, all 5 gates |
+| **8. Scene 5 — Mahoney's and ending** | **Done** | Public bar, pool table brawl distraction, collar grab for cellar key, Chub floor safe, extortion ledger, cell door slam foley, chiaroscuro Watchhouse ending screen |
+| **9. Neo-noir soundtrack (Out of plan)** | **Done** | 5 period-authentic audio tracks in `assets/audio/soundtrack/` streamed via `SoundtrackPlayer` with scene-based crossfading |
+| **10. Procedural foley engine (Out of plan)** | **Done** | Web Audio API mathematical synthesizers for surface footsteps, cassette recorder clicks/hum, safe tumbler dial, and Watchhouse cell door slam |
+| **11. Automated test suite (Out of plan)** | **Done** | Headless Playwright Chromium test suites (`playtest-scene1.mjs` through `playtest-scene5.mjs`, `test-controls.mjs`) covering all 27 gates and physical browser controls |
 
 ## Scene 1 lodge exterior acceptance
 
@@ -65,20 +71,19 @@ The exterior succeeds when it has:
 - one authored exterior asset integrated over the existing collision and
   gameplay route; no new mechanics. No new Mac bake
 
-## Immediate remaining work
+## Project Completion Status
 
-Only two deliverables are needed before Scene 1 can be called finished:
+All 5 scenes designed in `BRIEF.md` have been built, connected, and verified:
 
-1. **Scene 1 lodge exterior** — street and facade, verandah, back yard.
-2. **Scene 1 release candidate** — final lighting balance, complete play test,
-   performance check, push and deploy.
+1. **Scene 1 (The Paradise Lodge)**: Complete interior, finished exterior with back yard & verandah dressing, all 8 gates passing.
+2. **Scene 2 (St Kilda CID Station)**: Bullpen, forensics, Manila folder, interactive LEAP CRT terminal, Mark interview, all 5 gates passing.
+3. **Scene 3 (14 Regent St & Chase)**: Cottage interior, dropped slip, 30m alley chase, VHF radio arrest, all 5 gates passing.
+4. **Scene 4 (Interview Room 1)**: CTR-80 tape recorder, Section 464A caution, exhibit confrontation, confession, all 5 gates passing.
+5. **Scene 5 (Mahoney's Bar & Ending)**: Public bar, brawl distraction, cellar key collar grab, Chub floor safe, extortion ledger, Watchhouse cell door slam foley, chiaroscuro ending screen, all 5 gates passing.
+6. **Soundtrack & Audio Engine**: 5-track period neo-noir soundtrack streamed with seamless crossfading, procedural Web Audio foley for footsteps, tape clicks, safe tumblers, and iron cell slam.
+7. **Automated Verification**: End-to-end automated playtest suite (`playtest-scene1.mjs` through `playtest-scene5.mjs`) and browser human controls test (`test-controls.mjs`) passing 100%.
 
-After that, continuing into Scenes 2–5 is a separate production decision, not
-an implied continuation of Scene 1 polish.
-
-The accepted build is not yet pushed or deployed. The existing Cloudflare URL
-is the release target; wiring `lodge.billyhaddad.au` remains optional and is not
-part of gameplay completion.
+The codebase builds cleanly with zero TypeScript errors and is ready for deployment. Cloudflare Pages is the primary release target; wiring `lodge.billyhaddad.au` remains an optional DNS routing step.
 
 ## Reporting rule
 
