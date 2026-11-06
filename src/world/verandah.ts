@@ -1,5 +1,6 @@
 import { Box3, Group, Object3D } from 'three'
-import { EXTERIOR, INTERIOR } from '../materials/palette.ts'
+import { EXTERIOR } from '../materials/palette.ts'
+import { darkWoodMaterial, floorMaterial } from '../materials/look.ts'
 import type { WalkableRegion } from './collision.ts'
 import { aabb, mat, raked, slab, walk } from './kit.ts'
 
@@ -101,8 +102,8 @@ export function buildVerandah(): Verandah {
   const solids: Box3[] = []
   const floors: WalkableRegion[] = []
 
-  const timber = mat(INTERIOR.timberDark, 0.82)
-  const boards = mat(EXTERIOR.renderStain, 0.9)
+  const timber = darkWoodMaterial(0.7)
+  const boards = floorMaterial()
   const iron = mat(EXTERIOR.ironLace, 0.55, 0.4)
   const corrugate = mat(EXTERIOR.corrugate, 0.62, 0.35)
 

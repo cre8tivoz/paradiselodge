@@ -2,6 +2,14 @@ import { on } from '../core/events.ts'
 import type { DialogueRunner } from './runner.ts'
 import type { DialogueNode } from './graph.ts'
 
+const PORTRAITS: Record<string, string> = {
+  Rosie: '/portraits/rosie.png',
+  Moretti: '/portraits/moretti.png',
+  Mark: '/portraits/mark.png',
+  Victor: '/portraits/victor.png',
+  Sterling: '/portraits/sterling.png',
+}
+
 /**
  * Dialogue panel. DOM over the canvas. Camera stays first person underneath.
  *
@@ -10,6 +18,9 @@ import type { DialogueNode } from './graph.ts'
  */
 export class DialoguePanel {
   private readonly panel: HTMLDivElement
+  private readonly portraitContainer: HTMLDivElement
+  private readonly portraitImg: HTMLImageElement
+  private readonly bodyEl: HTMLDivElement
   private readonly speakerEl: HTMLParagraphElement
   private readonly lineEl: HTMLParagraphElement
   private readonly choicesEl: HTMLUListElement
@@ -26,6 +37,12 @@ export class DialoguePanel {
     this.panel.className = 'dialogue'
     this.panel.setAttribute('aria-hidden', 'true')
 
+    this.portraitContainer = document.createElement('div')
+    this.portraitContainer.className = 'dialogue-portrait'
+    this.portraitImg = document.createElement('img')
+    this.portraitImg.className = 'dialogue-portrait-img'
+    this.portraitContainer.appendChild(this.portraitImg)
+
     this.speakerEl = document.createElement('p')
     this.speakerEl.className = 'dialogue-speaker'
 
@@ -38,7 +55,11 @@ export class DialoguePanel {
     this.hintEl = document.createElement('p')
     this.hintEl.className = 'dialogue-hint'
 
-    this.panel.append(this.speakerEl, this.lineEl, this.choicesEl, this.hintEl)
+    this.bodyEl = document.createElement('div')
+    this.bodyEl.className = 'dialogue-body'
+    this.bodyEl.append(this.speakerEl, this.lineEl, this.choicesEl, this.hintEl)
+
+    this.panel.append(this.portraitContainer, this.bodyEl)
     hudRoot.appendChild(this.panel)
 
     runner.onNode = (node) => {
@@ -83,6 +104,15 @@ export class DialoguePanel {
     this.speakerEl.textContent = node.speaker
     this.lineEl.textContent = node.line
     this.choicesEl.replaceChildren()
+
+    const portraitUrl = PORTRAITS[node.speaker]
+    if (portraitUrl !== undefined) {
+      this.portraitImg.src = portraitUrl
+      this.portraitImg.alt = node.speaker
+      this.portraitContainer.style.display = 'block'
+    } else {
+      this.portraitContainer.style.display = 'none'
+    }
 
     const choices = node.choices
     if (choices !== undefined && choices.length > 0) {

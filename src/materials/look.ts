@@ -253,7 +253,7 @@ export function renderMaterial(tint: readonly [number, number, number]): MeshSta
   )
 }
 
-/** Wet bitumen. Puddles go dark and sharp so the dusk sky sits in them. */
+/** Wet bitumen with St Kilda 1994 neon streak reflections (Pink Lodge & Cyan Rooms to Let). */
 export function asphaltMaterial(): MeshStandardMaterial {
   const m = new MeshStandardMaterial({ roughness: 0.4, name: 'ld_asphalt', envMapIntensity: 1.15 })
   return worldShader(
@@ -264,11 +264,58 @@ export function asphaltMaterial(): MeshStandardMaterial {
     vec3 p = vLdWPos;
     float n = ld_fbm(vec3(p.xz * 3.2, 0.0));
     float g = ld_noise(vec3(p.xz * 16.0, 1.0));
-    float puddle = smoothstep(0.5, 0.62, ld_fbm(vec3(p.xz*0.32, 2.0)));
-    vec3 c = vec3(0.16, 0.15, 0.14) * (0.7 + 0.4*n) * (0.85 + 0.2*g);
-    c *= mix(1.0, 0.42, puddle);
+    float puddleMask = ld_fbm(vec3(p.xz * 0.32, 2.0));
+    float puddle = smoothstep(0.48, 0.60, puddleMask);
+    float damp = smoothstep(0.32, 0.52, puddleMask);
+
+    vec3 c = vec3(0.14, 0.135, 0.13) * (0.72 + 0.38 * n) * (0.86 + 0.2 * g);
+    c *= mix(1.0, 0.32, puddle);
     ldAlbedo = c;
-    ldRough = mix(0.48, 0.05, puddle);
+    ldRough = mix(0.52, 0.04, puddle);
+
+    // Wet road neon reflection streaks (St Kilda Neo-Noir 1994)
+    if (p.z < -0.8 && p.y < 0.2) {
+      vec3 V = normalize(cameraPosition - p);
+      float glance = pow(clamp(1.0 - max(V.y, 0.0), 0.0, 1.0), 2.2);
+      float reflWet = mix(0.12 * damp, 0.95, puddle);
+      float ripple = (ld_noise(vec3(p.xz * 16.0, 1.2)) - 0.5) * 0.15;
+
+      // 1. Pink Neon Title: "THE PARADISE LODGE"
+      float pinkSignZ = -0.65;
+      float uPink = clamp((p.z - pinkSignZ) / (cameraPosition.z - pinkSignZ), 0.0, 1.0);
+      float pinkTrackX = mix(0.0, cameraPosition.x, uPink);
+      float dxPink = abs(p.x - pinkTrackX + ripple);
+      float pinkWidth = 1.8 + 0.8 * uPink;
+      float pinkStreak = exp(-(dxPink * dxPink) / (2.0 * pinkWidth * pinkWidth));
+      float pinkFade = smoothstep(-0.8, -1.8, p.z) * smoothstep(cameraPosition.z, cameraPosition.z + 1.2, p.z);
+      vec3 pinkNeon = vec3(1.0, 0.15, 0.55) * (pinkStreak * 5.2 * glance * reflWet * pinkFade);
+
+      // 2. Cyan Neon: "ROOMS TO LET"
+      float cyanSignZ = -1.2;
+      float uCyan = clamp((p.z - cyanSignZ) / (cameraPosition.z - cyanSignZ), 0.0, 1.0);
+      float cyanTrackX = mix(-4.6, cameraPosition.x, uCyan);
+      float dxCyan = abs(p.x - cyanTrackX + ripple * 0.8);
+      float cyanWidth = 0.95 + 0.5 * uCyan;
+      float cyanStreak = exp(-(dxCyan * dxCyan) / (2.0 * cyanWidth * cyanWidth));
+      float cyanFade = smoothstep(-1.2, -2.0, p.z) * smoothstep(cameraPosition.z, cameraPosition.z + 1.2, p.z);
+      vec3 cyanNeon = vec3(0.12, 0.88, 1.0) * (cyanStreak * 4.2 * glance * reflWet * cyanFade);
+
+      // 3. Sodium Streetlights (Amber Streaks at x = -9.5 and x = 8.2)
+      float uSl1 = clamp((p.z - (-5.4)) / (cameraPosition.z - (-5.4)), 0.0, 1.0);
+      float sl1TrackX = mix(-9.5, cameraPosition.x, uSl1);
+      float dxSl1 = abs(p.x - sl1TrackX + ripple);
+      float sl1Streak = exp(-(dxSl1 * dxSl1) / (2.0 * 1.2 * 1.2)) * smoothstep(-5.4, -6.5, p.z);
+
+      float uSl2 = clamp((p.z - (-5.6)) / (cameraPosition.z - (-5.6)), 0.0, 1.0);
+      float sl2TrackX = mix(8.2, cameraPosition.x, uSl2);
+      float dxSl2 = abs(p.x - sl2TrackX + ripple);
+      float sl2Streak = exp(-(dxSl2 * dxSl2) / (2.0 * 1.2 * 1.2)) * smoothstep(-5.6, -6.8, p.z);
+
+      float amberFade = smoothstep(-4.5, -6.5, p.z) * smoothstep(cameraPosition.z, cameraPosition.z + 2.5, p.z);
+      vec3 amberLight = vec3(1.0, 0.65, 0.22) * ((sl1Streak + sl2Streak) * 1.5 * glance * reflWet * amberFade);
+
+      totalEmissiveRadiance += pinkNeon + cyanNeon + amberLight;
+    }
   `,
     'ld_asphalt',
   )

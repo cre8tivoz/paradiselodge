@@ -2,6 +2,7 @@ import { Vector3 } from 'three'
 import type { PlayerController } from '../player/controller.ts'
 import type { Hands } from '../player/hands/hands.ts'
 import type { Hud } from '../ui/hud.ts'
+import type { Rosie } from '../npc/rosie.ts'
 
 /**
  * Named camera poses for `tools/shot.mjs`. Capture mode only.
@@ -15,6 +16,7 @@ export interface ShotContext {
   readonly hands: Hands
   readonly hud: Hud
   readonly hudRoot: HTMLElement
+  readonly rosie?: Rosie
 }
 
 type ShotFn = (ctx: ShotContext) => void
@@ -54,7 +56,7 @@ const SHOTS: Record<string, ShotFn> = {
   'scene1-yard': ({ player, hands, hudRoot }) => {
     hudRoot.style.display = 'none'
     hands.setVisible(false)
-    player.place(new Vector3(7.3, -0.15, 12.7), -2.75, -0.06)
+    player.place(new Vector3(-2.0, -0.15, 17.5), -1.1, 0.08)
   },
 
   /**
@@ -88,10 +90,19 @@ const SHOTS: Record<string, ShotFn> = {
     player.place(new Vector3(2.05, 0, 1.18), -2.35, -0.12)
   },
 
-  'unit-a-parlour': ({ player, hands, hudRoot }) => {
+  'unit-a-parlour': ({ player, hands, hudRoot, rosie }) => {
     hudRoot.style.display = 'none'
     hands.setVisible(false)
+    rosie?.setStation('parlour')
     player.place(new Vector3(-2.15, 0, 4.55), 0.5, -0.06)
+  },
+
+  'scene1-parlour-rosie': ({ player, hands, hudRoot, rosie }) => {
+    hudRoot.style.display = 'none'
+    hands.setVisible(false)
+    rosie?.setStation('parlour')
+    const aim = lookAim(new Vector3(-2.2, 1.7, 3.2), new Vector3(-3.05, 1.45, 0.75))
+    player.place(new Vector3(-2.2, 0, 3.2), aim.yaw, aim.pitch)
   },
 
   'unit-a-staircase': ({ player, hands, hudRoot }) => {

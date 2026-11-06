@@ -28,8 +28,10 @@ export interface UnitA {
   }
 }
 
-const MODEL_URL =
+const REMOTE_MODEL_URL =
   'https://pub-fb1257653b9c4da0a314baa163938921.r2.dev/models/unit-a-4ae83b93.glb'
+const LOCAL_MODEL_URL = '/models/unit-a.glb'
+const MODEL_URL = import.meta.env.DEV ? LOCAL_MODEL_URL : REMOTE_MODEL_URL
 const BAKE_URL = '/textures/bake'
 const SPACES: UnitASpace[] = ['room1a', 'parlour', 'reception', 'staircase', 'hallway']
 const LIGHTMAP_INTENSITY = 14
@@ -114,8 +116,21 @@ function collectStairs(scene: Group): Group {
 
 /** Load the complete Blender-authored interior and restore its five baked atlases. */
 export async function loadUnitA(): Promise<UnitA> {
+  const loader = new GLTFLoader()
+  const loadModel = async () => {
+    try {
+      return await loader.loadAsync(MODEL_URL)
+    } catch (err) {
+      if (MODEL_URL !== LOCAL_MODEL_URL) {
+        console.warn('Failed to load remote Unit A model, falling back to local:', err)
+        return await loader.loadAsync(LOCAL_MODEL_URL)
+      }
+      throw err
+    }
+  }
+
   const [gltf, maps] = await Promise.all([
-    new GLTFLoader().loadAsync(MODEL_URL),
+    loadModel(),
     loadLightmaps(),
   ])
   const scene = gltf.scene

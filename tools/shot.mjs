@@ -7,7 +7,7 @@
  */
 import { chromium } from 'playwright'
 import { spawn } from 'node:child_process'
-import { mkdirSync, existsSync } from 'node:fs'
+import { mkdirSync, existsSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import net from 'node:net'
 
@@ -24,7 +24,7 @@ const H = Number(args.h ?? 960)
 const SHOT = String(args.shot ?? '1a')
 const OUT = resolve(args.out ?? `shots/${SHOT}.png`)
 const TIMEOUT = Number(args.timeout ?? 120000)
-const SETTLE = Number(args.settle ?? 60)
+const SETTLE = Number(args.settle ?? (process.platform === 'linux' ? 2 : 60))
 const ROOT = resolve(import.meta.dirname, '..')
 
 const portOpen = (port) =>
@@ -56,6 +56,9 @@ mkdirSync(dirname(OUT), { recursive: true })
 const browser = await chromium.launch({
   headless: true,
   args: [
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--ignore-certificate-errors',
     '--use-angle=metal',
     '--ignore-gpu-blocklist',
     '--enable-gpu-rasterization',
@@ -72,8 +75,16 @@ const page = await browser.newPage({
 })
 
 const logs = []
-page.on('console', (m) => logs.push(`[${m.type()}] ${m.text()}`))
-page.on('pageerror', (e) => logs.push(`[pageerror] ${e.message}`))
+page.on('console', (m) => {
+  const text = `[${m.type()}] ${m.text()}`
+  logs.push(text)
+  console.log(text)
+})
+page.on('pageerror', (e) => {
+  const text = `[pageerror] ${e.message}`
+  logs.push(text)
+  console.error(text)
+})
 
 let failed = null
 try {
@@ -114,7 +125,18 @@ try {
     }
   })
 
-  await page.screenshot({ path: OUT, type: 'png' })
+  const dataUrl = await page.evaluate(() => {
+    const canvas = document.querySelector('canvas#game')
+    return canvas instanceof HTMLCanvasElement ? canvas.toDataURL('image/png') : null
+  })
+
+  if (dataUrl && dataUrl.startsWith('data:image/png;base64,')) {
+    const base64 = dataUrl.replace(/^data:image\/png;base64,/, '')
+    writeFileSync(OUT, Buffer.from(base64, 'base64'))
+  } else {
+    await page.screenshot({ path: OUT, type: 'png', timeout: 120000 })
+  }
+
   if (!existsSync(OUT)) throw new Error(`screenshot missing at ${OUT}`)
   console.log(`wrote ${OUT}`)
 } catch (err) {

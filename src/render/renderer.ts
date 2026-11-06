@@ -35,7 +35,8 @@ export interface Viewport {
  * the one control that hides mistakes in both.
  */
 export function createViewport(canvas: HTMLCanvasElement): Viewport {
-  const renderer = new WebGLRenderer({ canvas, antialias: true })
+  const isCapture = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('capture') === '1'
+  const renderer = new WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: isCapture })
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, RENDER.maxPixelRatio))
   renderer.shadowMap.enabled = true
   renderer.shadowMap.type = PCFSoftShadowMap

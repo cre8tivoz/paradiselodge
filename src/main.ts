@@ -1037,7 +1037,7 @@ async function main(): Promise<void> {
       Vector3,
     })
 
-    const shotCtx = { player, hands, hud, hudRoot }
+    const shotCtx = { player, hands, hud, hudRoot, rosie }
     Reflect.set(window, '__SHOTS__', Object.fromEntries(listShots().map((n) => [n, true])))
     Reflect.set(window, '__APPLY_SHOT__', (name: string) => applyShot(name, shotCtx))
 

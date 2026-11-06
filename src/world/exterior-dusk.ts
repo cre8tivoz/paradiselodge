@@ -123,7 +123,21 @@ export function buildExteriorDressing(): ExteriorDusk {
   const doorLight = new PointLight(new Color(1, 0.58, 0.28), 2.4, 7, 2)
   doorLight.position.set(0, 1.5, -0.6)
   root.add(doorLight)
-  lights.push(pinkWash, pinkFill, cyanFill, doorLight)
+
+  // Verandah and Back Yard Practicals (1994 Victorian St Kilda boarding house)
+  const verandahLight = new PointLight(new Color(1.0, 0.78, 0.45), 3.2, 12, 1.8)
+  verandahLight.position.set(6.45, 4.8, 2.5)
+  root.add(verandahLight)
+
+  const backStairLight = new PointLight(new Color(1.0, 0.70, 0.38), 8.5, 20, 1.6)
+  backStairLight.position.set(6.8, 3.4, 10.8)
+  root.add(backStairLight)
+
+  const yardRimLight = new PointLight(new Color(0.45, 0.65, 0.9), 4.5, 25, 1.4)
+  yardRimLight.position.set(-2.0, 3.8, 18.5)
+  root.add(yardRimLight)
+
+  lights.push(pinkWash, pinkFill, cyanFill, doorLight, verandahLight, backStairLight, yardRimLight)
 
   const sl1 = streetlight(new Vector3(-9.5, PATH_Y, -5.4), -1, true)
   const sl2 = streetlight(new Vector3(8.2, PATH_Y, -5.6), -1, true)
