@@ -375,19 +375,16 @@ body {
 }
 
 /*
- * Snap timed fades and looping CRT flicker when the player asks for less motion.
+ * Title card and scene fade are the only heavy timed fades. Snap them when the
+ * player asks for less motion. Look-line opacity is the same treatment.
+ * Ending and LEAP overrides sit later, after those components' base rules,
+ * so they win the cascade.
  */
 @media (prefers-reduced-motion: reduce) {
   .title-card,
   .scene-fade,
-  .look-line,
-  .ending-screen {
+  .look-line {
     transition: none;
-  }
-
-  .leap-footer {
-    animation: none;
-    opacity: 0.7;
   }
 }
 
@@ -666,5 +663,16 @@ body {
 .ending-btn:focus-visible {
   outline: 2px solid #38ef7d;
   outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ending-screen {
+    transition: none;
+  }
+
+  .leap-footer {
+    animation: none;
+    opacity: 0.7;
+  }
 }
 
