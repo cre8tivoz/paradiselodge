@@ -13,6 +13,7 @@ export class LeapTerminal {
   private readonly el: HTMLDivElement
   private readonly caseFile: CaseFile
   private isOpen = false
+  private previousFocus: HTMLElement | null = null
 
   constructor(root: HTMLElement, caseFile: CaseFile) {
     this.root = root
@@ -21,6 +22,11 @@ export class LeapTerminal {
     this.el = document.createElement('div')
     this.el.className = 'leap-terminal'
     this.el.style.display = 'none'
+    this.el.setAttribute('role', 'dialog')
+    this.el.setAttribute('aria-modal', 'true')
+    this.el.setAttribute('aria-label', 'Victoria Police LEAP terminal')
+    this.el.setAttribute('aria-hidden', 'true')
+    this.el.tabIndex = -1
 
     this.el.innerHTML = `
       <div class="leap-crt-bezel">
@@ -92,7 +98,11 @@ export class LeapTerminal {
   open(): void {
     if (this.isOpen) return
     this.isOpen = true
+    const active = document.activeElement
+    this.previousFocus = active instanceof HTMLElement ? active : null
     this.el.style.display = 'flex'
+    this.el.setAttribute('aria-hidden', 'false')
+    this.el.focus()
     this.caseFile.file('rakov_profile', 'station.leap')
     emit('leap:opened', {})
   }
@@ -101,6 +111,9 @@ export class LeapTerminal {
     if (!this.isOpen) return
     this.isOpen = false
     this.el.style.display = 'none'
+    this.el.setAttribute('aria-hidden', 'true')
+    this.previousFocus?.focus()
+    this.previousFocus = null
     emit('leap:closed', {})
   }
 

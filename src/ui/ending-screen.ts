@@ -16,6 +16,10 @@ export class EndingScreen {
   constructor(parent: HTMLElement, options: EndingScreenOptions) {
     this.el = document.createElement('div')
     this.el.className = 'ending-screen'
+    this.el.setAttribute('role', 'dialog')
+    this.el.setAttribute('aria-modal', 'true')
+    this.el.setAttribute('aria-labelledby', 'ending-title')
+    this.el.setAttribute('aria-describedby', 'ending-body')
 
     this.el.innerHTML = `
       <div class="ending-backdrop">
@@ -102,11 +106,11 @@ export class EndingScreen {
       <div class="ending-content">
         <div class="ending-header">
           <div class="ending-badge">VICTORIA POLICE • CRIMINAL INVESTIGATION BRANCH</div>
-          <h1 class="ending-title">THE PARADISE LODGE</h1>
+          <h1 class="ending-title" id="ending-title">THE PARADISE LODGE</h1>
           <div class="ending-subtitle">FITZROY STREET, ST KILDA • 27 FEBRUARY 1994</div>
         </div>
 
-        <div class="ending-body">
+        <div class="ending-body" id="ending-body">
           <p class="ending-p ep-1">Kenneth Sterling remanded in custody without bail to HM Prison Pentridge.</p>
           <p class="ending-p ep-2">Victor Rakov entered a plea of manslaughter and housebreaking at Melbourne Magistrates' Court.</p>
           <p class="ending-p ep-3">Crystal Vance was twenty-two years old.</p>
@@ -136,14 +140,15 @@ export class EndingScreen {
 
     parent.appendChild(this.el)
 
-    const restartBtn = this.el.querySelector('#ending-restart-btn')
+    const restartBtn = this.el.querySelector<HTMLButtonElement>('#ending-restart-btn')
     restartBtn?.addEventListener('click', () => {
       options.onRestart()
     })
 
-    // Fade in
+    // Fade in, then put keyboard focus on the only control
     requestAnimationFrame(() => {
       this.el.classList.add('is-visible')
+      restartBtn?.focus()
     })
   }
 
