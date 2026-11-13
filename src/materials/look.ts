@@ -253,26 +253,11 @@ export function renderMaterial(tint: readonly [number, number, number]): MeshSta
   )
 }
 
-/** Wet bitumen with St Kilda 1994 neon streak reflections (Pink Lodge & Cyan Rooms to Let). */
-export function asphaltMaterial(): MeshStandardMaterial {
+/** Wet bitumen with optional St Kilda 1994 neon streak reflections (Pink Lodge & Cyan Rooms to Let). */
+export function asphaltMaterial(showNeon = true): MeshStandardMaterial {
   const m = new MeshStandardMaterial({ roughness: 0.4, name: 'ld_asphalt', envMapIntensity: 1.15 })
-  return worldShader(
-    m,
-    {},
-    '',
-    `
-    vec3 p = vLdWPos;
-    float n = ld_fbm(vec3(p.xz * 3.2, 0.0));
-    float g = ld_noise(vec3(p.xz * 16.0, 1.0));
-    float puddleMask = ld_fbm(vec3(p.xz * 0.32, 2.0));
-    float puddle = smoothstep(0.48, 0.60, puddleMask);
-    float damp = smoothstep(0.32, 0.52, puddleMask);
-
-    vec3 c = vec3(0.14, 0.135, 0.13) * (0.72 + 0.38 * n) * (0.86 + 0.2 * g);
-    c *= mix(1.0, 0.32, puddle);
-    ldAlbedo = c;
-    ldRough = mix(0.52, 0.04, puddle);
-
+  const neonBlock = showNeon
+    ? `
     // Wet road neon reflection streaks (St Kilda Neo-Noir 1994)
     if (p.z < -0.8 && p.y < 0.2) {
       vec3 V = normalize(cameraPosition - p);
@@ -315,9 +300,27 @@ export function asphaltMaterial(): MeshStandardMaterial {
       vec3 amberLight = vec3(1.0, 0.65, 0.22) * ((sl1Streak + sl2Streak) * 1.5 * glance * reflWet * amberFade);
 
       totalEmissiveRadiance += pinkNeon + cyanNeon + amberLight;
-    }
+    }`
+    : ''
+  return worldShader(
+    m,
+    {},
+    '',
+    `
+    vec3 p = vLdWPos;
+    float n = ld_fbm(vec3(p.xz * 3.2, 0.0));
+    float g = ld_noise(vec3(p.xz * 16.0, 1.0));
+    float puddleMask = ld_fbm(vec3(p.xz * 0.32, 2.0));
+    float puddle = smoothstep(0.48, 0.60, puddleMask);
+    float damp = smoothstep(0.32, 0.52, puddleMask);
+
+    vec3 c = vec3(0.14, 0.135, 0.13) * (0.72 + 0.38 * n) * (0.86 + 0.2 * g);
+    c *= mix(1.0, 0.32, puddle);
+    ldAlbedo = c;
+    ldRough = mix(0.52, 0.04, puddle);
+    ${neonBlock}
   `,
-    'ld_asphalt',
+    showNeon ? 'ld_asphalt_neon' : 'ld_asphalt_plain',
   )
 }
 

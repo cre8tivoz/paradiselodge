@@ -8,7 +8,8 @@ import type { Mixer } from './mixer.ts'
  * > Gloves going on. Sash window. Wardrobe. Paper. Lighter. Ashtray. Cassette
  * > recorder engaging.
  *
- * The cassette recorder is scene 4. The rest of it is scene 1.
+ * The cassette recorder, floor safe and cell door belong to scenes 4 and 5.
+ * The rest of it is scene 1.
  *
  * ## It plays on examine:start, not on complete
  *
@@ -204,6 +205,112 @@ const glass: Voice = (mixer, at, bus) => {
   voice.stop(at + 0.32)
 }
 
+/** Dual-cassette recorder Play + Record piano keys engaging in Interview Room 1. */
+const tapeClick: Voice = (mixer, at, bus) => {
+  const ctx = mixer.context
+  // Two crisp mechanical transport key clicks followed by pinch-roller seating.
+  for (let i = 0; i < 2; i += 1) {
+    const start = at + i * 0.095
+    const source = mixer.noiseSource()
+    const band = mixer.filter('bandpass', 2400 + i * 450, 2.2)
+    const gain = ctx.createGain()
+    source.connect(band).connect(gain).connect(bus)
+    gain.gain.setValueAtTime(0, start)
+    gain.gain.linearRampToValueAtTime(0.12, start + 0.003)
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.045)
+    source.start(start, Math.random(), 0.06)
+    source.stop(start + 0.06)
+
+    const clunk = ctx.createOscillator()
+    clunk.type = 'triangle'
+    clunk.frequency.setValueAtTime(310 + i * 45, start)
+    clunk.frequency.exponentialRampToValueAtTime(110, start + 0.04)
+    const clunkGain = ctx.createGain()
+    clunk.connect(clunkGain).connect(bus)
+    clunkGain.gain.setValueAtTime(0, start)
+    clunkGain.gain.linearRampToValueAtTime(0.09, start + 0.004)
+    clunkGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.06)
+    clunk.start(start)
+    clunk.stop(start + 0.07)
+  }
+
+  // Subtle DC capstan motor spin-up settling into deck hum.
+  const motorStart = at + 0.14
+  const motor = ctx.createOscillator()
+  motor.type = 'sine'
+  motor.frequency.setValueAtTime(95, motorStart)
+  motor.frequency.linearRampToValueAtTime(175, motorStart + 0.25)
+  const motorGain = ctx.createGain()
+  motor.connect(motorGain).connect(bus)
+  motorGain.gain.setValueAtTime(0, motorStart)
+  motorGain.gain.linearRampToValueAtTime(0.025, motorStart + 0.1)
+  motorGain.gain.exponentialRampToValueAtTime(0.0001, motorStart + 0.42)
+  motor.start(motorStart)
+  motor.stop(motorStart + 0.45)
+}
+
+/** Chubb floor safe combination dial tumblers clicking in the cellar. */
+const safeDialClick: Voice = (mixer, at, bus) => {
+  const ctx = mixer.context
+  for (let i = 0; i < 4; i += 1) {
+    const start = at + i * (0.085 + (i % 2) * 0.025)
+    const tick = ctx.createOscillator()
+    tick.type = 'sine'
+    tick.frequency.value = 2650 + (i % 3) * 380
+    const gain = ctx.createGain()
+    tick.connect(gain).connect(bus)
+    gain.gain.setValueAtTime(0, start)
+    gain.gain.linearRampToValueAtTime(0.085, start + 0.002)
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.045)
+    tick.start(start)
+    tick.stop(start + 0.055)
+  }
+}
+
+/** Heavy steel floor-safe bolt throw and hinged lid lifting. */
+const safeOpen: Voice = (mixer, at, bus) => {
+  const ctx = mixer.context
+  // Bolt retraction clank
+  const bolt = ctx.createOscillator()
+  bolt.type = 'triangle'
+  bolt.frequency.setValueAtTime(420, at)
+  bolt.frequency.exponentialRampToValueAtTime(125, at + 0.14)
+  const boltGain = ctx.createGain()
+  bolt.connect(boltGain).connect(bus)
+  boltGain.gain.setValueAtTime(0, at)
+  boltGain.gain.linearRampToValueAtTime(0.16, at + 0.006)
+  boltGain.gain.exponentialRampToValueAtTime(0.0001, at + 0.19)
+  bolt.start(at)
+  bolt.stop(at + 0.21)
+
+  // Lid hinge scrape + heavy steel thud against stop
+  const hingeStart = at + 0.14
+  const source = mixer.noiseSource()
+  const band = mixer.filter('bandpass', 480, 2.4)
+  const hingeGain = ctx.createGain()
+  source.connect(band).connect(hingeGain).connect(bus)
+  hingeGain.gain.setValueAtTime(0, hingeStart)
+  hingeGain.gain.linearRampToValueAtTime(0.09, hingeStart + 0.08)
+  hingeGain.gain.exponentialRampToValueAtTime(0.0001, hingeStart + 0.42)
+  band.frequency.setValueAtTime(380, hingeStart)
+  band.frequency.linearRampToValueAtTime(720, hingeStart + 0.35)
+  source.start(hingeStart, Math.random(), 0.45)
+  source.stop(hingeStart + 0.45)
+
+  const thudTime = at + 0.52
+  const thud = ctx.createOscillator()
+  thud.type = 'sine'
+  thud.frequency.setValueAtTime(115, thudTime)
+  thud.frequency.exponentialRampToValueAtTime(42, thudTime + 0.22)
+  const thudGain = ctx.createGain()
+  thud.connect(thudGain).connect(bus)
+  thudGain.gain.setValueAtTime(0, thudTime)
+  thudGain.gain.linearRampToValueAtTime(0.22, thudTime + 0.008)
+  thudGain.gain.exponentialRampToValueAtTime(0.0001, thudTime + 0.34)
+  thud.start(thudTime)
+  thud.stop(thudTime + 0.36)
+}
+
 /**
  * Which object sounds like what. Anything not listed examines in silence, which
  * is most of the body: see the note about not scoring discoveries.
@@ -220,6 +327,8 @@ const BY_OBJECT: Readonly<Record<string, Voice>> = {
   '1a.lighter': metal,
   'lodge.diary': paper,
   'lodge.ashtray': glass,
+  'interview.tape': tapeClick,
+  'cellar.safe': safeDialClick,
 }
 
 /** Heavy steel cell door slam with metallic reverberation in a watchhouse corridor. */
@@ -313,6 +422,21 @@ export class Foley {
   /** Miller pulling his gloves on. Called by the world, not by an event. */
   glovesOn(): void {
     this.play(gloves)
+  }
+
+  /** Dual-cassette transport keys latching on in Interview Room 1. */
+  tapeClick(): void {
+    this.play(tapeClick)
+  }
+
+  /** Combination dial tumblers clicking on the cellar floor safe. */
+  safeDialClick(): void {
+    this.play(safeDialClick)
+  }
+
+  /** Floor safe bolts throwing open and steel lid lifting. */
+  safeOpen(): void {
+    this.play(safeOpen)
   }
 
   /** Cell door slamming shut at St Kilda Watchhouse. */

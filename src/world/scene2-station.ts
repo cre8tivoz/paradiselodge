@@ -5,14 +5,27 @@ import {
   CylinderGeometry,
   DoubleSide,
   Group,
+  HemisphereLight,
   Mesh,
   MeshStandardMaterial,
   PointLight,
   Vector3,
 } from 'three'
+import type { Object3D } from 'three'
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { aabb } from './kit.ts'
 import type { WalkableRegion } from './collision.ts'
+import type { Surface } from '../core/events.ts'
 import { darkWoodMaterial, floorMaterial } from '../materials/look.ts'
+import { prepareCharacterLook } from '../npc/character-look.ts'
+
+function requireNode(root: Object3D, name: string): Object3D {
+  const found = root.getObjectByName(name)
+  if (found === undefined) {
+    throw new Error(`Character glTF missing node "${name}"`)
+  }
+  return found
+}
 
 function slab(box: Box3, material: MeshStandardMaterial): Mesh {
   const mesh = new Mesh(
@@ -29,7 +42,7 @@ function slab(box: Box3, material: MeshStandardMaterial): Mesh {
   return mesh
 }
 
-function walk(box: Box3, surface: 'floorboard' | 'carpet' = 'floorboard'): WalkableRegion {
+function walk(box: Box3, surface: Surface = 'floorboard'): WalkableRegion {
   return {
     box: new Box3(
       new Vector3(box.min.x, box.min.y, box.min.z),
@@ -60,6 +73,7 @@ export interface StationProps {
   readonly urn: Group
   readonly leapTerminal: Group
   readonly forensicsReport: Group
+  readonly deskGroup: Group
   readonly markChair: Group
   readonly noticeboard: Group
   readonly deskLampLight: PointLight
@@ -76,7 +90,7 @@ export interface StationWorld {
   update(elapsed: number, playerPos: Vector3): void
 }
 
-export function buildStation(): StationWorld {
+export async function buildStation(): Promise<StationWorld> {
   const root = new Group()
   root.name = 'scene2-station'
 
@@ -85,7 +99,7 @@ export function buildStation(): StationWorld {
 
   // Materials
   const floorMat = floorMaterial() // municipal linoleum / low-pile carpet
-  const wallMat = plasterMaterial(new Color(0.72, 0.68, 0.60)) // institutional institutional cream/biscuit
+  const wallMat = plasterMaterial(new Color(0.72, 0.68, 0.60)) // institutional cream/biscuit
   const ceilingMat = plasterMaterial(new Color(0.82, 0.82, 0.80))
   const woodMat = darkWoodMaterial(0.65)
   const steelMat = metalMaterial(new Color(0.35, 0.38, 0.40), 0.55, 0.6)
@@ -102,7 +116,7 @@ export function buildStation(): StationWorld {
   // X: -7.0 to +7.0, Z: -5.0 to +5.0, Y: 0.0 to 3.2
   const floorMesh = slab(new Box3(new Vector3(-7.0, -0.2, -5.0), new Vector3(7.0, 0.0, 5.0)), floorMat)
   root.add(floorMesh)
-  floors.push(walk(new Box3(new Vector3(-6.8, -0.05, -4.8), new Vector3(6.8, 0.05, 4.8)), 'floorboard'))
+  floors.push(walk(aabb(-6.8, 6.8, -0.2, 0.0, -4.8, 4.8), 'floorboard'))
 
   const ceilingMesh = slab(new Box3(new Vector3(-7.0, 3.2, -5.0), new Vector3(7.0, 3.4, 5.0)), ceilingMat)
   root.add(ceilingMesh)
@@ -111,7 +125,7 @@ export function buildStation(): StationWorld {
   // Back wall (Z = -5.0)
   const backWall = slab(new Box3(new Vector3(-7.0, 0, -5.2), new Vector3(7.0, 3.2, -5.0)), wallMat)
   root.add(backWall)
-  solids.push(aabb(-7.0, 0, -5.2, 7.0, 3.2, -5.0))
+  solids.push(aabb(-7.0, 7.0, 0, 3.2, -5.2, -5.0))
 
   // Front wall with window frame (Z = +5.0)
   const frontWallL = slab(new Box3(new Vector3(-7.0, 0, 5.0), new Vector3(-2.0, 3.2, 5.2)), wallMat)
@@ -120,9 +134,9 @@ export function buildStation(): StationWorld {
   const frontWallBottom = slab(new Box3(new Vector3(-2.0, 0, 5.0), new Vector3(2.0, 0.8, 5.2)), wallMat)
   root.add(frontWallL, frontWallR, frontWallTop, frontWallBottom)
   solids.push(
-    aabb(-7.0, 0, 5.0, -2.0, 3.2, 5.2),
-    aabb(2.0, 0, 5.0, 7.0, 3.2, 5.2),
-    aabb(-2.0, 0, 5.0, 2.0, 3.2, 5.2),
+    aabb(-7.0, -2.0, 0, 3.2, 5.0, 5.2),
+    aabb(2.0, 7.0, 0, 3.2, 5.0, 5.2),
+    aabb(-2.0, 2.0, 0, 3.2, 5.0, 5.2),
   )
 
   // Venetian blinds over front window
@@ -140,26 +154,28 @@ export function buildStation(): StationWorld {
   // Left wall (X = -7.0)
   const leftWall = slab(new Box3(new Vector3(-7.2, 0, -5.0), new Vector3(-7.0, 3.2, 5.0)), wallMat)
   root.add(leftWall)
-  solids.push(aabb(-7.2, 0, -5.0, -7.0, 3.2, 5.0))
+  solids.push(aabb(-7.2, -7.0, 0, 3.2, -5.0, 5.0))
 
   // Right wall (X = +7.0)
   const rightWall = slab(new Box3(new Vector3(7.0, 0, -5.0), new Vector3(7.2, 3.2, 5.0)), wallMat)
   root.add(rightWall)
-  solids.push(aabb(7.0, 0, -5.0, 7.2, 3.2, 5.0))
+  solids.push(aabb(7.0, 7.2, 0, 3.2, -5.0, 5.0))
 
   // --- Interview Room 2 Partition (X: 3.5 to 7.0, Z: -1.5 to -5.0) ---
   // Front partition wall (Z = -1.5, X: 3.5 to 7.0) with doorway from 3.5 to 4.6
   const interFrontL = slab(new Box3(new Vector3(4.6, 0, -1.6), new Vector3(7.0, 3.2, -1.4)), wallMat)
   const interFrontLintel = slab(new Box3(new Vector3(3.5, 2.2, -1.6), new Vector3(4.6, 3.2, -1.4)), wallMat)
   root.add(interFrontL, interFrontLintel)
-  solids.push(aabb(4.6, 0, -1.6, 7.0, 3.2, -1.4))
+  solids.push(aabb(4.6, 7.0, 0, 3.2, -1.6, -1.4))
 
-  // Left partition wall with observation window (X = 3.5, Z: -5.0 to -1.5)
+  // Left partition wall with observation window (X = 3.5, Z: -5.0 to -1.4)
+  const interSideBack = slab(new Box3(new Vector3(3.4, 0, -5.0), new Vector3(3.6, 3.2, -4.5)), wallMat)
+  const interSideFront = slab(new Box3(new Vector3(3.4, 0, -2.0), new Vector3(3.6, 3.2, -1.4)), wallMat)
   const interSideBot = slab(new Box3(new Vector3(3.4, 0, -4.5), new Vector3(3.6, 1.0, -2.0)), wallMat)
   const interSideTop = slab(new Box3(new Vector3(3.4, 2.4, -4.5), new Vector3(3.6, 3.2, -2.0)), wallMat)
   const interSideGlass = slab(new Box3(new Vector3(3.48, 1.0, -4.5), new Vector3(3.52, 2.4, -2.0)), glassMat)
-  root.add(interSideBot, interSideTop, interSideGlass)
-  solids.push(aabb(3.4, 0, -4.5, 3.6, 3.2, -2.0))
+  root.add(interSideBack, interSideFront, interSideBot, interSideTop, interSideGlass)
+  solids.push(aabb(3.4, 3.6, 0, 3.2, -5.0, -1.4))
 
   // --- Forensics Intake Hatch (Back wall: X: -3.8 to -1.2, Z: -4.8) ---
   const forensicsHatch = new Group()
@@ -174,12 +190,12 @@ export function buildStation(): StationWorld {
   bell.position.set(-2.5, 1.09, -4.2)
   forensicsHatch.add(counterTop, counterBase, hatchGlass, bell)
   root.add(forensicsHatch)
-  solids.push(aabb(-3.8, 0, -4.8, -1.2, 2.4, -3.9))
+  solids.push(aabb(-3.8, -1.2, 0, 2.4, -4.8, -3.9))
 
-  // --- Break Station: Bench & Coffee Urn (Left wall: X: -6.8 to -5.2, Z: 0.5 to 2.5) ---
+  // --- Break Station: Bench & Coffee Urn (Left wall: X: -6.8 to -5.5, Z: 0.5 to 2.5) ---
   const breakBench = slab(new Box3(new Vector3(-6.8, 0, 0.5), new Vector3(-5.5, 0.9, 2.5)), woodMat)
   root.add(breakBench)
-  solids.push(aabb(-6.8, 0, 0.5, -5.5, 0.9, 2.5))
+  solids.push(aabb(-6.8, -5.5, 0, 0.9, 0.5, 2.5))
 
   const urn = new Group()
   urn.name = 'coffeeUrn'
@@ -218,10 +234,13 @@ export function buildStation(): StationWorld {
   root.add(noticeboard)
 
   // --- Miller's Desk (X: -2.8 to -0.8, Z: 0.5 to 1.8) ---
+  const deskGroup = new Group()
+  deskGroup.name = 'millerDesk'
   const deskMesh = slab(new Box3(new Vector3(-2.8, 0, 0.5), new Vector3(-0.8, 0.75, 1.8)), steelMat)
   const deskTop = slab(new Box3(new Vector3(-2.85, 0.75, 0.45), new Vector3(-0.75, 0.79, 1.85)), woodMat)
-  root.add(deskMesh, deskTop)
-  solids.push(aabb(-2.85, 0, 0.45, -0.75, 0.79, 1.85))
+  deskGroup.add(deskMesh, deskTop)
+  root.add(deskGroup)
+  solids.push(aabb(-2.85, -0.75, 0, 0.79, 0.45, 1.85))
 
   // Banker's Desk Lamp on Miller's desk
   const lampMat = metalMaterial(new Color(0.2, 0.45, 0.25), 0.35, 0.7) // green enamel shade
@@ -264,23 +283,24 @@ export function buildStation(): StationWorld {
   leapTerminal.add(monitor, screen, keyboard, crtGlow)
   root.add(leapTerminal)
 
-  // Forensics Manila Folder on Miller's desk
+  // Forensics Manila Folder on Miller's desk (revealed once hammer is lodged & analysed)
   const forensicsReport = new Group()
   forensicsReport.name = 'forensicsReport'
   const folderMat = new MeshStandardMaterial({
-    color: new Color(0.86, 0.76, 0.52), // Manila folder
+    color: new Color(0.86, 0.76, 0.52),
     roughness: 0.8,
   })
   const folder = new Mesh(new BoxGeometry(0.32, 0.02, 0.24), folderMat)
   folder.position.set(-1.35, 0.8, 1.25)
   forensicsReport.add(folder)
+  forensicsReport.visible = false
   root.add(forensicsReport)
 
   // --- Partner / Moretti Desk ---
   const partnerDesk = slab(new Box3(new Vector3(0.5, 0, 0.5), new Vector3(2.5, 0.75, 1.8)), steelMat)
   const partnerDeskTop = slab(new Box3(new Vector3(0.45, 0.75, 0.45), new Vector3(2.55, 0.79, 1.85)), woodMat)
   root.add(partnerDesk, partnerDeskTop)
-  solids.push(aabb(0.45, 0, 0.45, 2.55, 0.79, 1.85))
+  solids.push(aabb(0.45, 2.55, 0, 0.79, 0.45, 1.85))
 
   // --- Interview Room 2 Table & Chairs ---
   const tableTop = slab(new Box3(new Vector3(4.5, 0.72, -3.8), new Vector3(6.2, 0.76, -2.6)), woodMat)
@@ -293,7 +313,7 @@ export function buildStation(): StationWorld {
   const tableLeg4 = new Mesh(new CylinderGeometry(0.04, 0.04, 0.72, 8), steelMat)
   tableLeg4.position.set(6.05, 0.36, -2.75)
   root.add(tableTop, tableLeg1, tableLeg2, tableLeg3, tableLeg4)
-  solids.push(aabb(4.5, 0, -3.8, 6.2, 0.76, -2.6))
+  solids.push(aabb(4.5, 6.2, 0, 0.76, -3.8, -2.6))
 
   const markChair = new Group()
   const chairMat = new MeshStandardMaterial({ color: new Color(0.2, 0.22, 0.25), roughness: 0.6 })
@@ -303,32 +323,51 @@ export function buildStation(): StationWorld {
   chairBack.position.set(5.35, 0.68, -4.28)
   markChair.add(chairSeat, chairBack)
   root.add(markChair)
-  solids.push(aabb(5.1, 0, -4.3, 5.6, 0.9, -3.9))
+  solids.push(aabb(5.1, 5.6, 0, 0.9, -4.3, -3.9))
 
-  // Mark actor (seated figure in Room 2)
+  // --- Mark Vance (photo-mapped glTF, seated in Interview Room 2) ---
+  const markGltf = await new GLTFLoader().loadAsync('/models/mark.glb')
+  prepareCharacterLook(markGltf.scene, { contactShadow: false, roughness: 0.78, rimStrength: 0.2 })
+
   const markActor = new Group()
   markActor.name = 'markActor'
-  const markBodyMat = new MeshStandardMaterial({ color: new Color(0.12, 0.12, 0.14), roughness: 0.8 }) // black shirt per photo
-  const markTorso = new Mesh(new BoxGeometry(0.38, 0.52, 0.26), markBodyMat)
-  markTorso.position.set(5.35, 0.72, -4.05)
-  markTorso.rotation.x = 0.15
-
-  const markHeadMat = new MeshStandardMaterial({ color: new Color(0.68, 0.52, 0.42), roughness: 0.7 })
-  const markHead = new Mesh(new CylinderGeometry(0.1, 0.09, 0.22, 12), markHeadMat)
-  markHead.position.set(5.35, 1.08, -3.98)
-  markHead.rotation.x = 0.4 // head bowed down in grief
-
-  // Ponytail per photo description
-  const hairMat = new MeshStandardMaterial({ color: new Color(0.08, 0.06, 0.05), roughness: 0.9 })
-  const ponytail = new Mesh(new CylinderGeometry(0.02, 0.03, 0.18, 8), hairMat)
-  ponytail.position.set(5.35, 1.08, -4.12)
-  ponytail.rotation.x = -0.3
-
-  markActor.add(markTorso, markHead, ponytail)
+  markActor.add(markGltf.scene)
+  markActor.position.set(5.35, 0, -4.08)
+  markActor.rotation.y = Math.PI // facing +Z toward the table and Miller
   root.add(markActor)
 
-  // --- Overhead Fluorescent Lighting ---
-  // Cool white fluorescent tubes in bullpen and interview room
+  const markHips = requireNode(markGltf.scene, 'hips')
+  const markChest = requireNode(markGltf.scene, 'chest')
+  const markHead = requireNode(markGltf.scene, 'head')
+  const markLegs = (['l', 'r'] as const).map((side) => ({
+    hip: requireNode(markGltf.scene, `leg_${side}_0`),
+    knee: requireNode(markGltf.scene, `leg_${side}_1`),
+  }))
+  const markArms = (['l', 'r'] as const).map((side) => ({
+    side,
+    shoulder: requireNode(markGltf.scene, `arm_${side}_0`),
+    elbow: requireNode(markGltf.scene, `arm_${side}_1`),
+  }))
+
+  markHips.position.y = 0.50
+  for (const leg of markLegs) {
+    leg.hip.rotation.x = 1.48
+    leg.knee.rotation.x = -1.48
+  }
+  const markChestBase = -0.22
+  markChest.rotation.x = markChestBase
+  markHead.rotation.x = -0.32
+  for (const arm of markArms) {
+    const bind = arm.shoulder.quaternion.clone()
+    arm.shoulder.rotation.set(0.56, 0, arm.side === 'l' ? 0.14 : -0.14)
+    arm.shoulder.quaternion.multiply(bind)
+    arm.elbow.rotation.x = 0.84
+  }
+
+  // --- Overhead Fluorescent & Soft Skylight Fill ---
+  const bullpenFill = new HemisphereLight(new Color(0xd0dce8), new Color(0x4a4238), 0.45)
+  root.add(bullpenFill)
+
   const tube1 = new PointLight(new Color(0.85, 0.92, 1.0), 3.5, 12, 1.8)
   tube1.position.set(-2.0, 3.0, -1.0)
   const tube2 = new PointLight(new Color(0.85, 0.92, 1.0), 3.5, 12, 1.8)
@@ -337,9 +376,9 @@ export function buildStation(): StationWorld {
   tubeInterview.position.set(5.35, 2.9, -3.2)
   root.add(tube1, tube2, tubeInterview)
 
-  // Spawn position: In front of the entry doors facing into the bullpen
+  // Spawn position: In front of the entry doors facing -Z into the bullpen
   const spawn = new Vector3(-1.5, 0, 3.6)
-  const spawnYaw = 0 // facing -Z
+  const spawnYaw = 0
 
   return {
     group: root,
@@ -350,6 +389,7 @@ export function buildStation(): StationWorld {
       urn,
       leapTerminal,
       forensicsReport,
+      deskGroup,
       markChair,
       noticeboard,
       deskLampLight,
@@ -357,9 +397,9 @@ export function buildStation(): StationWorld {
     },
     spawn,
     spawnYaw,
-    update(_elapsed: number, _playerPos: Vector3): void {
-      // Subtle CRT monitor phosphor pulse
-      crtGlow.intensity = 1.1 + Math.sin(_elapsed * 8) * 0.15
+    update(elapsed: number, _playerPos: Vector3): void {
+      crtGlow.intensity = 1.1 + Math.sin(elapsed * 8) * 0.15
+      markChest.rotation.x = markChestBase + Math.sin(elapsed * 1.35) * 0.015
     },
   }
 }

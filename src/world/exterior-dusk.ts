@@ -81,6 +81,45 @@ export function skyDome(sunDir: Vector3): Mesh {
   return mesh
 }
 
+export function nightSkyDome(moonDir: Vector3): Mesh {
+  const mat = new ShaderMaterial({
+    side: BackSide,
+    depthWrite: false,
+    fog: false,
+    uniforms: { uMoon: { value: moonDir.clone().normalize() }, uTime: { value: 0 } },
+    vertexShader:
+      'varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); gl_Position.z = gl_Position.w; }',
+    fragmentShader:
+      NOISE_GLSL +
+      /* glsl */ `
+      uniform vec3 uMoon; uniform float uTime; varying vec3 vDir;
+      void main(){
+        vec3 d = normalize(vDir); float h = d.y;
+        float s = max(dot(d, uMoon), 0.0);
+        vec3 zenith = vec3(0.015, 0.022, 0.045);
+        vec3 mid = vec3(0.055, 0.07, 0.12);
+        vec3 horizon = vec3(0.16, 0.11, 0.08);
+        vec3 col = mix(mid, zenith, smoothstep(0.0, 0.5, h));
+        col = mix(col, horizon, 1.0 - smoothstep(-0.02, 0.28, h));
+        col += vec3(0.28, 0.35, 0.48) * pow(s, 28.0) * 0.35;
+        col += vec3(0.95, 1.05, 1.2) * smoothstep(0.9992, 0.9997, s) * 0.9;
+        vec2 cp = d.xz / max(h + 0.16, 0.06);
+        float c = ld_fbm(vec3(cp*0.55 + vec2(uTime*0.002, 0.0), 3.0));
+        float c2 = ld_fbm(vec3(cp*1.7 + 4.0, 5.0));
+        float cloud = smoothstep(0.42, 0.78, c*0.75 + c2*0.35) * smoothstep(-0.02, 0.14, h);
+        vec3 cloudCol = mix(vec3(0.02, 0.025, 0.042), vec3(0.11, 0.085, 0.075), 1.0 - smoothstep(0.0, 0.35, h));
+        col = mix(col, cloudCol, cloud * 0.85);
+        if (h < 0.0) col = mix(vec3(0.02, 0.022, 0.03), horizon*0.45, exp(h*24.0));
+        gl_FragColor = vec4(col, 1.0);
+      }`,
+  })
+  const mesh = new Mesh(new SphereGeometry(80, 32, 18), mat)
+  mesh.name = 'ld_night_sky'
+  mesh.frustumCulled = false
+  mesh.renderOrder = -1
+  return mesh
+}
+
 export interface ExteriorDusk {
   readonly root: Group
   readonly lights: Light[]
@@ -89,19 +128,71 @@ export interface ExteriorDusk {
   update(time: number): void
 }
 
-export function installSkyEnvironment(renderer: WebGLRenderer, scene: Scene, sunDir: Vector3): Mesh {
+export interface SkyEnvironment {
+  readonly sky: Mesh
+  dispose(): void
+}
+
+export function installSkyEnvironment(renderer: WebGLRenderer, scene: Scene, sunDir: Vector3): SkyEnvironment {
   const sky = skyDome(sunDir)
   scene.add(sky)
   const probeScene = new Scene()
-  probeScene.add(skyDome(sunDir))
+  const probeSky = skyDome(sunDir)
+  probeScene.add(probeSky)
   const pmrem = new PMREMGenerator(renderer)
   const target = pmrem.fromScene(probeScene, 0.04, 0.1, 90)
   pmrem.dispose()
+  probeSky.geometry.dispose()
+  if (probeSky.material instanceof ShaderMaterial) probeSky.material.dispose()
   scene.environment = target.texture
   scene.environmentIntensity = 0.5
   scene.background = null
   scene.fog = new FogExp2(new Color(0.16, 0.1, 0.07), 0.012)
-  return sky
+  return {
+    sky,
+    dispose(): void {
+      sky.removeFromParent()
+      sky.geometry.dispose()
+      if (sky.material instanceof ShaderMaterial) sky.material.dispose()
+      if (scene.environment === target.texture) {
+        scene.environment = null
+      }
+      target.dispose()
+    },
+  }
+}
+
+export function installNightSkyEnvironment(renderer: WebGLRenderer, scene: Scene, moonDir: Vector3): SkyEnvironment {
+  const sky = nightSkyDome(moonDir)
+  scene.add(sky)
+  const probeScene = new Scene()
+  const probeSky = nightSkyDome(moonDir)
+  probeScene.add(probeSky)
+  const pmrem = new PMREMGenerator(renderer)
+  const target = pmrem.fromScene(probeScene, 0.04, 0.1, 90)
+  pmrem.dispose()
+  probeSky.geometry.dispose()
+  if (probeSky.material instanceof ShaderMaterial) probeSky.material.dispose()
+  scene.environment = target.texture
+  scene.environmentIntensity = 0.45
+  scene.background = null
+  const fog = new FogExp2(0x0d0f17, 0.015)
+  scene.fog = fog
+  return {
+    sky,
+    dispose(): void {
+      sky.removeFromParent()
+      sky.geometry.dispose()
+      if (sky.material instanceof ShaderMaterial) sky.material.dispose()
+      if (scene.environment === target.texture) {
+        scene.environment = null
+      }
+      if (scene.fog === fog) {
+        scene.fog = null
+      }
+      target.dispose()
+    },
+  }
 }
 
 export function buildExteriorDressing(): ExteriorDusk {

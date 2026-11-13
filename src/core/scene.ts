@@ -61,6 +61,13 @@ export class SceneManager {
     emit('scene:load', { id: this.current })
   }
 
+  /** Advance live runtime state to the next scene and reset completion state. */
+  transitionTo(id: SceneId): void {
+    this.current = id
+    this.completed = false
+    emit('scene:load', { id })
+  }
+
   fadeIn(): void {
     this.fade.classList.remove('is-out')
   }

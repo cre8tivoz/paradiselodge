@@ -250,6 +250,14 @@ const SHOTS: Record<string, ShotFn> = {
     const aim = lookAim(new Vector3(-3.5, -0.6, -10.0), new Vector3(-3.5, -1.9, -13.0))
     player.place(new Vector3(-3.5, -2.0, -10.0), aim.yaw, aim.pitch)
   },
+
+  'mahoneys-exit': ({ player, hands, hudRoot, pub }) => {
+    hudRoot.style.display = 'none'
+    hands.setVisible(false)
+    pub?.setSterlingFleeing(true)
+    const aim = lookAim(new Vector3(3.0, 1.7, -2.5), new Vector3(4.8, 1.3, -4.3))
+    player.place(new Vector3(3.0, 0, -2.5), aim.yaw, aim.pitch)
+  },
 }
 
 function lookAim(eye: Vector3, target: Vector3): { yaw: number; pitch: number } {

@@ -1,8 +1,10 @@
 Original prompt: Lets get started with the next phases.
 
-Historical implementation log only. Current scope and status live in
-`docs/ROADMAP.md`; the step numbers below came from the retired interior asset
-pipeline and are not current project phases.
+Historical implementation log only. Current scope and reconciled status live in
+`docs/ROADMAP.md` and `docs/MOVING-FORWARD.md`; the step numbers below came from
+the retired interior asset pipeline, and the `6 November 2026` summary below
+contains unverified completion claims (see `docs/ROADMAP.md` for actual P0 bugs,
+28 total gates, and exact audio/test state).
 
 ## 1 August 2026
 

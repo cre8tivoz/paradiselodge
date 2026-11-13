@@ -776,11 +776,13 @@ export function buildLodge(): Lodge {
       uniforms,
     },
     update(elapsed: number, playerPos: Vector3): void {
-      const beat = Math.sin(elapsed * 11.3) + Math.sin(elapsed * 4.1)
-      const failing = beat < -1.72
-      neonMat.map = failing ? neonTexB : neonTexA
-      neonMat.opacity = failing ? 0.35 : 1
-      neonMat.needsUpdate = true
+      if (neonPlateMesh.parent !== null) {
+        const beat = Math.sin(elapsed * 11.3) + Math.sin(elapsed * 4.1)
+        const failing = beat < -1.72
+        neonMat.map = failing ? neonTexB : neonTexA
+        neonMat.opacity = failing ? 0.35 : 1
+        neonMat.needsUpdate = true
+      }
 
       if (!tapeLifted) {
         const dz = Math.abs(playerPos.z - (-2.335))

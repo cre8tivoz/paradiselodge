@@ -12,7 +12,7 @@ Photoreal 1994 St Kilda crime film. Match the references in `images/`, in partic
 
 Interiors are tungsten amber. Nicotine walls. Haze and dust in the light shafts.
 
-The exterior is golden hour into dusk. The road is wet. The neon is pink `THE PARADISE LODGE` and cyan `ROOMS TO LET`. Facade frames are `images/concept-art/01-title-card-the-paradise-lodge.png` and `images/concept-art/02-miller-at-the-lodge-exterior.png`. The reception camera pass uses `images/concept-art/03-reception-with-rosie.png`.
+The exterior is golden hour into dusk. The road is wet. The neon is pink `THE PARADISE LODGE` and cyan `ROOMS TO LET`. Facade frames are `images/concept-art/01-title-card-the-paradise-lodge.png` and `images/concept-art/02-miller-at-the-lodge-exterior.png`. (The third-person over-the-shoulder reception view in `images/concept-art/03-reception-with-rosie.png` is retired; gameplay remains strict first person.)
 
 Dusk is the default. `?look=day` or `?daylight=1` keeps the 3pm HDRI and the baked interior. Do not bake a new lightmap to chase the dusk picture.
 
@@ -22,31 +22,25 @@ Code-first three.js. Lighting, materials and post live in the engine (`src/rende
 
 The film stack is ambient occlusion (GTAO), bloom, and one grade pass: grain, vignette, split-tone. Depth of field is for cutscenes and stills. It stays off in play.
 
-No Blender session and no local Mac bake is required to change the look or to add a character. Room 1A and the rest of the interior already have lightmaps. Leave them. Do not start another Cycles bake.
+No Blender session, no Hugging Face Hunyuan3D Space, no Mixamo upload and no local Mac bake is required to change the look or to add a character. Room 1A and the rest of the interior already have lightmaps. Leave them. Do not start another Cycles bake.
 
-Characters come from image-to-3D, from the turnaround sheets in `images/characters/`. Free tools first: Hunyuan3D on Hugging Face Spaces. Rig and animate in Mixamo. Export a GLB. Generated textures and CC0 textures are allowed. Poly Haven and credited CC meshes stay available for furniture and architecture. Record anything third-party in `docs/CREDITS.md`.
+Characters come directly from the photorealistic turnaround sheets in `images/characters/` mapped in code onto articulated 3D geometry and exported as compact self-contained GLBs for Three.js. Generated textures and CC0 textures are allowed. Poly Haven and credited CC meshes stay available for furniture and architecture. Record anything third-party in `docs/CREDITS.md`.
 
 Fill has direction. Day mode uses the HDRI. Dusk uses a sky probe plus practicals. Do not put an `AmbientLight` back.
 
 ## The character pipeline
 
-Proven on Rosie. Use the same steps for the rest of the cast. The scripts are in `tools/lookdev/`. Rosie's source files are in `art-source/characters/rosie/`. The game-ready mesh is `public/models/rosie-rigged.glb`. It is not wired into gameplay. The live figure is still `public/models/rosie.glb`.
+Rosie (`public/models/rosie-rigged.glb`) ships with her existing Mixamo `idle` clip and cigarette ember pulse (source archive in `art-source/characters/rosie/`).
 
-1. **Clean cutout.** `tools/lookdev/tools_cut_rosie.py` cuts front, three-quarter and profile out of `images/characters/rosie-sheet.png`, with a clean alpha.
-2. **A-pose reference.** `tools/lookdev/phase2/v2/apose.py` builds the front A-pose from that cutout in code: sleeves rotated out about the shoulder, legs stepped apart. `phase2/v2/back.py` synthesises the back. The shipped references are `art-source/characters/rosie/apose-front.png` and `apose-back.png`.
-3. **Hunyuan3D shape.** `phase2/hunyuan.py` and `phase2/hyshape.py` send the A-pose front to a free Hunyuan3D Hugging Face Space. Rosie v2 used Hunyuan3D-2.
-4. **Texture bake from the sheet.** `phase2/v2/bake_v2.py` projects the A-pose front, the synthesised back and the sheet profile onto the mesh. The face gets its own island from a 4× upscale of the sheet face. Outputs: `rosie-v2-body.png`, `rosie-v2-face.png`, `rosie-v2-hair.png`, plus glasses and a cigarette.
-5. **Decimate to 20-50k triangles.** The bake targets about 36k on the body, then normalises height to 1.65 m. The shipped rigged mesh is about 39.5k triangles.
-6. **A-pose FBX.** `art-source/characters/rosie/rosie3d-v2-mixamo.fbx` is the file that was uploaded to Mixamo.
-7. **Mixamo auto-rig.** Auto-rig that FBX and download the clips. Idle and walk are in `art-source/characters/rosie/mixamo/`.
-8. **GLB with clips.** FBXLoader, then GLTFExporter (headless Chrome, `tools/lookdev/out/phase2/v2/src/export_rigged.mjs`), then gltf-transform (weld, resample, dedup, prune, WebP), then `finish_glb.mjs` to clear the invalid `skin.skeleton` pointer. The result is `public/models/rosie-rigged.glb`: one `mixamorig*` skeleton, 33 bones, clips `idle` (6.0 s) and `walk` (1.03 s). The walk has root motion. It is not in place. Textures are WebP: body 2048, face 1024, hair 512 with alpha mask, double-sided. About 2.6 MB. No Draco, no meshopt.
+For the rest of the cast (`moretti`, `crystal`, `mark`, `victor`, `sterling`), character assets are generated cleanly and reproducibly inside the repo with `tools/characters/build_characters.py` and rendered/animated in Three.js (`src/npc/`):
 
-Limits, from this run. They will show up on the next character too.
+1. **Sheet matte extraction.** Each turnaround sheet (`images/characters/<name>-sheet.png`) is segmented cleanly from its studio grey backdrop into front, three-quarter and profile crops.
+2. **Articulated 3D anatomical lofting.** Head, neck, torso, hips, upper/lower arms, hands, thighs, shins and footwear are lofted in 3D from both the Front width silhouette and Profile depth silhouette at anatomically aligned Y slices (with cranial/facial relief, Mark's ponytail, Moretti's utility belt and Crystal's V-neck dress/heels/needle/sling), emitted in glTF 2.0 coordinates (`+Y` up, `-Z` forward) with named joint nodes (`hips`, `chest`, `head`, `arm_{l,r}_{0,1}`, `leg_{l,r}_{0,1}`, `foot_{l,r}`).
+3. **High-resolution sheet projection atlas.** Continuous cylindrical/planar texture islands pack a high-resolution face band plus clothing and rear fabric textures sampled from the front, three-quarter and profile photos (plus clean non-mirrored rear fabric synthesis so faces never wrap onto the back).
+4. **Three.js dusk rim shading & runtime posing.** `src/npc/character-look.ts` applies subtle Fresnel rim lighting and contact shadows to match Rosie inside dusk GTAO/grade; runtime scripts pose each rig anatomically per scene (`moretti.ts` walk/crouch/attend, `crystal.ts` supine on bed with lividity/temple wound, S2 seated Mark, S3 sprinting/vaulting Victor, S4 seated interrogation Victor + observer Moretti, S5 bar-tending Sterling + Moretti).
 
-- **Mitten hands.** Image-to-3D does not deliver fingers you can pose. Mixamo weights a mitten as a hand. Do not expect finger acting.
-- **Invented backs.** The sheet has no true back view. The back is synthesised, then baked. It will read as plausible, not as a photograph of her back.
-- **Soft faces.** The raw image-to-3D face goes soft. The face island, baked from an upscaled sheet crop, is what makes it readable. Judge it at the distance the player stands.
-- **Free quota.** Hugging Face Spaces free GPU time runs out, and a Space can be down or rate-limited. The scripts are a record of what worked, not a promise the same Space answers tomorrow. The downloaded GLB and FBX stay in the repo so a quota miss does not strand the character.
+Limits to keep in mind:
+- **Mitten hands & covered backs.** Front/profile sheets do not show an independent rear view; rear hair/clothing are synthesised from profile fabric so actors read convincingly from every gameplay angle without external AI generators.
 
 ## Performance budget
 
@@ -75,15 +69,15 @@ Git LFS is not used. The repo already stores binaries of this size as ordinary g
 
 ## Roadmap / next quick wins
 
-None of this is done by archiving the files. The live game still loads `public/models/rosie.glb`.
+Author decisions locked; tracking current status of each quick win before starting Stage 2 fixes:
 
-1. Put rigged Rosie at reception. Idle while she stands. The walk clip has root motion, so either consume that motion or use an in-place walk before she moves.
-2. Rework the reception camera to the over-the-shoulder view in `images/concept-art/03-reception-with-rosie.png`.
-3. Crisp neon streak reflections on the wet road. Pink `THE PARADISE LODGE`, cyan `ROOMS TO LET`.
-4. A more ornate exterior facade, against concepts 01 and 02: Victorian silhouette, arched openings, iron lace.
-5. Moretti next, then Crystal, then the rest of the cast: Miller, Mark, Sterling, Victor. Same pipeline. The sheets are already in `images/characters/`.
-6. Portrait art in the dialogue panel.
-7. Richer hall and stairs: turned balusters, peeling plaster.
-8. Fix the flat CRT screen and the crushed parlour chairs.
+1. **Rigged Rosie at reception & parlour — Partial (wired, polish queued):** `public/models/rosie-rigged.glb` is now wired with Mixamo `idle` and ember glow. Remaining quick wins: fix `head.rotation` additive `+=` drift in `src/npc/rosie.ts`, remove dead `restLift` field, remove retired `public/models/rosie.glb`, and strip editorialising `"infamous"` from Rosie's reception description.
+2. **Reception camera (`03-reception-with-rosie.png`) — Decision locked (OTS retired):** Keep strict first person throughout reception and all playable dialogue so Miller stays unseen until the Watchhouse epilogue still (optional subtle first-person eye framing on reception talk only, never a third-person body).
+3. **Wet-road neon streak reflections — Done (S1):** Implemented in `src/materials/look.ts` `asphaltMaterial()` (`THE PARADISE LODGE` pink / `ROOMS TO LET` cyan). In Stage 2, decouple Scene 3 Regent Street asphalt from Scene 1's lodge neon X/Z reflection streaks.
+4. **More ornate exterior facade — Done (S1):** Authored `public/models/lodge-exterior.glb` and exterior dressing integrated. Cleanup queued: remove or wire the detached `neonMat` flicker inside `src/world/lodge.ts` (overridden when exterior GLB replaces `lodge.props.neon`).
+5. **Rest of the cast — In progress:** Map Moretti, Crystal, Mark (S2), Victor (S3/S4), and Sterling (S5) directly from `images/characters/*-sheet.png` via `tools/characters/build_characters.py` and wire articulated Three.js poses across Scenes 1–5 (zero Blender/Hunyuan3D/Mixamo required).
+6. **Portrait art in dialogue panel — Partial:** `public/portraits/{mark,moretti,rosie,sterling,victor}.png` are wired in `src/dialogue/panel.ts`, but exact-key lookup misses variants like `'Moretti (Radio)'`, `'Victor Rakov'`, `'Kenneth Sterling'`, `'Forensics Tech'`, `'Punter'`, `'Detective Graham Miller'`. Normalize speaker matching in Stage 2.
+7. **Richer hall and stairs — Partial:** Turned balusters and runner shipped in `unit-a.glb`; upstairs room number plates (`1A`, `1B`, `1C`) queued as a Scene 1 polish quick win.
+8. **Parlour/Reception visual fixes — Partial:** Fix Parlour `sunBeam` slicing across Rosie (`src/render/dusk.ts`), refine the reception CRT cabinet corner and Parlour armchair/TV finish, and bring Scenes 2–5 into the shared `installPost()` film grade (removing `AmbientLight` and dark void skyboxes).
 
-Scene 1 verbs, evidence, gates, dialogue and audio stay as they are while this picture work is going on.
+Gameplay verbs, evidence rules, and Scenes 2–5 structural P0 fixes are tracked in `docs/ROADMAP.md`.

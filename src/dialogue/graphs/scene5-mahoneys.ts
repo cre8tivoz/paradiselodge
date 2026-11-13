@@ -17,7 +17,7 @@ export const SCENE5_STERLING_CONFRONTATION: DialogueGraph = {
     sterling_intro: {
       id: 'sterling_intro',
       speaker: 'Kenneth Sterling',
-      line: "Miller. You're out of your division. St Kilda uniform is one thing, but CID sniffing around my taps on a Friday night is bad for business.",
+      line: "Miller. You're out of your division. St Kilda uniform is one thing, but CID sniffing around my taps after midnight is bad for business.",
       choices: [
         {
           id: 'victor_leverage',
@@ -51,7 +51,7 @@ export const SCENE5_STERLING_CONFRONTATION: DialogueGraph = {
     warrant_demand: {
       id: 'warrant_demand',
       speaker: 'Kenneth Sterling',
-      line: "Not without a Section 92 search warrant signed by a magistrate, Detective. And it's past eight on a Friday. Courts closed at four-thirty.",
+      line: "Not without a Section 92 search warrant signed by a magistrate, Detective. It's past midnight on a Sunday. Not a magistrate awake in Melbourne.",
       choices: [
         {
           id: 'push_warrant',
@@ -93,7 +93,7 @@ export const SCENE5_STERLING_CONFRONTATION: DialogueGraph = {
     moretti_covers: {
       id: 'moretti_covers',
       speaker: 'Moretti',
-      line: "Police! Break it up! Back against the timber, both of you! Miller—deal with Sterling! I've got these two pinned!",
+      line: "Police! Break it up! Back against the timber, both of you! Miller, deal with Sterling! I've got these two pinned!",
       choices: [
         {
           id: 'corner_sterling',
@@ -153,7 +153,7 @@ export const SCENE5_CELLAR_SAFE: DialogueGraph = {
     cellar_entry: {
       id: 'cellar_entry',
       speaker: 'Detective Graham Miller',
-      line: "Between the Carlton Draught kegs. A Chub-pattern floor safe recessed into the wet bluestone foundation. The brass mortise key slides cleanly into the tumbler.",
+      line: "Between the Carlton Draught kegs. A Chubb-pattern floor safe recessed into the wet bluestone foundation. The brass mortise key slides cleanly into the tumbler.",
       choices: [
         {
           id: 'open_safe',

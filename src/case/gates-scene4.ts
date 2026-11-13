@@ -39,21 +39,21 @@ export const SCENE4_GATES: readonly GateDef[] = [
     n: 1,
     space: 'Interview Table',
     beat: 'Confront Victor with the murder weapon forensics and latent prints',
-    isMet: (f) => f.chosen('hammer') || f.heard('hammer_ans3'),
+    isMet: (f) => f.heard('hammer_ans3'),
   },
   {
     id: 'confront_bootprint',
     n: 2,
     space: 'Interview Table',
     beat: 'Confront Victor with bootprint impressions matching the 1A windowsill',
-    isMet: (f) => f.chosen('bootprint') || f.heard('boot_ans3'),
+    isMet: (f) => f.heard('boot_ans3'),
   },
   {
     id: 'confront_slip',
     n: 3,
     space: 'Interview Table',
     beat: "Confront Victor with Sterling's slip; Victor breaks and confesses to the burglary",
-    isMet: (f) => f.filed('victor_confession') || f.chosen('slip') || f.heard('slip_break4'),
+    isMet: (f) => f.filed('victor_confession') || f.heard('slip_break4'),
   },
   {
     id: 'sterlings_hideout',
@@ -114,6 +114,11 @@ export class Scene4GateTracker {
 
   get outstanding(): GateDef[] {
     return SCENE4_GATES.filter((gate) => !this.unlockedIds.has(gate.id))
+  }
+
+  recordHeard(nodeId: string): void {
+    this.heardIds.add(nodeId)
+    this.evaluate()
   }
 
   dispose(): void {

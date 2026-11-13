@@ -14,7 +14,7 @@
  * 7. Dialogue UI (DOM Choice Button Clicks & progression)
  * 8. Evidence Tagging Key G
  */
-import { chromium } from 'playwright'
+import { launchBrowser } from './browser.mjs'
 import { spawn } from 'node:child_process'
 import { resolve } from 'node:path'
 import net from 'node:net'
@@ -51,20 +51,7 @@ console.log('========================================================\n')
 
 const server = await ensureServer()
 
-const browser = await chromium.launch({
-  headless: true,
-  args: [
-    '--no-sandbox',
-    '--disable-setuid-sandbox',
-    '--disable-dev-shm-usage',
-    '--ignore-certificate-errors',
-    '--ignore-gpu-blocklist',
-    '--enable-gpu-rasterization',
-    '--force-color-profile=srgb',
-    '--hide-scrollbars',
-    '--mute-audio',
-  ],
-})
+const browser = await launchBrowser()
 
 const page = await browser.newPage({
   viewport: { width: 1024, height: 768 },
@@ -198,6 +185,8 @@ try {
   })
 
   await page.evaluate(() => {
+    const gameCanvas = document.getElementById('game')
+    gameCanvas?.dispatchEvent(new MouseEvent('mousedown', { button: 0, bubbles: true }))
     const e = new MouseEvent('mousemove', {
       bubbles: true,
       movementX: 120,
@@ -205,6 +194,7 @@ try {
     })
     document.dispatchEvent(e)
     window.__lodge.player.update(0.016)
+    window.dispatchEvent(new MouseEvent('mouseup', { button: 0, bubbles: true }))
   })
 
   const rotAfter = await page.evaluate(() => {
@@ -221,15 +211,27 @@ try {
   // Test 5: Case File Notebook (KeyN / Esc toggle)
   // -------------------------------------------------------------------------
   console.log('\n--- Test 5: Case File Notebook (KeyN / Esc toggle) ---')
+  const stepFrames = (n = 2) =>
+    page.evaluate(
+      (count) =>
+        new Promise((done) => {
+          let i = 0
+          const tick = () => (++i >= count ? done() : requestAnimationFrame(tick))
+          requestAnimationFrame(tick)
+        }),
+      n,
+    )
+
   // Step across the front door threshold into the lodge to conclude cold open
   await page.evaluate(() => {
     const L = window.__lodge
     L.player.place(new L.Vector3(0, 0, 2.5), 0, 0)
     L.gates.update(L.player.position)
   })
+  await stepFrames(2)
 
   await page.keyboard.press('KeyN')
-  await page.waitForTimeout(100)
+  await stepFrames(2)
 
   const notebookOpenCheck = await page.evaluate(() => {
     const L = window.__lodge
@@ -244,7 +246,7 @@ try {
 
   // Press Escape to close
   await page.keyboard.press('Escape')
-  await page.waitForTimeout(100)
+  await stepFrames(2)
 
   const notebookCloseCheck = await page.evaluate(() => {
     const L = window.__lodge
@@ -261,10 +263,11 @@ try {
   // Test 6: Crosshair Raycast & Interaction Key F (Examine)
   // -------------------------------------------------------------------------
   console.log('\n--- Test 6: Crosshair Raycasting & Interaction Key F ---')
-  // Teleport player near the Room 1A bed facing the single bed
+  // Teleport inside Room 1A beside the bed facing Crystal / the examine target
   await page.evaluate(() => {
     const L = window.__lodge
-    L.player.place(new L.Vector3(3.55, 3.45, 1.05), Math.PI + 0.55, -0.1)
+    L.hands.cancel()
+    L.player.place(new L.Vector3(2.35, 3.45, 1.85), Math.PI + 1.05, -0.34)
     L.look.update()
   })
 
@@ -278,7 +281,7 @@ try {
 
   // Press KeyF to examine
   await page.keyboard.press('KeyF')
-  await page.waitForTimeout(100)
+  await stepFrames(2)
 
   const handsPlaying = await page.evaluate(() => {
     return {
@@ -296,25 +299,25 @@ try {
   // Test 7: Dialogue UI & Option Button Clicking
   // -------------------------------------------------------------------------
   console.log('\n--- Test 7: Dialogue UI & Option Button Clicking ---')
-  // Walk over to Rosie at reception
+  // Walk over to Rosie at reception (x = 3.5, z = 3.15) clearing the desk (y = 1.14)
   await page.evaluate(() => {
     const L = window.__lodge
-    L.player.place(new L.Vector3(2.0, 0, 1.2), -Math.PI / 2, 0)
+    L.player.place(new L.Vector3(3.5, 0, 1.4), Math.PI, -0.12)
     L.look.update()
   })
 
   // Press KeyF to talk to Rosie
   await page.keyboard.press('KeyF')
-  await page.waitForTimeout(200)
+  await stepFrames(2)
 
   const dialogueActiveCheck = await page.evaluate(() => {
     const L = window.__lodge
-    const panel = document.querySelector('.dialogue-panel')
+    const panel = document.querySelector('.dialogue')
     return {
       isActive: L.dialogue.isActive,
-      panelVisible: panel !== null && panel.classList.contains('is-visible'),
+      panelVisible: panel !== null && panel.classList.contains('is-open'),
       speaker: L.dialogue.current?.speaker,
-      choicesCount: document.querySelectorAll('.dialogue-choice').length,
+      choicesCount: document.querySelectorAll('.dialogue-choices button').length,
     }
   })
   assert(dialogueActiveCheck.isActive, `KeyF initiated dialogue with ${dialogueActiveCheck.speaker}`)
@@ -322,10 +325,10 @@ try {
 
   // Click on a dialogue choice button in the DOM if choices are present
   if (dialogueActiveCheck.choicesCount > 0) {
-    const choiceBtn = await page.$('.dialogue-choice')
+    const choiceBtn = await page.$('.dialogue-choices button')
     assert(choiceBtn !== null, "Dialogue choice button rendered in DOM")
     await choiceBtn.click()
-    await page.waitForTimeout(100)
+    await stepFrames(2)
     assert(true, "Clicked dialogue choice button successfully in the browser")
   }
 
@@ -345,10 +348,10 @@ try {
   // Test 8: Tagging Key G
   // -------------------------------------------------------------------------
   console.log('\n--- Test 8: Evidence Tagging Key G ---')
-  // Teleport to parlour table where notebook is taggable
+  // Teleport beside parlour table facing West (-X) toward the diary at (-3.4, 0.52, 2.5)
   await page.evaluate(() => {
     const L = window.__lodge
-    L.player.place(new L.Vector3(3.2, 0, -1.8), Math.PI, -0.3)
+    L.player.place(new L.Vector3(-2.4, 0, 2.5), Math.PI / 2, -0.87)
     L.look.update()
   })
 
@@ -358,19 +361,14 @@ try {
       taggable: window.__lodge.look.target?.taggable,
     }
   })
+  assert(tagTarget.taggable === true, `Crosshair locked onto taggable evidence '${tagTarget.targetId}'`)
 
-  if (tagTarget.taggable) {
-    await page.keyboard.press('KeyG')
-    await page.waitForTimeout(200)
-    const tagFired = await page.evaluate(() => {
-      return window.__lodge.moretti.state === 'approaching' || window.__lodge.moretti.state === 'bagging'
-    })
-    assert(tagFired, "Pressing KeyG dispatched Constable Moretti to bag evidence")
-  } else {
-    await page.keyboard.press('KeyG')
-    await page.waitForTimeout(100)
-    assert(true, "Pressing KeyG handled gracefully by HUD")
-  }
+  await page.keyboard.press('KeyG')
+  await stepFrames(2)
+  const tagFired = await page.evaluate(() => {
+    return window.__lodge.moretti.state === 'approaching' || window.__lodge.moretti.state === 'bagging'
+  })
+  assert(tagFired, "Pressing KeyG dispatched Constable Moretti to bag evidence")
 
   console.log('\n========================================================')
   console.log('🎉 ALL CONTROLS & BROWSER INTERACTION TESTS PASSED 100%!')

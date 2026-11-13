@@ -6,7 +6,7 @@
  * reports distributions and shader-program changes because a median alone can
  * hide the first-view stalls that matter in a short authored experience.
  */
-import { chromium } from 'playwright'
+import { launchBrowser } from './browser.mjs'
 import { spawn } from 'node:child_process'
 import { resolve } from 'node:path'
 import net from 'node:net'
@@ -55,16 +55,7 @@ async function ensureServer() {
 }
 
 const server = await ensureServer()
-const browser = await chromium.launch({
-  headless: true,
-  args: [
-    '--use-angle=metal',
-    '--ignore-gpu-blocklist',
-    '--mute-audio',
-    '--disable-frame-rate-limit',
-    '--disable-gpu-vsync',
-  ],
-})
+const browser = await launchBrowser(['--disable-frame-rate-limit', '--disable-gpu-vsync'])
 const page = await browser.newPage({
   viewport: { width: W, height: H },
   deviceScaleFactor: DPR,

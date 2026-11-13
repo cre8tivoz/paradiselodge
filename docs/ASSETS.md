@@ -146,35 +146,34 @@ Cell door, corridor, and the only third-person camera in the game.
 
 | Character | Fidelity | Notes |
 |---|---|---|
-| **Miller** | Hands only, until the last shot | Gloves in scene 1. Cuff state per scene. Face matters once. **Hand mesh done:** source `assets/blender/miller-hand.blend`, shipped `public/models/miller-hand.glb`, ref `images/characters/miller-hands.png` |
-| **Moretti** | Full, mid distance | Uniform constable. Never closer than two metres. **Mesh done:** `assets/blender/moretti.blend`, `public/models/moretti.glb` |
-| **Rosie** | Full, close | Mid 50s, shoulder-length red and grey, ugly cardigan, cigarette always lit. **Live mesh:** `public/models/rosie.glb` (the game still loads this). **Rigged replacement, not wired:** `public/models/rosie-rigged.glb`, source in `art-source/characters/rosie/`. See `docs/MOVING-FORWARD.md` |
-| **Crystal** | Full, very close | 28, blonde, petite, well dressed. Twelve hours dead. Lividity and rigor visible. **Mesh done:** `assets/blender/crystal.blend`, `public/models/crystal.glb`. On the bed in room 1A |
-| **Mark** | Full, mid | Bouncer build, black shirt, ponytail. Matches the photo exactly |
-| **Victor** | Full, distance and interview | Seen running, then across a table |
-| **Sterling** | Full, close | Publican. Smug. Needs a face worth grabbing |
+| **Miller** | Hands only, until the epilogue | Gloves in scene 1. Cuff state per scene. Silhouette shown beside Moretti in Scene 5 Watchhouse epilogue still. **Hand mesh done:** source `assets/blender/miller-hand.blend`, shipped `public/models/miller-hand.glb`, ref `images/characters/miller-hands.png` |
+| **Moretti** | Full, mid distance | Uniform constable. Never closer than two metres. Generated locally from `images/characters/moretti-sheet.png` to `public/models/moretti.glb` (preserving Three.js joint hierarchy across S1–S5) |
+| **Rosie** | Full, close | Mid 50s, shoulder-length red and grey, ugly cardigan, cigarette always lit. **Live mesh:** `public/models/rosie-rigged.glb` (Mixamo `idle` loop + cigarette ember pulse). Older `public/models/rosie.glb` is retired and queued for removal. Source in `art-source/characters/rosie/`. See `docs/MOVING-FORWARD.md` |
+| **Crystal Vance** | Full, very close | 22, blonde, petite, well dressed. Twelve hours dead. Lividity and rigor visible. Generated locally from `images/characters/crystal-sheet.png` to `public/models/crystal.glb`. On the bed in room 1A |
+| **Mark** | Full, mid | Bouncer build (Prince of Wales, Fitzroy St), black shirt, ponytail. Mapped from `images/characters/mark-sheet.png` to `public/models/mark.glb` (seated in S2 Interview Room 2) |
+| **Victor Rakov** | Full, distance and interview | Seen running in Scene 3, then across a table in Scene 4. Mapped from `images/characters/victor-sheet.png` to `public/models/victor.glb` |
+| **Kenneth Sterling** | Full, close | Publican at Mahoney's Bar. Smug. Mapped from `images/characters/sterling-sheet.png` to `public/models/sterling.glb` |
 | **Uniforms, drinkers** | Low, background | Never examined |
 
-**The final shot is the only frame where a face has to be perfect.** Two characters, one angle, one lighting setup. Hand-tune it. Everything else is bodies at distance, a corpse, and a woman smoking.
+**The closing epilogue still is the watchhouse corridor frame.** During scenes 1–5 the camera stays strictly in first person (OTS reception camera retired); Miller is never rendered as a playable 3D body before the Watchhouse epilogue still (`src/ui/ending-screen.ts`).
 
 ---
 
 ## Audio
 
-Web Audio. Synthesise or source royalty-free from Freesound.
+Hybrid Web Audio synthesis + 5-track ElevenLabs Music neo-noir soundtrack.
 
 ### Ambience per scene
 - **Street:** traffic on Fitzroy Street, a tram two blocks off, gulls
 - **Lodge interior:** the building settling, a clock, a radio in another room, silence with weight
-- **Room 1A:** almost nothing. Distant traffic through the open sash. Flies
-- **Station:** fluorescent hum, phones, typewriters, a printer
-- **Mahoney's:** pokies, TAB commentary, a jukebox, glass
+- **Room 1A:** almost nothing. Distant traffic through the open sash. Flies. Low sustained room tone
+- **Station (Scene 2), Prahran Laneway (Scene 3), Interview Room (Scene 4), Mahoney's (Scene 5):** procedural ambience beds planned/queued to replace Scene 1 bleed
 
 ### Foley
-Footsteps on marble, carpet, floorboards, verandah timber, bitumen. Gloves going on. Sash window. Wardrobe. Paper. Lighter. Ashtray. Cassette recorder engaging.
+Web Audio mathematical synthesizers (`src/audio/footsteps.ts`, `src/audio/foley.ts`): footsteps on marble, carpet, floorboards, verandah timber, bitumen (plus `bluestone` / `gravel` queued). Gloves going on. Sash window. Wardrobe. Paper. Lighter. Ashtray. Watchhouse cell door slam (`cellSlam`). Cassette recorder (`tapeClick` / `tapeHum`) and rotary safe dial (`safeDialClick`) queued.
 
 ### Music
-Almost none. A single sustained low tone in room 1A that you cannot quite identify as music. Nothing in scenes 2 to 4. One cue on the cell door.
+**Approved 5-track ElevenLabs Music score** (`public/audio/soundtrack/01-theme-paradise-lodge.mp3` through `05-theme-mahoneys-end.mp3`), streamed via `SoundtrackPlayer` (`src/audio/soundtrack.ts`) alongside Web Audio foley and ambience beds. Stage 2 audio task will route `SoundtrackPlayer` through Web Audio `Mixer` for smooth scene crossfading and dialogue ducking, and deduplicate the 18 MB copy in `assets/audio/soundtrack/`.
 
 **Never score the discoveries.** No sting when Miller finds the temple. The absence is the effect.
 
@@ -182,49 +181,46 @@ Almost none. A single sustained low tone in room 1A that you cannot quite identi
 
 ## What to make with image generation
 
-Image gen is excellent for textures and fixed frames. It is poor at producing game-ready 3D characters. Use it on the first list, not the second.
+Image gen is used for turnaround sheets, portraits, paper props and decals. Character 3D meshes after Rosie are generated locally in-repo from `images/characters/*-sheet.png` and posed directly in Three.js (`tools/characters/build_characters.py`), requiring zero Blender, Hunyuan3D or Mixamo steps.
 
 ### Do — these are the highest-value assets in the game
 
 | Asset | Why |
 |---|---|
 | **The photo in the frame** | Crystal and Mark, 1994 snapshot. Slightly overexposed, bad flash, pub background. This is a texture, and it is the single most loaded object in room 1A |
-| **Victor's record photo** | Scene 2. Mugshot or a photo clipped into a manila jacket |
-| **Travel magazines** | Cover art. Early-90s travel mag layout. Destination unreadable or cropped off |
-| **The map with pins** | Folded paper texture, creases, pin holes |
-| **The note** | Handwriting. "fly out April 6th! Can't wait!" |
-| **Crystal's diary pages** | The ledger. Dates and amounts. Only one page ever gets read |
-| **Wall art, signage, labels** | Neon sign design, Mahoney's decals, Carlton mirror, station noticeboard |
-| **Character sheets for modelling** | Rosie's cardigan, Sterling's face, Crystal's dress. Reference to model against, not the model |
-| **Palette and mood boards** | 1994 St Kilda. Lock the look before anyone builds geometry |
+| **Victor's record photo** | Scene 2. `public/textures/victor-record.jpg` — wire onto Manila folder / LEAP dossier |
+| **Travel magazines** | Cover art. Early-90s travel mag layout (`public/textures/magazines.jpg`) |
+| **The map with pins** | Folded paper texture, creases, pin holes (`public/textures/map-pins.jpg`) |
+| **The note** | Handwriting. "fly out April 6th! Can't wait!" (`public/textures/note.jpg`) |
+| **Crystal's diary pages** | The ledger (`public/textures/diary-page.jpg`) |
+| **Wall art, signage, labels** | Neon sign design (`public/textures/neon-sign.png`), Mahoney's decals, Carlton mirror, station noticeboard |
+| **Character sheets for modelling** | Rosie, Moretti, Crystal, Miller, Mark, Sterling, Victor (`images/characters/`) |
+| **Palette and mood boards** | 1994 St Kilda (`images/mood/`, `images/concept-art/`) |
 
-### The final shot does not have to be realtime
+### The final frame
 
-The only frame in the game where a face must be perfect is the last one. It is a fixed camera, one angle, one lighting setup, and it never moves.
-
-**Render it as a still, or a short pre-rendered sequence, and cut to it.** The game goes from first person to a 2D image and back to black. Games do this constantly, and in a 1994-set piece a slightly filmic still reads as deliberate.
-
-That removes character modelling as a blocker entirely. Miller and Moretti never need to exist as good 3D models. Neither does the cell door corridor.
+In Scene 5, cutting on the Watchhouse cell door slam leads directly to the chiaroscuro 2D Watchhouse corridor epilogue still (`src/ui/ending-screen.ts`) depicting silhouettes of Miller and Moretti down the cell block.
 
 ### Don't
 
-- Image-to-3D for characters. It is still bad and you will spend longer fixing topology than modelling from scratch
-- Generating the same face across many angles for a model. Identity drifts and it will not hold up
+- Unvetted image generation without matching period silhouettes and face crops as detailed in `docs/MOVING-FORWARD.md`
 - ~~Photoreal environment textures. They will not match the authored palette and everything will read as a collage~~ **Revoked.** Photoreal PBR sets are the point now. What keeps them from reading as a collage is one bake and one grade over the lot, not matching swatches by hand
 
 ---
 
 ## Title cards
 
-Two only, same typeface, white on black.
+Opening title card (`src/ui/title-card.ts`) and Scene 5 closing Watchhouse epilogue (`src/ui/ending-screen.ts`):
 
 ```
 ST KILDA
 26 FEBRUARY 1994
 ```
 
+Closing Watchhouse Epilogue card:
+
 ```
-6 APRIL 1994
+FITZROY STREET, ST KILDA • 27 FEBRUARY 1994
 ```
 
-The second one is the whole ending. No caption, no explanation. The player either catches it or they don't.
+(Crystal's note on the dresser still reads *fly out April 6th! Can't wait!* — six weeks ahead of the investigation night.)

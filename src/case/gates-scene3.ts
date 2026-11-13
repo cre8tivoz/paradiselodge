@@ -24,7 +24,9 @@ export interface GateFacts {
   filed(evidenceId: string): boolean
   seen(objectId: string): boolean
   heard(nodeId: string): boolean
+  approachedCottage: boolean
   spottedVictor: boolean
+  chasedAlley: boolean
   reachedFence: boolean
 }
 
@@ -34,7 +36,7 @@ export const SCENE3_GATES: readonly GateDef[] = [
     n: 0,
     space: 'Regent Street',
     beat: 'Approach 14 Regent Street worker cottage',
-    isMet: (f) => f.seen('cottage.door') || f.spottedVictor || f.reachedFence,
+    isMet: (f) => f.approachedCottage || f.filed('cottage_slip') || f.spottedVictor || f.reachedFence,
   },
   {
     id: 'victor_spotted',
@@ -48,7 +50,7 @@ export const SCENE3_GATES: readonly GateDef[] = [
     n: 2,
     space: 'Bluestone Laneway',
     beat: 'Pursue Victor down the narrow laneway past obstacles',
-    isMet: (f) => f.reachedFence || f.seen('laneway.fence'),
+    isMet: (f) => f.chasedAlley || f.reachedFence,
   },
   {
     id: 'fence_vault',
@@ -72,7 +74,9 @@ export class Scene3GateTracker {
   private readonly seenIds = new Set<string>()
   private readonly heardIds = new Set<string>()
   private readonly unsubscribes: Array<() => void> = []
+  private approachedCottage = false
   private spottedVictor = false
+  private chasedAlley = false
   private reachedFence = false
 
   onUnlocked: ((gateId: string) => void) | undefined = undefined
@@ -124,12 +128,24 @@ export class Scene3GateTracker {
   }
 
   update(playerPos: Vector3): void {
-    // Gate 0/1 trigger: approaching cottage front/side gate (Z < 8.5)
+    // Gate 0 trigger: stepping off Regent St onto the cottage path (Z < 9.2)
+    if (playerPos.z < 9.2 && !this.approachedCottage) {
+      this.approachedCottage = true
+      this.evaluate()
+    }
+
+    // Gate 1 trigger: approaching cottage side gate (Z < 8.5)
     if (playerPos.z < 8.5 && !this.spottedVictor) {
       this.recordVictorSpotted()
     }
 
-    // Gate 2/3 trigger: reaching alley fence (Z < -16.0)
+    // Gate 2 trigger: actively pursuing down the bluestone laneway (Z < -2.0)
+    if (playerPos.z < -2.0 && !this.chasedAlley) {
+      this.chasedAlley = true
+      this.evaluate()
+    }
+
+    // Gate 3 trigger: reaching alley fence (Z < -16.0)
     if (playerPos.z < -16.0 && !this.reachedFence) {
       this.recordFenceReached()
     }
@@ -147,7 +163,9 @@ export class Scene3GateTracker {
       filed: (id) => this.caseFile.has(id),
       seen: (id) => this.seenIds.has(id),
       heard: (id) => this.heardIds.has(id),
+      approachedCottage: this.approachedCottage,
       spottedVictor: this.spottedVictor,
+      chasedAlley: this.chasedAlley,
       reachedFence: this.reachedFence,
     }
 

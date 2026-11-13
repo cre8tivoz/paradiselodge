@@ -58,11 +58,11 @@ Shared preamble. Prepend to every sheet prompt:
 
 ---
 
-### Crystal
+### Crystal Vance
 
 > [preamble]
 >
-> Female, 28, Australian. Petite, slight build, short. Blonde hair, shoulder length, well cut, styled. Fine features, pretty. Fair skin, healthy, no visible track marks or scarring anywhere on the arms.
+> Female, 22, Australian. Petite, slight build, short. Blonde hair, shoulder length, well cut, styled. Fine features, pretty. Fair skin, healthy, no visible track marks or scarring anywhere on the arms.
 >
 > Wearing: a good pale cream summer dress, well made, well fitted, more expensive than everything around her. Simple gold jewellery. Neat. She has taken care with this.
 
@@ -88,7 +88,7 @@ Shared preamble. Prepend to every sheet prompt:
 
 ---
 
-### John Sterling
+### Kenneth Sterling
 
 > [preamble]
 >

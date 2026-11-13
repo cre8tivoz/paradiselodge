@@ -25,10 +25,6 @@ export interface Station {
   readonly dialogueId: string
   /** Tier one look line. Writing rules apply: surface only, no signalling. */
   readonly description: string
-  /**
-   * Where the cigarette hand sits between drags, 0 hanging and 1 at her mouth.
-   */
-  readonly restLift: number
 }
 
 /**
@@ -45,15 +41,13 @@ export const STATIONS: Readonly<Record<StationId, Station>> = {
     position: new Vector3(3.5, 0, 3.15),
     yaw: 0,
     dialogueId: 'rosie.reception',
-    description: 'Rosie in her infamous cardigan, glasses pushed up.',
-    restLift: 0.62,
+    description: 'Rosie in her cardigan, glasses pushed up.',
   },
   parlour: {
     position: new Vector3(-3.05, 0, 0.75),
     yaw: Math.PI,
     dialogueId: 'rosie.parlour',
     description: "She's at the window now. Cigarette going.",
-    restLift: 0.1,
   },
 }
 
@@ -212,8 +206,8 @@ export async function buildRosie(): Promise<Rosie> {
       headPitch += (wantPitch - headPitch) * catchUp
 
       if (head) {
-        head.rotation.y += -headYaw * 0.75
-        head.rotation.x += headPitch * 0.65
+        head.rotation.y = headYaw * 0.75
+        head.rotation.x = -headPitch * 0.65
       }
 
       // --- Cigarette draw glow ---

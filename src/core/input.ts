@@ -186,6 +186,10 @@ export class Input {
       return
     }
 
+    if (isEditableTarget(event.target)) {
+      return
+    }
+
     const action = BINDINGS.get(event.code)
     if (action === undefined) {
       return
@@ -198,6 +202,9 @@ export class Input {
   }
 
   private readonly onKeyUp = (event: KeyboardEvent): void => {
+    if (isEditableTarget(event.target)) {
+      return
+    }
     const action = BINDINGS.get(event.code)
     if (action === undefined) {
       return
@@ -213,4 +220,18 @@ export class Input {
     // A mouseup delivered to another window never reaches us.
     this.dragging = false
   }
+}
+
+function isEditableTarget(target: EventTarget | null): boolean {
+  const active = document.activeElement
+  for (const el of [target, active]) {
+    if (
+      el instanceof HTMLInputElement ||
+      el instanceof HTMLTextAreaElement ||
+      (el instanceof HTMLElement && el.isContentEditable)
+    ) {
+      return true
+    }
+  }
+  return false
 }

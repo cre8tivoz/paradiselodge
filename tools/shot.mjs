@@ -5,7 +5,7 @@
  *   node tools/shot.mjs           # shots/1a.png
  *   node tools/shot.mjs --shot=1a --out=shots/1a.png
  */
-import { chromium } from 'playwright'
+import { launchBrowser } from './browser.mjs'
 import { spawn } from 'node:child_process'
 import { mkdirSync, existsSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
@@ -53,21 +53,7 @@ async function ensureServer() {
 const server = await ensureServer()
 mkdirSync(dirname(OUT), { recursive: true })
 
-const browser = await chromium.launch({
-  headless: true,
-  args: [
-    '--no-sandbox',
-    '--disable-setuid-sandbox',
-    '--ignore-certificate-errors',
-    '--use-angle=metal',
-    '--ignore-gpu-blocklist',
-    '--enable-gpu-rasterization',
-    '--force-color-profile=srgb',
-    '--force-device-scale-factor=1',
-    '--hide-scrollbars',
-    '--mute-audio',
-  ],
-})
+const browser = await launchBrowser(['--force-device-scale-factor=1'])
 
 const page = await browser.newPage({
   viewport: { width: W, height: H },
@@ -118,6 +104,8 @@ try {
     const L = window.__lodge
     if (typeof L?.dusk?.render === 'function') {
       L.dusk.render()
+    } else if (typeof L?.post?.render === 'function') {
+      L.post.render()
     } else if (L?.grade && L?.scene && L?.camera && L?.renderer) {
       L.grade.render(L.renderer, L.scene, L.camera)
     } else if (L?.renderer && L?.scene && L?.camera) {

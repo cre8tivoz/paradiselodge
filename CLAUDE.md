@@ -19,23 +19,23 @@ Quiet by default. Do the work, then give the short version.
 
 A short companion piece for a book release. Not a commercial game. Do not accumulate commercial-game systems.
 
-First-person detective story. St Kilda, 26 February 1994. Five scenes. No combat. The player is Detective Graham Miller. You never see him until the last shot.
+First-person detective story. St Kilda, Saturday 26 February 1994 (concluding Sunday 27 February 1994). Five scenes. No combat. The player is Detective Graham Miller. You never see him in gameplay; only the final watchhouse epilogue still shows his silhouette beside Moretti.
 
-A resident, Crystal, is dead in room 1A, staged as an overdose. It is not one. Constable Moretti follows and bags. Rosie Lodge manages the house. The case, the cast and the scene beats are in `docs/BRIEF.md`. Do not name Victor or Sterling in scene 1. The player is not handed the ending in the first half hour.
+A resident, Crystal Vance (22), is dead in room 1A, staged as an overdose. It is not one. Constable Moretti follows and bags. Rosie Lodge manages the house. The case, the cast and the scene beats are locked in `docs/BRIEF.md`. Do not name Victor or Sterling in scene 1. The player is not handed the ending in the first half hour.
 
 | Scene | What it is |
 |---|---|
-| 1 | The lodge. Cold open, investigation, theorise with Moretti. Playable |
-| 2 | Police station. Forensics, Victor's record, Mark's statement. Not built |
-| 3 | Victor chase. Scripted path, forced outcome. No pursuit AI, no fail state |
-| 4 | Interrogation. Sterling |
-| 5 | Mahoney's. Arrest, cell door, the only shot of Miller |
+| 1 | The lodge. Cold open, investigation, theorise with Moretti. Playable (polish quick wins queued) |
+| 2 | Police station. Forensics, LEAP terminal, Mark's statement. Built (P0 collision/gate fixes queued) |
+| 3 | Victor chase. 14 Regent St cottage, bluestone alley sprint, VHF arrest. Built (P0 collision/transition fixes queued) |
+| 4 | Interrogation. Section 464A caution, exhibit confrontation, Victor confession. Built (P0 collision/gate fixes queued) |
+| 5 | Mahoney's. Brawl, collar grab, cellar safe, ledger, arrest & Watchhouse epilogue. Built (P0 collision/cellar/gate fixes queued) |
 
 ## Status
 
-Scene 1 gameplay is complete and stays that way until a task opens it. The default picture is the dusk code look: practicals, grade, wet street. `?look=day` restores the 3pm HDRI and the baked interior.
+Scene 1 gameplay is complete and stays that way until a task opens it. The default picture is the dusk code look: practicals, grade, wet street. `?look=day` restores the 3pm HDRI and the baked interior. Authoritative status and reconciliation live in `docs/ROADMAP.md` and `docs/MOVING-FORWARD.md`.
 
-The live Rosie is `public/models/rosie.glb`. The rigged replacement, `public/models/rosie-rigged.glb`, is in the repo and is not wired. Source art is `art-source/characters/rosie/`. The look-test harness is `tools/lookdev/` and is not part of the game build.
+The live Rosie is `public/models/rosie-rigged.glb` (with Mixamo `idle` loop and cigarette ember pulse). The older `public/models/rosie.glb` is retired and queued for removal. Source art is `art-source/characters/rosie/`. The look-test harness is `tools/lookdev/` and is not part of the game build.
 
 Repo: `github.com/cre8tivoz/paradiselodge`, branch `main`. Live at `https://paradiselodge-game.pages.dev` (Cloudflare Pages project `paradiselodge-game`). Custom domain `lodge.billyhaddad.au` is not wired. Deploys are manual:
 
@@ -61,11 +61,11 @@ Node 20+. No new npm scripts, config files or tooling. The stack is Vite, TypeSc
 
 ## Code conventions
 
-- TypeScript `strict`, `noImplicitOverride`. No `any`. No non-null assertions.
+- TypeScript `strict`, `noImplicitOverride`. No `any`. No non-null assertions. (`src/main.ts` still has `floors: any[]`, queued to fix to `WalkableRegion[]`.)
 - Imports at the top of the module. An inline import needs a real cycle, and a comment that says so.
 - `switch` on a union or enum ends in a `never` check.
 - One subsystem per directory. Subsystems talk through the event bus in `src/core/`. They do not reach into each other.
-- Do not add events. The list below is complete. A run is the `speed` already on `player:footstep`.
+- Do not add unapproved events beyond the vocabulary below. A run is the `speed` already on `player:footstep`.
 - Australian English in game text. Contractions. No em dashes. No editorialising. Never tell the player something is suspicious, strange or important. Trust the player.
 - Do not leave TODO comments.
 
@@ -82,14 +82,14 @@ src/
   player/      controller, camera, hands
   interact/    raycast, look, examine, tag
   case/        evidence, gates, notebook
-  dialogue/    node graph, runner
+  dialogue/    node graph, runner, panel
   npc/         Rosie, Moretti
-  ui/          HUD, title card
-  audio/       mixer, ambience, footsteps, foley. All synthesised. No audio files
+  ui/          HUD, title card, LEAP terminal, ending screen
+  audio/       mixer, ambience, footsteps, foley (synthesised Web Audio), soundtrack (5 approved MP3 cues in public/audio/soundtrack/)
 docs/          BRIEF, ASSETS, MOVING-FORWARD, CREDITS, ROADMAP, SETUP
 images/        sheets, concept art, mood. Reference. Committed
 art-source/    character source (FBX, textures, Mixamo). Not loaded by the game
-public/        models, textures, env. What the game fetches
+public/        models, textures, env, portraits, audio. What the game fetches
 tools/lookdev/ look-test harness. Not in the game build
 tools/blender/ historical room and kit scripts
 assets/blender/ .blend sources that are still the only copy of old meshes
@@ -103,9 +103,9 @@ Look, examine, talk, tag.
 
 **Look** is a centre-screen raycast and a one-line description. It never files evidence.
 
-**Examine** files evidence. The build is press F, the clip runs to the end, Esc cancels. `look:exit` must not cancel a clip (pointer-lock drift was killing every examine). BRIEF.md still says hold. The shipped verb is press F. Evidence files only on `examine:complete`.
+**Examine** files evidence. The build is press F, the clip runs to the end, Esc cancels. `look:exit` must not cancel a clip (pointer-lock drift was killing every examine). BRIEF.md is aligned to press F. Evidence files only on `examine:complete`.
 
-**Talk** opens a dialogue node. The camera stays in first person.
+**Talk** opens a dialogue node. The camera stays in first person throughout play (including reception with Rosie).
 
 **Tag** is G. Moretti bags the object. Tag files nothing. Examine files. Miller does not carry the diary or the hammer.
 
@@ -114,6 +114,7 @@ Look, examine, talk, tag.
 ```
 scene:load { id }
 scene:complete { id }
+scene:transition { from, to }
 gate:unlocked { gateId }
 
 look:enter { objectId }
@@ -122,6 +123,9 @@ examine:start { objectId }
 examine:complete { objectId }
 tag:requested { objectId }
 tag:bagged { objectId }
+
+leap:opened {}
+leap:closed {}
 
 evidence:filed { evidenceId, sourceObject }
 casefile:open {}
@@ -141,7 +145,7 @@ player:state { stance }
 - An inventory, item screen, or item combining
 - Free-form physics grabbing, or a physics engine. No Rapier, no Cannon, no Ammo. Miller walks a navmesh of boxes and raycasts
 - Pursuit or flee AI. The scene 3 chase is a fixed path
-- A dialogue camera that leaves first person
+- A dialogue camera that leaves first person (including the retired OTS reception concept)
 - Fail states
 - A map, quest marker, or checklist of gates
 - A framework, or anything with a UI runtime of its own. The HUD is DOM and CSS over the canvas
@@ -152,7 +156,7 @@ player:state { stance }
 
 Dusk is the default. `readLookMode()` returns `'day'` only for `?look=day` or `?daylight=1`.
 
-Dusk is code: tungsten practicals, nicotine and timber, height haze, wet road, neon, and the film grade (GTAO, bloom, grain, vignette, split-tone). Tone mapping on that path is `NoToneMapping`. The grade owns the curve. DOF is off in play. Composer pixel ratio is capped at 1.25. Shadow maps do not update every frame. Lights in rooms the player is not in are off.
+Dusk is code: tungsten practicals, nicotine and timber, height haze, wet road, neon, and the film grade (GTAO, bloom, grain, vignette, split-tone). Tone mapping on that path is `NoToneMapping`. The grade owns the curve. DOF is off in play. Composer pixel ratio is capped at 1.25. Shadow maps do not update every frame. Lights in rooms the player is not in are off. Do not add `AmbientLight` in Scenes 2–5 either when polishing lighting.
 
 Day mode is the balcony HDRI, one sun, AgX, and the existing lightmaps. `environmentIntensity` is 0.3 and Room 1A's `LIGHTMAP_INTENSITY` is 14. Those two move together. Do not retune one on its own, and do not add an `AmbientLight`.
 
@@ -167,12 +171,12 @@ Leave it alone unless the task is about it. The expensive facts, so they are not
 - Everything solid is under a `world` group. The camera is a sibling. The hands are children of the camera, which keeps them out of the look ray. Do not raycast the whole scene. Do not split them onto another render layer: a light only illuminates its own layer, and the hands go black.
 - Wrist roll goes through a wrist pivot, never the hand root.
 - The walkable set is `WalkableRegion` boxes. `groundAt` picks a floor. No floor means the move is refused. Stairs are tread lids. Solids block only in the band from the feet to the head, which is what keeps a lintel from bricking the doorway.
-- `LOOP.maxDelta` is 0.05. Collision is a pushout, not a swept test. Raising it, or `runSpeed`, puts Miller through a wall on a stalled frame.
+- `LOOP.maxDelta` is 0.05. Collision is a pushout, not a swept test. Raising it, or `runSpeed`, puts Miller through a wall on a stalled frame. (`aabb` order is `(x0, x1, y0, y1, z0, z1)` — Scenes 2–5 currently pass `(x0, y0, z0, x1, y1, z1)`, tracked as P0 bug in `docs/ROADMAP.md`.)
 - Run is Shift plus forward, standing only. Refused backwards, strafing, or crouched. No stamina.
 - Gloves go on at the hall threshold. Leave that trigger.
-- Rosie is one mesh, two stations, registered through `registerRosie()`. She moves on gate `body` (needle and temple filed), not when Miller reaches the first floor. Her collision box is rewritten in place.
+- Rosie is one mesh (`public/models/rosie-rigged.glb`), two stations, registered through `registerRosie()`. She moves on gate `body` (needle and temple filed), not when Miller reaches the first floor. Her collision box is rewritten in place.
 - Moretti follows crumbs Miller drops. He yields. His own collision box is empty while he walks. On a tag he walks to where Miller was standing, not at the object's group origin.
-- Eight gates, and none of them lock a door. The set being complete is what gives Moretti the theorise graph. The last node emits `scene:complete`. He does not list unfinished rooms.
+- Scene 1 has eight gates (28 across all 5 scenes: 8 + 5 + 5 + 5 + 5), and none of them lock a door. The set being complete is what gives Moretti the theorise graph. The last node emits `scene:complete`. He does not list unfinished rooms.
 - The hall gate box in `src/case/gates.ts` and `zoneAt` in `src/audio/ambience.ts` are hand copies of the building bounds. Move the building, move both.
 - Nothing plays a sting on `evidence:filed`.
 - Pointer lock: Esc calls `exitPointerLock()` and is never `preventDefault`ed.
@@ -180,12 +184,12 @@ Leave it alone unless the task is about it. The expensive facts, so they are not
 
 ## Characters
 
-| Who | Live mesh | Next |
+| Who | Live mesh | Notes / Next |
 |---|---|---|
-| Rosie | `public/models/rosie.glb` | `public/models/rosie-rigged.glb`, not wired |
-| Moretti | `public/models/moretti.glb` | Same pipeline as Rosie, after she is in |
-| Crystal | `public/models/crystal.glb` | After Moretti |
-| Miller's hands | `public/models/miller-hand.glb` | Face only in the last shot |
-| Mark, Sterling, Victor | Sheets in `images/characters/` | After Crystal |
+| Rosie | `public/models/rosie-rigged.glb` | Fix `head.rotation` drift, remove dead `restLift`, retire `public/models/rosie.glb` |
+| Moretti | `public/models/moretti.glb` | Photo-mapped articulated GLB generated from `images/characters/moretti-sheet.png`, plus S2/S4/S5 integration |
+| Crystal | `public/models/crystal.glb` | Photo-mapped articulated GLB generated from `images/characters/crystal-sheet.png` (preserving `head`/`arm_l_0`/`needle`/`sling`) |
+| Miller's hands | `public/models/miller-hand.glb` | Silhouette in Watchhouse epilogue still (`src/ui/ending-screen.ts`) |
+| Mark, Victor, Sterling | `public/models/{mark,victor,sterling}.glb` | Photo-mapped articulated GLBs generated from `images/characters/*-sheet.png` replacing S2–S5 primitives |
 
-How a new character is made, and the limits of that pipeline (mitten hands, invented backs, soft faces, Hugging Face free quota), is `docs/MOVING-FORWARD.md`. Do not start a rig inside a lighting change. Do not replace `rosie.glb` until the reception task.
+Cast meshes after Rosie are generated locally in-repo from the turnaround sheets in `images/characters/` via `tools/characters/build_characters.py` and rendered/posed in Three.js — no Blender, Hunyuan3D or Mixamo required. Do not start a character change inside a lighting task unless scoped together.

@@ -40,6 +40,10 @@ const VOICES: Readonly<Record<Surface, StepVoice>> = {
   verandah: { scuffHz: 700, scuffQ: 2.6, scuffDecay: 0.13, scuffGain: 0.26, thumpHz: 62, thumpGain: 0.28, creak: 0.42 },
   // Dry grit, no ring at all.
   bitumen: { scuffHz: 1500, scuffQ: 0.6, scuffDecay: 0.055, scuffGain: 0.22, thumpHz: 84, thumpGain: 0.18, creak: 0 },
+  // Wet Melbourne laneway and cellar stone: crisp slap with a short cold ring.
+  bluestone: { scuffHz: 2150, scuffQ: 1.5, scuffDecay: 0.075, scuffGain: 0.27, thumpHz: 88, thumpGain: 0.22, creak: 0 },
+  // Loose aggregate drive: wide crunch, softer low weight.
+  gravel: { scuffHz: 1250, scuffQ: 0.55, scuffDecay: 0.095, scuffGain: 0.29, thumpHz: 72, thumpGain: 0.17, creak: 0 },
 }
 
 /** Walk speed from config. Above this a step is a run and hits harder. */

@@ -1,30 +1,24 @@
 import { Group, Mesh, MeshBasicMaterial, BoxGeometry, Object3D } from 'three'
-import type { MeshStandardMaterial } from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
-import { tiled } from '../materials/textures.ts'
+import { prepareCharacterLook } from '../npc/character-look.ts'
 
 /**
  * Crystal. Twelve hours dead, on the bed in room 1A.
  *
- * Geometry comes from public/models/crystal.glb. This file is the only one that
- * knows about the glTF. See the Crystal mesh section of CLAUDE.md.
+ * Geometry comes from public/models/crystal.glb, generated from
+ * images/characters/crystal-sheet.png. This file is the only one that knows
+ * about the glTF. See the Characters section of CLAUDE.md.
  *
  * She is not a character controller and she has no update. She does not breathe,
  * she does not track, and nothing about her moves. Head, arm, needle and sling
  * are separate named nodes so an examine can land on each, and that is the whole
  * runtime.
  *
- * ## She is modelled standing and laid down here
+ * ## She is built standing and laid down here
  *
- * Every helper in `tools/blender/kit.py` lathes around Z and runs limbs down -Z,
- * so modelling her already horizontal would mean fighting the toolkit for no
- * gain. The pose is baked into the joints in Blender and the transform that puts
- * her on her back is here.
- *
- * **It is two nested groups on purpose.** Euler order makes a combined lay-down
- * and turn-along-the-bed ambiguous to read and easy to get wrong by 90 degrees.
- * `root` carries the yaw along the bed, `tilt` lays her on her back, and neither
- * rotation has to be reasoned about in terms of the other.
+ * The cast rig is generated upright (+Y up, -Z forward, -X left) and laid flat
+ * onto her back by `tilt` (`rotation.x = Math.PI / 2`), with `root` carrying yaw
+ * along the bed so neither rotation has to be reasoned about together.
  *
  * After the tilt:
  *
@@ -55,74 +49,23 @@ export const CRYSTAL_SPINE_OFFSET = 0.13
 export const CRYSTAL_LENGTH = 1.62
 
 /**
- * Her head, turned toward the sash so the left temple faces the light.
- *
- * BRIEF.md: the room is beautifully lit and everything in it happened at 2am in
- * the dark, and the one wound is on the left temple under the hair. If her head
- * were straight the wound would face the ceiling and the sun would do nothing
- * with it. Turned, the light rakes across it and the fringe still half hides it,
- * which is exactly the amount of help the player should get.
- *
- * In her own frame this is a yaw about her spine, which after the tilt is a roll
- * about Z.
+ * Her head, turned about her spine so the left temple (-X in standing frame)
+ * rises toward the sash light and observer side while remaining partly under hair.
  */
-const HEAD_TURN = 0.62
-const HEAD_TIP = 0.12
-
-let templatePromise: Promise<Object3D> | undefined
+const HEAD_TURN = 0.58
+const HEAD_TIP = 0.08
 
 export function loadCrystalTemplate(): Promise<Object3D> {
-  if (templatePromise === undefined) {
-    templatePromise = new GLTFLoader().loadAsync(MODEL_URL).then((gltf) => gltf.scene)
-  }
-  return templatePromise
+  return new GLTFLoader().loadAsync(MODEL_URL).then((gltf) => gltf.scene)
 }
 
 export async function buildCrystalProp(): Promise<CrystalProp> {
-  const template = await loadCrystalTemplate()
-  const body = template
+  const body = await loadCrystalTemplate()
 
-  body.traverse((object) => {
-    const mesh = object as Mesh
-    if (mesh.isMesh !== true) {
-      return
-    }
-    mesh.castShadow = true
-    mesh.receiveShadow = true
-    // Cream dress and pale skin blow to mannequin-white under the 3pm sun.
-    // Force the authored palette onto every mesh so a missing material name
-    // cannot leave her unlit-looking.
-    const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
-    for (const material of materials) {
-      const std = material as MeshStandardMaterial
-      if (std.isMeshStandardMaterial !== true || std.color === undefined) {
-        continue
-      }
-      const name = (std.name ?? '').toLowerCase()
-      if (name.includes('dress') || name.includes('shoe')) {
-        std.color.setHex(0xffffff)
-        std.map = tiled('crystal-dress', 3, 4)
-        std.roughness = 0.88
-      } else if (name.includes('hair')) {
-        std.color.setHex(0x7a6a52)
-        std.roughness = 0.84
-      } else if (name.includes('livid') || name.includes('bruise')) {
-        std.color.setHex(0x6f5f66)
-        std.roughness = 0.78
-      } else if (name.includes('sling') || name.includes('rubber')) {
-        std.color.setHex(0x1a1817)
-        std.roughness = 0.55
-      } else if (name.includes('gold') || name.includes('bracelet')) {
-        std.color.setHex(0xb89650)
-        std.metalness = 0.55
-        std.roughness = 0.4
-      } else {
-        // Skin and anything unnamed.
-        std.color.setHex(0x8f7d6e)
-        std.roughness = 0.74
-      }
-      std.needsUpdate = true
-    }
+  prepareCharacterLook(body, {
+    contactShadow: false,
+    roughness: 0.78,
+    rimStrength: 0.2,
   })
 
   const root = new Group()
@@ -135,7 +78,8 @@ export async function buildCrystalProp(): Promise<CrystalProp> {
   root.add(tilt)
 
   const head = requireNode(body, 'head')
-  head.rotation.z = HEAD_TURN
+  head.rotation.z = 0
+  head.rotation.y = -HEAD_TURN
   head.rotation.x = HEAD_TIP
   attachLookPad(head, 0.45, 0.4, 0.4)
 

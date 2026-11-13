@@ -16,15 +16,15 @@ stands beside *Claude of Duty*. Do not trade that visual ambition for feature
 breadth, and do not introduce commercial-game infrastructure, mechanics or
 pipelines that the companion piece does not need.
 
-## Current position
+## Current position & locked decisions
 
-The game design covers five scenes. All five scenes are fully implemented, verified,
-and playable end-to-end with persistent saves:
-- **Scene 1 (The Paradise Lodge)**: Interior, complete exterior dressing, all 8 gates.
-- **Scene 2 (St Kilda CID Station Bullpen)**: Forensics intake, Mark interview, interactive LEAP CRT terminal, all 5 gates.
-- **Scene 3 (14 Regent St, Prahran)**: Weatherboard cottage, dropped slip, bluestone alley sprint, VHF radio arrest, all 5 gates.
-- **Scene 4 (Interview Room 1)**: Sanyo CTR-80 recorder, Section 464A caution, exhibit confrontation, Victor confession, all 5 gates.
-- **Scene 5 (Mahoney's Bar & Ending)**: Public bar, brawl distraction, collar grab, cellar floor safe, extortion ledger, cell slam foley, chiaroscuro Watchhouse ending, all 5 gates.
+Author decisions locked on 13 November 2026:
+- **Scenes 2–5 story rewrite is canonical**: `Kenneth Sterling`, `Crystal Vance` (22), `Prince of Wales` bouncer alibi for Mark, \$800 Richmond laundry savings toward a `"Perth"` flight, and closing Sunday `27 FEBRUARY 1994` Watchhouse epilogue still (`src/ui/ending-screen.ts`).
+- **5-track ElevenLabs score is locked & active**: `public/audio/soundtrack/01-theme-paradise-lodge.mp3` through `05-theme-mahoneys-end.mp3` stay, paired with procedural Web Audio foley, footsteps, and ambience beds.
+- **Reception camera remains strict first person**: the third-person OTS concept (`03-reception-with-rosie.png`) is retired so Miller stays off-screen until the closing Watchhouse epilogue still.
+- **Interactive depth scope (companion-piece pragmatic rule)**: keep focused, atmospheric interactions without commercial-game bloat — give `LeapTerminal` lightweight query actions (`help`, `query rakov`, `priors`, `exit`) + wire `victor-record.jpg`, enforce real evidence presentation progression in Scene 4 (`conclude` gated on weapon, bootprint, and slip), and fix Scene 5 physical cellar progression + safe inspection with procedural tumbler clicks.
+
+**Build state:** Scene 1 is playable end-to-end with **8** gates (polished dusk look, Unit A interior on R2, authored facade, rigged Rosie idle, portraits). Scenes 2–5 geometry, dialogues, and **20** additional gates (5 each; **28 gates total** across Scenes 1–5) are scaffolded in code, but currently have **P0 runtime blockers** (`aabb()` axis-order bug, unwired `'scene:transition'` loader, gate/sequence bypasses, and stale/unverified Playwright tests) queued immediately for Stage 2.
 
 Old terminology, for reference only:
 
@@ -38,19 +38,19 @@ These labels are retired from active progress reporting.
 
 ## Deliverables
 
-| Deliverable | Status | Definition of done |
+| Deliverable | Status | Reconciled state & remaining work |
 |---|---|---|
-| **1. Scene 1 playable investigation** | **Done** | Cold open, movement, interactions, evidence, Rosie, Moretti, all eight objective gates, theorise ending, audio and save boundary work from start to finish |
-| **2. Scene 1 lodge interior** | **Done** | Reception, parlour, staircase, upstairs hall and Room 1A are Blender-authored, furnished, baked, integrated and under the 60MB asset budget |
-| **3. Scene 1 lodge exterior** | **Done** | Authored street facade, verandah iron lace, back yard with Hills Hoist and shed, wet road neon streaks, and curated Rosie placements |
-| **4. Scene 1 release candidate** | **Done** | Interior/exterior lighting balanced, automated playtests passing (8/8 gates), performance profiled, production build zero-error |
-| **5. Scene 2 — Police station** | **Done** | Playable forensics handoff, coffee urn, Manila case folder, interactive LEAP green-phosphor CRT terminal, Mark interview, all 5 gates |
-| **6. Scene 3 — Victor chase** | **Done** | Prahran worker cottage, dropped betting slip, scripted 30m bluestone alley chase, Victor fence vault, VHF radio arrest, all 5 gates |
-| **7. Scene 4 — Interrogation** | **Done** | Sanyo CTR-80 cassette recorder, Crimes Act Sec 464A caution, claw hammer and bootprint confrontation, Victor confession, all 5 gates |
-| **8. Scene 5 — Mahoney's and ending** | **Done** | Public bar, pool table brawl distraction, collar grab for cellar key, Chub floor safe, extortion ledger, cell door slam foley, chiaroscuro Watchhouse ending screen |
-| **9. Neo-noir soundtrack (Out of plan)** | **Done** | 5 period-authentic audio tracks in `assets/audio/soundtrack/` streamed via `SoundtrackPlayer` with scene-based crossfading |
-| **10. Procedural foley engine (Out of plan)** | **Done** | Web Audio API mathematical synthesizers for surface footsteps, cassette recorder clicks/hum, safe tumbler dial, and Watchhouse cell door slam |
-| **11. Automated test suite (Out of plan)** | **Done** | Headless Playwright Chromium test suites (`playtest-scene1.mjs` through `playtest-scene5.mjs`, `test-controls.mjs`) covering all 27 gates and physical browser controls |
+| **1. Scene 1 playable investigation** | **Done** | Cold open, movement, interactions, evidence, rigged Rosie, Moretti, all **8** objective gates, theorise ending, audio and save boundary work end-to-end |
+| **2. Scene 1 lodge interior** | **Done** | Reception, parlour, staircase, upstairs hall and Room 1A baked in Unit A (R2 hosted) |
+| **3. Scene 1 lodge exterior** | **Done** | Authored street facade (`lodge-exterior.glb`), verandah iron lace, back yard with Hills Hoist and shed, wet road neon streaks |
+| **4. Scene 1 polish & release hardening** | **Partial** | Production build passes (`1.13 MB` JS bundle needs `three` manualChunks split). Quick wins queued: Parlour `sunBeam` intersecting Rosie, `rosie.ts` head bone `=` vs `+=` & dead `restLift`, speaker portrait variant matching (`panel.ts`), upstairs door numbers, Parlour TV/chair/CRT placement, photo-mapped Moretti & Crystal meshes, remove orphaned `rosie.glb` / `wood_planks/` / unused neon flicker |
+| **5. Scene 2 — Police station** | **Partial (P0 blocked)** | World/dialogue scaffolded (`5` gates), reachable only via `?scene=scene2`. Blockers/fixes queued: `aabb()` coord order bug on walls/desks/cubicles, Moretti overlap with desk, `station.desk` collider shadowing `station.report`, premature access to report/LEAP before hammer drop, `station.coffee_mug` gate typo, `STERLING, KENNETH` (fixed), lightweight interactive LEAP commands + `victor-record.jpg`, and photo-mapped Mark/Moretti rigs |
+| **6. Scene 3 — Victor chase** | **Partial (P0 blocked)** | Cottage, slip, alley sprint, radio (`5` gates) scaffolded. Blockers/fixes queued: `aabb()` coord order bug across walls/fences/cottage, `asphaltMaterial()` UV/streak bleed from S1, missing dusk/night skybox & post-process grade, and photo-mapped Victor runner |
+| **7. Scene 4 — Interrogation** | **Partial (P0 blocked)** | Interview Room 1, CTR-80 tape, Sec 464A caution, interrogation (`5` gates) scaffolded. Blockers/fixes queued: `aabb()` coord order bug, immediate `conclude` turn-1 bypass (gate on confronting weapon/bootprint/slip), `"garden bed"`/`"shrubs"` vs `"shed"` copy drift, missing `post.ts` / `AmbientLight` removal, and photo-mapped seated Victor/Moretti |
+| **8. Scene 5 — Mahoney's and ending** | **Partial (P0 blocked)** | Mahoney's Bar, cellar safe, ledger, Watchhouse epilogue (`5` gates) scaffolded. Blockers/fixes queued: `aabb()` coord order bug across bar/walls/cellar, `cellarDoor` rotating around world origin + missing solid blocker, `mahoneys.brawl` wired to wrong dialogue, `mahoneys.exit` reachable next to spawn, `look:enter` auto-unlocks, double `dialogue:choice`+`dialogue:end` handling, `"Friday"` -> `"Saturday"` night & em-dash copy fixes, and photo-mapped Sterling/Moretti |
+| **9. Scene-to-scene progression** | **Broken (P0)** | `SceneManager` emits `scene:transition`, but nothing handles loading Scenes 2–5 dynamically or carrying `caseFile` evidence across boundaries; Scenes 1–4 fade to black and hang |
+| **10. Hybrid soundtrack & audio engine** | **Partial** | 5 approved ElevenLabs MP3s active via `HTMLAudioElement`, plus Web Audio footsteps (`Scene 1`), foley, `cellSlam`. Queued: route `SoundtrackPlayer` through Web Audio `Mixer` for true crossfade & dialogue ducking, deduplicate 18 MB copy in `assets/` vs `public/`, add `bluestone`/`gravel` footsteps (fix S3/S5 `'floorboard'`), gate S1 `Ambience` outside Scene 1 + add S2–S5 beds & tape/safe clicks |
+| **11. Automated test & CI verification** | **Broken / Unverified** | `playtest-scene1..5.mjs` and `test-controls.mjs` cover **28** gates (8+5+5+5+5), not 27. `test-controls.mjs` has stale `.dialogue-panel`/parlour selectors/coords, headless Chromium needs SwiftShader flags, and S2–S5 scripts bypass walking via state helpers. Must repair & run after Stage 2 P0 fixes |
 
 ## Scene 1 lodge exterior acceptance
 
@@ -71,22 +71,15 @@ The exterior succeeds when it has:
 - one authored exterior asset integrated over the existing collision and
   gameplay route; no new mechanics. No new Mac bake
 
-## Project Completion Status
+## Stage 2 execution order
 
-All 5 scenes designed in `BRIEF.md` have been built, connected, and verified:
-
-1. **Scene 1 (The Paradise Lodge)**: Complete interior, finished exterior with back yard & verandah dressing, all 8 gates passing.
-2. **Scene 2 (St Kilda CID Station)**: Bullpen, forensics, Manila folder, interactive LEAP CRT terminal, Mark interview, all 5 gates passing.
-3. **Scene 3 (14 Regent St & Chase)**: Cottage interior, dropped slip, 30m alley chase, VHF radio arrest, all 5 gates passing.
-4. **Scene 4 (Interview Room 1)**: CTR-80 tape recorder, Section 464A caution, exhibit confrontation, confession, all 5 gates passing.
-5. **Scene 5 (Mahoney's Bar & Ending)**: Public bar, brawl distraction, cellar key collar grab, Chub floor safe, extortion ledger, Watchhouse cell door slam foley, chiaroscuro ending screen, all 5 gates passing.
-6. **Soundtrack & Audio Engine**: 5-track period neo-noir soundtrack streamed with seamless crossfading, procedural Web Audio foley for footsteps, tape clicks, safe tumblers, and iron cell slam.
-7. **Automated Verification**: End-to-end automated playtest suite (`playtest-scene1.mjs` through `playtest-scene5.mjs`) and browser human controls test (`test-controls.mjs`) passing 100%.
-
-The codebase builds cleanly with zero TypeScript errors and is ready for deployment. Cloudflare Pages is the primary release target; wiring `lodge.billyhaddad.au` remains an optional DNS routing step.
+1. **P0 Runtime Blockers**: Fix `aabb()` arg order across `scene2-station.ts`, `scene3-laneway.ts`, `scene4-interview.ts`, `scene5-pub.ts`; fix `cellarDoor` hinge & solid blocker; wire `'scene:transition'` scene reloading; fix S2/S4/S5 gate & sequence bypasses, duplicate Moretti, `tryTalk`/`tryExamine`, and `floors: WalkableRegion[]`.
+2. **Scene 1 Quick Wins & Canon Copy**: Fix Parlour `sunBeam`, `rosie.ts` head drift / `restLift`, portrait matching, Parlour CRT/chair placement, door numbers, dead neon flicker, and S4/S5 timeline/em-dash/editorialising copy fixes.
+3. **Scenes 2–5 Lookdev, Audio & LEAP**: Bring S2–S5 onto `post.ts`, strip `AmbientLight` & night voids, fix S3 asphalt streaks, wire `victor-record.jpg`, add lightweight LEAP queries, route `SoundtrackPlayer` through `Mixer` with crossfade + S2–S5 ambience/foley (`bluestone`/`gravel`/tape/safe).
+4. **Tests & Bundle/Repo Hygiene**: Fix `test-controls.mjs` and E2E playtests (verified in real headless Chromium), deduplicate 18 MB MP3s, remove retired `rosie.glb` & unused `wood_planks/`, and split `three` chunk in `vite.config.mjs`.
 
 ## Reporting rule
 
 Every work report must name the deliverable and one concrete outcome, for
 example: “Scene 1 lodge exterior — facade accepted.” Do not report “step 4” or
-“next phase” without the deliverable name.
+“next phase” without the deliverable name. Verify builds and Playwright runs directly after changes before claiming pass status.

@@ -9,6 +9,7 @@ export interface DialogueChoice {
   readonly id: string
   readonly label: string
   readonly next: string
+  readonly when?: () => boolean
 }
 
 /**

@@ -1,8 +1,9 @@
 import { Box3, Group, MathUtils, Vector3 } from 'three'
-import type { Mesh, Object3D } from 'three'
+import type { Object3D } from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { PLAYER } from '../core/config.ts'
 import type { CollisionSolver } from '../world/collision.ts'
+import { prepareCharacterLook } from './character-look.ts'
 
 /**
  * Constable Moretti. Miller's offsider, and the only thing in scene 1 that
@@ -150,13 +151,7 @@ export async function buildMoretti(
   root.position.copy(initialPos)
   root.rotation.y = initialYaw
 
-  gltf.scene.traverse((object) => {
-    const mesh = object as Mesh
-    if (mesh.isMesh === true) {
-      mesh.castShadow = true
-      mesh.receiveShadow = true
-    }
-  })
+  prepareCharacterLook(gltf.scene, { contactShadow: true })
 
   const hips = requireNode(gltf.scene, 'hips')
   const chest = requireNode(gltf.scene, 'chest')

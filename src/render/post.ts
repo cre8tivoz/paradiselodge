@@ -39,7 +39,15 @@ export interface Grade {
   bloomThreshold: number
 }
 
-export const GRADES: { readonly interior: Grade; readonly exterior: Grade } = {
+export interface GradesMap {
+  readonly interior: Grade
+  readonly exterior: Grade
+  readonly precinct: Grade
+  readonly nightAlley: Grade
+  readonly pub: Grade
+}
+
+export const GRADES: GradesMap = {
   interior: {
     exposure: 0.72,
     contrast: 1.18,
@@ -73,6 +81,57 @@ export const GRADES: { readonly interior: Grade; readonly exterior: Grade } = {
     bloomStrength: 0.55,
     bloomRadius: 0.5,
     bloomThreshold: 2.2,
+  },
+  precinct: {
+    exposure: 2.35,
+    contrast: 1.12,
+    saturation: 0.94,
+    lift: [0.008, 0.011, 0.01],
+    gamma: [1.0, 1.0, 1.02],
+    gain: [0.98, 1.0, 1.02],
+    shadowTint: [0.22, 0.3, 0.28],
+    highlightTint: [0.92, 0.98, 1.0],
+    splitAmt: 0.18,
+    vignette: 0.38,
+    grain: 0.038,
+    ca: 0.0012,
+    bloomStrength: 0.28,
+    bloomRadius: 0.48,
+    bloomThreshold: 1.5,
+  },
+  nightAlley: {
+    exposure: 2.25,
+    contrast: 1.16,
+    saturation: 1.02,
+    lift: [0.008, 0.01, 0.02],
+    gamma: [1.0, 1.0, 0.98],
+    gain: [1.04, 0.97, 0.92],
+    shadowTint: [0.22, 0.3, 0.48],
+    highlightTint: [1.0, 0.76, 0.48],
+    splitAmt: 0.28,
+    vignette: 0.48,
+    grain: 0.045,
+    ca: 0.0018,
+    bloomStrength: 0.45,
+    bloomRadius: 0.52,
+    bloomThreshold: 1.6,
+  },
+  pub: {
+    exposure: 2.45,
+    contrast: 1.15,
+    saturation: 0.96,
+    lift: [0.012, 0.007, 0.006],
+    gamma: [1.0, 1.01, 1.05],
+    gain: [1.04, 0.96, 0.85],
+    shadowTint: [0.28, 0.22, 0.34],
+    highlightTint: [1.0, 0.8, 0.52],
+    splitAmt: 0.24,
+    vignette: 0.46,
+    grain: 0.045,
+    ca: 0.0016,
+    bloomStrength: 0.42,
+    bloomRadius: 0.55,
+    bloomThreshold: 1.3,
   },
 }
 
@@ -167,6 +226,7 @@ export interface PostStack {
   applyGrade(grade: Grade): void
   setTime(time: number): void
   render(): void
+  dispose(): void
 }
 
 export function postPixelRatio(): number {
@@ -247,6 +307,14 @@ export function buildPost(
     },
     render(): void {
       composer.render()
+    },
+    dispose(): void {
+      gtao.dispose()
+      sanitize.dispose()
+      bloom.dispose()
+      film.dispose()
+      rt.dispose()
+      composer.dispose()
     },
   }
 }

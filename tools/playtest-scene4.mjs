@@ -14,7 +14,7 @@
  * Usage:
  *   node tools/playtest-scene4.mjs
  */
-import { chromium } from 'playwright'
+import { launchBrowser } from './browser.mjs'
 import { spawn } from 'node:child_process'
 import { resolve } from 'node:path'
 import net from 'node:net'
@@ -48,19 +48,7 @@ async function ensureServer() {
 console.log('--- Paradise Lodge: Scene 4 Automated Playtest ---')
 const server = await ensureServer()
 
-const browser = await chromium.launch({
-  headless: true,
-  args: [
-    '--no-sandbox',
-    '--disable-setuid-sandbox',
-    '--ignore-certificate-errors',
-    '--ignore-gpu-blocklist',
-    '--enable-gpu-rasterization',
-    '--force-color-profile=srgb',
-    '--hide-scrollbars',
-    '--mute-audio',
-  ],
-})
+const browser = await launchBrowser()
 
 const page = await browser.newPage({
   viewport: { width: 1280, height: 960 },

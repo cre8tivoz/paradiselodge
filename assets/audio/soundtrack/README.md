@@ -12,4 +12,4 @@ Five approved cues for the five scenes. 90 seconds each, 48 kHz stereo, 320 kbps
 
 Generated with ElevenLabs Music (`music_v2_5`), instrumental, prompts kept with the source project at `projects/paradiselodge-soundtrack`.
 
-**These are source assets. Nothing loads them.** `src/audio/` synthesises every sound through Web Audio and `docs/ASSETS.md` calls for almost no music, so the files sit here rather than in `public/audio/` and are not part of the build. Wiring any of them into a scene is a separate decision and a separate change.
+**Status — Approved & Active:** These 5 cues are locked as the official soundtrack (`docs/ASSETS.md` / `CLAUDE.md`) and are streamed at runtime from `public/audio/soundtrack/` via `src/audio/soundtrack.ts`. Stage 2 audio/hygiene work will route playback through the Web Audio `Mixer` for true scene crossfading and dialogue ducking, and deduplicate this 18 MB mirror once source attribution is preserved cleanly.

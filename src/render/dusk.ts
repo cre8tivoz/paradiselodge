@@ -78,6 +78,7 @@ interface ManagedFx {
 export interface DuskLook {
   update(elapsed: number, playerPos: Vector3): void
   render(): void
+  dispose(): void
 }
 
 export interface DuskInput {
@@ -130,7 +131,7 @@ export async function installDuskLook(input: DuskInput): Promise<DuskLook> {
   camera.updateProjectionMatrix()
 
   scene.fog = new FogExp2(new Color(0.18, 0.11, 0.07), 0.013)
-  const sky = installSkyEnvironment(renderer, scene, DUSK_DIR.clone().negate())
+  const skyEnv = installSkyEnvironment(renderer, scene, DUSK_DIR.clone().negate())
   tuneExteriorMaterials(input.exterior, input.lodge, input.commodore)
   restyleInterior(interior)
 
@@ -158,8 +159,8 @@ export async function installDuskLook(input: DuskInput): Promise<DuskLook> {
 
   const managed: ManagedLight[] = []
   const managedFx: ManagedFx[] = []
-  const fx: Object3D[] = [sky]
-  const shaders: Object3D[] = [sky]
+  const fx: Object3D[] = [skyEnv.sky]
+  const shaders: Object3D[] = [skyEnv.sky]
   const updaters: Array<(time: number) => void> = []
 
   const track = (light: Light, presets: readonly Preset[]): void => {
@@ -240,10 +241,13 @@ export async function installDuskLook(input: DuskInput): Promise<DuskLook> {
   const doorCorners = corners(-0.5, 0.5, 0.1, 2.1, -0.08)
   addFx(sunBeam(doorCorners, beamDir, 4.2, 0.06), ['hall', 'outside'])
   addFx(dustMotes(doorCorners, beamDir, 4.2, 220), ['hall', 'outside'])
-  for (const cx of [-5.35, -3.05]) {
-    const gap = corners(cx - 0.06, cx + 0.08, 1.05, 2.6, -0.02)
+  // Place parlour light shafts through curtain edge gaps clear of Rosie at x = -3.05, z = 0.75.
+  for (const gapX of [-5.35, -2.70]) {
+    const gap = corners(gapX - 0.06, gapX + 0.08, 1.05, 2.6, -0.02)
     addFx(sunBeam(gap, beamDir, 3.8, 0.42), ['parlour', 'hall', 'outside'])
     addFx(dustMotes(gap, beamDir, 3.8, 140), ['parlour', 'outside'])
+  }
+  for (const cx of [-5.35, -3.05]) {
     const fill = windowFill(new Vector3(cx, 1.8, -0.04), 0.2, 1.6, 2.4, SKY_FILL, new Vector3(0, 0, 1))
     root.add(fill.root)
     trackMany(fill.lights, ['parlour', 'hall', 'outside'])
@@ -254,14 +258,14 @@ export async function installDuskLook(input: DuskInput): Promise<DuskLook> {
   root.add(papers(new Vector3(5.2, 1.16, 2.55), 4, 4))
   root.add(cigarettes(cigarettePoint(interior), 4))
   root.add(keysInRack(new Box3(new Vector3(2.62, 1.45, 4.82), new Vector3(5.15, 2.45, 5.02)), 8, 4))
-  const screen = crt(new Vector3(6.0, 0.78, 3.85), -0.4)
+  const screen = crt(new Vector3(5.85, 0.78, 3.65), -0.4)
   root.add(screen.root)
   updaters.push(screen.update)
   screen.root.traverse((object) => {
     if (object instanceof PointLight) track(object, ['reception', 'hall'])
   })
   const cabinet = new Mesh(new BoxGeometry(0.48, 0.72, 0.42), darkWoodMaterial(0.5))
-  cabinet.position.set(6.0, 0.36, 3.85)
+  cabinet.position.set(5.85, 0.36, 3.65)
   cabinet.castShadow = true
   cabinet.receiveShadow = true
   root.add(cabinet)
@@ -326,6 +330,19 @@ export async function installDuskLook(input: DuskInput): Promise<DuskLook> {
       }
       post.setTime(elapsed)
       post.render()
+    },
+    dispose(): void {
+      window.removeEventListener('resize', onResize)
+      post.dispose()
+      skyEnv.dispose()
+      root.removeFromParent()
+      root.traverse((obj) => {
+        if (obj instanceof Mesh) {
+          obj.geometry.dispose()
+          const mats = Array.isArray(obj.material) ? obj.material : [obj.material]
+          for (const mat of mats) mat.dispose()
+        }
+      })
     },
   }
 }

@@ -13,6 +13,9 @@ export class DialogueRunner {
   /** Fired whenever the active node changes, including the first. */
   onNode: ((node: DialogueNode | undefined) => void) | undefined = undefined
 
+  /** Fired on entry to every node (both start and goTo transitions). */
+  onNodeEnter: ((nodeId: string, graphId: string) => void) | undefined = undefined
+
   get isActive(): boolean {
     return this.graph !== undefined
   }
@@ -42,17 +45,19 @@ export class DialogueRunner {
     this.graph = graph
     this.node = node
     emit('dialogue:start', { nodeId: node.id, speaker: node.speaker })
+    this.onNodeEnter?.(node.id, graph.id)
     this.onNode?.(node)
   }
 
-  /** Advance a linear node. No-op when the current node has choices. */
+  /** Advance a linear node. No-op when the current node has visible choices. */
   advance(): void {
     const graph = this.graph
     const node = this.node
     if (graph === undefined || node === undefined) {
       return
     }
-    if (node.choices !== undefined && node.choices.length > 0) {
+    const visibleChoices = (node.choices ?? []).filter((entry) => entry.when?.() ?? true)
+    if (visibleChoices.length > 0) {
       return
     }
     if (node.next === undefined) {
@@ -69,7 +74,9 @@ export class DialogueRunner {
     if (graph === undefined || node === undefined || node.choices === undefined) {
       return
     }
-    const option = node.choices.find((entry) => entry.id === optionId)
+    const option = node.choices.find(
+      (entry) => entry.id === optionId && (entry.when?.() ?? true),
+    )
     if (option === undefined) {
       return
     }
@@ -97,6 +104,7 @@ export class DialogueRunner {
       return
     }
     this.node = next
+    this.onNodeEnter?.(next.id, graph.id)
     this.onNode?.(next)
   }
 

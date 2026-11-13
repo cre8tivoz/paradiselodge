@@ -10,7 +10,14 @@ import type { Vector3 } from 'three'
 export type Stance = 'stand' | 'crouch'
 
 /** Foley surfaces, from ASSETS.md. */
-export type Surface = 'marble' | 'carpet' | 'floorboard' | 'verandah' | 'bitumen'
+export type Surface =
+  | 'marble'
+  | 'carpet'
+  | 'floorboard'
+  | 'verandah'
+  | 'bitumen'
+  | 'bluestone'
+  | 'gravel'
 
 export interface GameEvents {
   'scene:load': { id: string }

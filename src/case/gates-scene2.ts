@@ -42,7 +42,7 @@ export const SCENE2_GATES: readonly GateDef[] = [
     n: 1,
     space: 'Break Station',
     beat: 'Pour a cup of instant coffee at the electric urn while waiting',
-    isMet: (f) => f.hadCoffee || f.seen('station.coffee_mug'),
+    isMet: (f) => f.hadCoffee,
   },
   {
     id: 'hammer_report',

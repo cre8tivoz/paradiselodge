@@ -25,9 +25,9 @@ The entire game is four actions. Locked.
 | Verb | Input | What it does |
 |---|---|---|
 | **Look** | Centre-screen raycast | Surface description. Never creates evidence |
-| **Examine** | Hold on a looked-at object | The detail. Creates evidence |
-| **Talk** | Interact with an NPC | Dialogue node |
-| **Tag** | Interact with a taggable object | Miller calls Moretti. Moretti bags it |
+| **Examine** | Press F on a looked-at object | The detail. Creates evidence (Esc cancels) |
+| **Talk** | Press F on an NPC | Dialogue node |
+| **Tag** | Press G on a taggable object | Miller calls Moretti. Moretti bags it |
 
 ### Hands
 
@@ -39,7 +39,7 @@ He pulls on gloves at the front door. That is why you can see the hands, and it 
 
 **He touches. He does not pocket.** He can turn the photo over. He cannot take it. There is no inventory, no item screen, no combining. He tags, Moretti bags. The case file holds knowledge, not objects.
 
-One exception, once, in scene 5: Miller grabs Sterling by the collar. It is the only time those hands touch a living person and it should feel like it.
+In scene 5, Miller corners Kenneth Sterling behind the bar in dialogue ("I'll ruin you now or ruin you later") and pries the brass cellar key from his vest pocket.
 
 ---
 
@@ -63,23 +63,21 @@ No adjectives doing emotional work. No "suspiciously". The player works it out.
 
 | Character | Role | Notes |
 |---|---|---|
-| **Graham Miller** | Player. Detective | Never seen until the final shot |
+| **Graham Miller** | Player. Detective | Never seen in gameplay; seen only in silhouette on the closing watchhouse epilogue still |
 | **Constable Moretti** | Offsider | Follows on navmesh, bags evidence, theorises |
 | **Rosie Lodge** | Lodge manager | Rooted in the parlour, smoking. First contact |
-| **Crystal** | Victim, 28 | Blonde, petite, well dressed. Long-term on-and-off resident. Sex worker. Clean for a year |
-| **Mark** | Crystal's ex | Bouncer at the Espy. Alibi holds. Upset. Not a suspect |
-| **Victor Rakov** | Arrest, scene 3 | King St Crew. Staged the scene. The hammer was his |
-| **John Sterling** | Killer | Owns Mahoney's. Swung the hammer |
+| **Crystal Vance** | Victim, 22 | Blonde, petite, well dressed. Long-term on-and-off resident. Worked two years at the commercial laundry in Richmond, clean for a year, saving \$800 cash for a ticket to Perth |
+| **Mark** | Crystal's friend/ex | Bouncer at the Prince of Wales on Fitzroy St. Alibi holds (on the door 8pm–5am). Upset. Not a suspect |
+| **Victor Rakov** | Enforcer / arrest, scene 3 | Known as "The Bricklayer". King Street Crew, carries a bricklayer's claw hammer. Sent to burgle 1A after the murder |
+| **Kenneth Sterling** | Killer | Publican at Mahoney's Bar on Fitzroy St. Runs speed and loan-shark extortion out of the cellar. Murdered Crystal and sent Victor for her ledger |
 
 ---
 
 ## The case (builder's eyes only)
 
-Crystal was extorting Sterling. She knew he was selling out of Mahoney's, and she had been clean for a year, which is what gave her the standing to hold it over him.
+Kenneth Sterling, publican of Mahoney's Bar on Fitzroy Street, runs illegal speed sales and extortion out of the cellar safe. Crystal Vance had lunch with Mark at Mahoney's at 3pm Tuesday and stayed past 7pm talking to Sterling in the back booth. She was saving \$800 from her Richmond laundry shifts to fly to Perth on 6 April, and she held evidence/records concerning Sterling's operations (`paid in full - terminate contract` in Sterling's extortion ledger).
 
-At about 2am Sterling came up the external verandah stairs, in through the sash window of 1A, and hit her once on the left temple with a hammer belonging to Victor Rakov. Victor staged the room: tied the sling, seated the needle, stood the photo frame up. He was also looking for her diary. He did not find it, because it was downstairs on the parlour table in a room full of residents.
-
-They left the way they came. The hammer went down at the shed, five feet from the bottom of the stairs.
+At about 2am Saturday 26 February 1994, Sterling came up the external verandah stairs and in through the sash window of Room 1A with Victor Rakov's bricklayer hammer, hitting Crystal once on the left temple. Before or as Victor climbed through to recover the notebook for Sterling (`"Fitzroy St - grab the book. S."`), Crystal was already dead. Someone staged the room as a relapse overdose: neatly tying the rubber sling, seating a single syringe needle with no prior track marks, and standing the photo frame upright. Neither found the diary downstairs on the parlour table. Leaving in a panic down the verandah stairs, the hammer was left beside the yard shed.
 
 **The needle is the cruellest object in the game.** She had been clean a year. One puncture, no history under it. Whoever staged it knew exactly what he was undoing and chose it.
 
@@ -108,7 +106,7 @@ No interaction in the cold open. Walk, look, listen. It is thirty seconds and it
 
 ### Room 1A
 
-Room 1A is upstairs, on the corner of the front and side. Afternoon sun, roughly 3pm, fixed. A verandah runs off 1A with external stairs straight down to the back yard.
+Room 1A is upstairs, on the corner of the front and side. Afternoon sun, roughly 3pm Saturday 26 February 1994, fixed. A verandah runs off 1A with external stairs straight down to the back yard.
 
 **The light is the point.** The room is beautifully lit. Everything in it happened at 2am in the dark. Whoever arranged it never saw it like this.
 
@@ -155,105 +153,85 @@ On the dresser: travel magazines, a map with pins in it, and a note in her handw
 
 > *fly out April 6th! Can't wait!*
 
-**The destination is never named and never matters.** Do not let anyone add it later.
+**In Scene 1 the destination is unnamed.** Miller finds evidence of a life, not a crime. In Scene 2, Mark supplies what she never told anyone else: she worked two years at a commercial laundry in Richmond, blistering her hands every night to save \$800 cash for that ticket to **Perth**.
 
-This does not help catch anybody. It is evidence of a life, not evidence of a crime, and it is the reason Miller keeps going.
+That reframes the motive and raises the stakes. She got clean, she got a plan, and Kenneth Sterling took it off her.
 
-It also reframes the motive. Crystal was not a career extortionist. She was buying a plane ticket. She got clean, she got a plan, and a publican took it off her over money he could have gone on paying.
-
-**Set the game before 6 April.** Close enough that the date on that note is the worst object in the room after the needle.
+**The timeline is Saturday 26 February 1994 through early Sunday 27 February 1994**, six weeks before her flight date.
 
 ---
 
-## Scene 2 — The Station
+## Scene 2 — St Kilda CID Station Bullpen
 
-Walk the hammer to forensics. Pour a coffee. Wait.
+Walk the tagged hammer into the Forensics intake hatch. Pour a mug of instant black coffee at the break station electric urn while Forensics processes the latent prints.
 
-Forensics returns prints on the handle. Miller pulls the profile: **Victor Rakov**, priors, known to the King St Crew.
+Forensics drops a Manila folder on Miller's desk: four ridge points on the handle match **Victor Rakov**, known to the King Street Crew. Miller pulls Rakov's dossier on the green-phosphor **LEAP mainframe CRT terminal**: priors (GBH, armed robbery, assault with a weapon), bricklayer hammer MO, association with publican **Kenneth Sterling** at Mahoney's Bar, and last known address **14 Regent Street, Prahran**.
 
-Mark comes in and gives a statement. He's the man in the photo, he's the M in the diary, he left Crystal at Mahoney's at seven, he worked the door all night and the bar staff will say so. He is not a suspect and the player should feel the correction land.
-
-**Mark's real job is to put Crystal inside Mahoney's.** The clue that looked like a name was a location.
-
-He got clean the same year she did, or she got clean and then they started. Don't say which. He's the only grief in the game. Keep him short and keep him in.
-
-Systems: new level, terminal UI, one timer, dialogue. No new mechanics.
+Uniforms bring **Mark** into Interview Room 2. He is the man in the photo and the `M` in the diary. He explains Tuesday 3pm lunch at Mahoney's, leaves at 7pm to work the door at the **Prince of Wales** until 5am (confirmed by the door roster and fellow bouncers), and puts Crystal in the back booth talking to Sterling. He breaks down over her saving for the Perth ticket. He is cleared, and Miller and Moretti theorise and roll out to Prahran.
 
 ---
 
-## Scene 3 — Victor's
+## Scene 3 — 14 Regent Street, Prahran & Laneway Chase
 
-Miller gets out of the car. Victor runs. Miller chases and loses him. The radio says Moretti got him going over a fence.
+Night outside 14 Regent Street: fleet VP Commodore parked kerbside, weatherboard cottage with warm porch light. On the porch table lies a discarded slip of receipt paper: *"Fitzroy St - grab the book. S."*
 
-**Build this as a scripted set piece.** Victor animates down a fixed path, rounds a corner, despawns. Trigger fires. There is no pursuit AI and no failure state, because the chase is designed to be lost.
+Victor bolts down the narrow 30-metre bluestone alley past knocked bins and pallets and vaults over the dead-end corrugated iron fence onto Commercial Road. At the base of the fence in wet clay is a fresh size 10 lug workboot print matching the partial on Room 1A's windowsill.
 
-Do not build flee AI for a chase the player cannot win.
-
----
-
-## Scene 4 — Interrogation
-
-The only route to Sterling. There is no forensic path — Victor's prints are on Victor's hammer, and whatever is on that handle points at Victor and nobody else.
-
-**The lever:** that room was worked by two different people. One swung once, hard, at a temple. The other tied a sling with even tension, seated a needle at the wrong angle, and stood a photograph up facing the bed. Those are not the same hands. Then the hammer got left at the bottom of the stairs, which is neither of them being clever.
-
-Miller's play is not *you did it*. It's **you're wearing someone else's swing**. Victor staged a murder he didn't commit and he's the only name on the weapon.
-
-Systems: evidence-presentation layer on the dialogue system. Present the wrong clue and the thread closes.
+**Built as a scripted set piece.** No pursuit AI and no fail state; the chase is designed to end at the fence. Miller answers Moretti on the Victoria Police VHF shoulder radio confirming Victor is cuffed on Commercial Road and transported back to St Kilda CID Interview Room 1.
 
 ---
 
-## Scene 5 — Mahoney's
+## Scene 4 — Interview Room 1 (Interrogation)
 
-Miller and Moretti arrive. Sterling is smug and reads as untouchable. Claims alibis. Refuses the office without a warrant.
+Sound-dampened St Kilda CID interview room, Saturday 26 February 1994, 22:50 hours. Miller starts the dual-cassette **Sanyo CTR-80** police recorder and delivers the formal Section 464A Crimes Act 1958 caution (`tape_caution`).
 
-Miller pushes. A fight breaks out in the bar. Moretti runs off to deal with it.
+Confronting Victor across the laminate table requires physical exhibits rather than guesswork:
 
-**The fight is environmental.** It happens around Miller, not to him. Scripted NPCs, no player input, no combat system. Miller walking through a brawl without looking at it is the characterisation.
+1. **Hammer forensics:** Victor claims his hammer was nicked from his ute in Richmond three weeks ago; Miller counters with four clear points of his left palm and thumb off the grip.
+2. **Bootprints:** Size 10 lug workboot casts from under 1A's sash window and the alley fence, with matching worn left heel and sliced third lug.
+3. **Handwritten slip:** `"Fitzroy St - grab the book. S."` breaks Victor's denial. He admits Sterling sent him up to 1A for the book, swears Crystal was already dead with dried blood on her temple when he climbed in, and panicked when sirens sounded down Fitzroy Street, dumping the hammer at the shed and bolting down the verandah.
+4. **Sterling's hideout:** Victor reveals Sterling keeps the syndicate books and floor safe in the keg cellar at Mahoney's Bar on Fitzroy Street, with the brass mortise key on a chain in his waist pocket. Interview concludes at 23:14 hours.
 
-Miller corners Sterling and takes him by the collar.
+---
 
-> "I'll ruin you now or ruin you later. Your choice."
+## Scene 5 — Mahoney's Bar, Cellar & Watchhouse Epilogue
 
-Cut to a cell door closing on Sterling. **Suspicion of murder and sale of drugs.**
+Late Saturday night running past midnight into Sunday **27 February 1994**. Miller and Moretti enter Mahoney's public bar on Fitzroy Street (mahogany bar counter, Carlton Draught fonts, pool table, poker machines, bluestone cellar behind a locked iron grille).
 
-Do not make the ending procedural. No charge sheet, no caption, no explanation of how it held up. The door closes.
+Sterling denies everything from behind the taps and demands a Section 92 magistrate's warrant. When a fight erupts between two punters at the pool table, Moretti steps in to pin the brawlers against the timber, leaving Sterling isolated. Miller corners Sterling behind the optics (`"I'll ruin you now or ruin you later, Sterling. Your choice."`) and pries the brass cellar key (`'M.B. - CELLAR'`) from his vest pocket.
 
-Then, for the first time in the game, you see Miller and Moretti.
+Miller unlocks the cellar grille, descends to the wet bluestone keg cellar, opens the recessed Chub-pattern floor safe, and seizes Sterling's black vinyl extortion ledger naming Crystal Vance (`Paradise Lodge Room 1A - paid in full - terminate contract`). Upstairs at the back fire exit, Moretti intercepts Sterling fleeing into the bluestone alley. Miller presents page 42 of the ledger and arrests Sterling for murder, conspiracy, and extortion.
 
-**End.**
+Cut on the watchhouse cell door slam (`audio.foley.cellSlam()`). The chiaroscuro closing epilogue shows the watchhouse cell-block corridor, silhouettes of Miller and Moretti in coat and uniform cap (`FITZROY STREET, ST KILDA • 27 FEBRUARY 1994`), confirming Kenneth Sterling remanded without bail to Pentridge, Victor Rakov pleading to manslaughter and housebreaking, and Crystal Vance dead at twenty-two.
 
 ---
 
 ## Technical notes
 
-**The final reveal is one frame.** Characters are the hardest thing in a 3D game and the reason most AI-built attempts fail. In this game the player never sees the protagonist, and the two faces that matter appear in a single shot, from a single angle, in a single lighting setup. Hand-tune that one frame. Everything else is bodies at a distance, a corpse, and a woman smoking in a parlour.
+**The final reveal is an epilogue still.** During scenes 1–5 the camera stays strictly in first person (including reception with Rosie). Only the closing Watchhouse epilogue still renders Miller's silhouette alongside Moretti down the corridor.
 
-**Hands are the second-hardest asset.** Gloves help enormously, because a gloved hand hides the knuckle and fingernail detail that makes bare CG hands read as wrong. Every examine animation is bespoke, so budget one per object, roughly a dozen for scene 1.
+**Hands are the second-hardest asset.** Gloves help enormously, because a gloved hand hides the knuckle and fingernail detail that makes bare CG hands read as wrong. Every examine animation is bespoke, so budget one per object for scene 1.
 
-**Fixed sun.** Scene 1 is a locked sun angle at roughly 3pm. It lights itself, stays consistent, and gives the game its strongest image: a murder room that looks like a real estate photo.
+**Fixed sun.** Scene 1 daylight mode uses a locked sun angle at roughly 3pm; default dusk mode pairs practicals and film grading so Room 1A stays the clearest room in the building.
 
-**No combat, anywhere.** Not in the lodge, not in the chase, not in the bar. If the player can throw a punch you have built a different game.
+**No combat, anywhere.** Not in the lodge, not in the chase, not in the bar. The bar brawl is environmental; the player cannot throw punches.
 
-**Twelve-hour body.** She died at 2am and is found in the afternoon. Lividity and rigor are visible. The examine text can carry the timeline without a line of dialogue.
+**Twelve-hour body.** She died at 2am and is found in the afternoon. Lividity and rigor are visible. The examine text carries the timeline without a line of dialogue.
 
 ---
 
-## Open decisions
+## Locked decisions
 
-Resolve before build. Everything else is locked.
-
-**1. The date.** Set before 6 April, close enough that the note lands. Pick the year while you're at it, because it decides the props, the cars, the neon, and whether anyone has a phone.
-
-That is the only one left. Everything else is locked.
+All narrative and date decisions are now locked:
+- **Timeline:** Saturday 26 February 1994 (Scenes 1–4) concluding early Sunday 27 February 1994 (Scene 5 Watchhouse Epilogue), ahead of Crystal's planned 6 April 1994 departure.
+- **Canon rewrite:** Scenes 2–5 cast (`Kenneth Sterling`, `Crystal Vance` 22, `Prince of Wales`, `"Perth"` ticket / \$800 Richmond laundry savings) and plot beats are authoritative.
+- **Camera rule:** Strict first person throughout all playable scenes (OTS reception camera retired); Miller silhouette/epilogue appears only at the Watchhouse ending.
 
 ---
 
 ## Build order
 
-Scene 1 is roughly 80% of the engine. Everything after it is content in the same systems.
-
-Build scene 1 complete before touching scene 2. Do not rough out five scenes.
+Scene 1 is roughly 80% of the engine. Scenes 2–5 reuse the same subsystems with per-scene worlds, dialogues, and gate trackers.
 
 1. Player controller, first person, walk / crouch / lean
 2. Look and examine, two-tier, raycast
@@ -266,6 +244,4 @@ Build scene 1 complete before touching scene 2. Do not rough out five scenes.
 8. Moretti, navmesh follow, tag-and-bag
 9. Rest of the lodge, hallway, stairs, verandah, yard
 10. Objective gates and scene exit
-11. Scene manager, save on scene boundary
-
-Verify in browser between each step. Don't stack three steps in one prompt.
+11. Scene manager, save on scene boundary & scene transitions

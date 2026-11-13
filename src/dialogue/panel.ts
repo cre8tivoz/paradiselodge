@@ -2,12 +2,26 @@ import { on } from '../core/events.ts'
 import type { DialogueRunner } from './runner.ts'
 import type { DialogueNode } from './graph.ts'
 
-const PORTRAITS: Record<string, string> = {
-  Rosie: '/portraits/rosie.png',
-  Moretti: '/portraits/moretti.png',
-  Mark: '/portraits/mark.png',
-  Victor: '/portraits/victor.png',
-  Sterling: '/portraits/sterling.png',
+const PORTRAITS: ReadonlyArray<readonly [string, string]> = [
+  ['rosie', '/portraits/rosie.png'],
+  ['moretti', '/portraits/moretti.png'],
+  ['mark', '/portraits/mark.png'],
+  ['victor', '/portraits/victor.png'],
+  ['sterling', '/portraits/sterling.png'],
+]
+
+function resolvePortrait(speaker: string): string | undefined {
+  const normalized = speaker.trim().toLowerCase()
+  for (const [key, url] of PORTRAITS) {
+    if (
+      normalized === key ||
+      normalized.startsWith(`${key} `) ||
+      normalized.includes(` ${key}`)
+    ) {
+      return url
+    }
+  }
+  return undefined
 }
 
 /**
@@ -105,7 +119,7 @@ export class DialoguePanel {
     this.lineEl.textContent = node.line
     this.choicesEl.replaceChildren()
 
-    const portraitUrl = PORTRAITS[node.speaker]
+    const portraitUrl = resolvePortrait(node.speaker)
     if (portraitUrl !== undefined) {
       this.portraitImg.src = portraitUrl
       this.portraitImg.alt = node.speaker
@@ -114,8 +128,8 @@ export class DialoguePanel {
       this.portraitContainer.style.display = 'none'
     }
 
-    const choices = node.choices
-    if (choices !== undefined && choices.length > 0) {
+    const choices = (node.choices ?? []).filter((choice) => choice.when?.() ?? true)
+    if (choices.length > 0) {
       for (let i = 0; i < choices.length; i += 1) {
         const choice = choices[i]
         const item = document.createElement('li')
@@ -170,6 +184,12 @@ export class DialoguePanel {
     if (!this.open) {
       return
     }
+    if (
+      event.target instanceof HTMLInputElement ||
+      event.target instanceof HTMLTextAreaElement
+    ) {
+      return
+    }
     if (event.code === 'Escape') {
       event.preventDefault()
       this.runner.cancel()
@@ -181,8 +201,8 @@ export class DialoguePanel {
       return
     }
 
-    const choices = node.choices
-    if (choices !== undefined && choices.length > 0) {
+    const choices = (node.choices ?? []).filter((entry) => entry.when?.() ?? true)
+    if (choices.length > 0) {
       const index = choiceIndex(event.code)
       if (index === undefined || index >= choices.length) {
         return

@@ -73,15 +73,15 @@ export class EndingScreen {
           <line x1="760" y1="240" x2="760" y2="480" stroke="#181c24" stroke-width="8"/>
 
           <!-- Silhouettes: Detective Graham Miller (left) and Constable Moretti (right) -->
-          <!-- Miller: fedora hat, turned-up trench collar, lit cigarette ember -->
+          <!-- Miller: bare head, turned-up trench collar, lit cigarette ember -->
           <g transform="translate(320, 260) scale(0.62)">
             <!-- Trenchcoat body silhouette -->
             <path d="M 60,180 Q 20,260 0,460 L 160,460 Q 140,260 100,180 Z" fill="#040507"/>
             <!-- Collar turned up -->
             <path d="M 40,160 L 60,195 L 80,180 L 100,195 L 120,160 L 95,145 L 65,145 Z" fill="#020304"/>
-            <!-- Head & Fedora hat -->
-            <ellipse cx="80" cy="140" rx="22" ry="26" fill="#040507"/>
-            <path d="M 25,126 Q 80,118 135,126 Q 115,100 80,102 Q 45,100 25,126 Z" fill="#020304"/>
+            <!-- Head & cropped hair -->
+            <ellipse cx="80" cy="138" rx="22" ry="26" fill="#040507"/>
+            <path d="M 59,130 Q 64,110 82,110 Q 98,110 101,128 Q 92,119 80,119 Q 68,119 59,130 Z" fill="#020304"/>
             <!-- Cigarette red ember glow -->
             <circle cx="82" cy="155" r="2.5" fill="#ff4d15" filter="drop-shadow(0 0 4px #ff3b00)"/>
             <path d="M 83,153 Q 86,140 92,125" stroke="rgba(255,255,255,0.22)" stroke-width="1.5" fill="none"/>

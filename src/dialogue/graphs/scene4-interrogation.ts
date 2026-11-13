@@ -1,13 +1,19 @@
 import type { DialogueGraph } from '../graph.ts'
 
 /**
- * Scene 4 — St Kilda CID Interview Room 1.
+ * Scene 4 - St Kilda CID Interview Room 1.
  *
  * Formal interrogation of Victor Rakov conducted under Section 464A Crimes Act 1958.
  * Miller confronts Victor with the forensic evidence (hammer prints, mud bootprints,
  * and Sterling's handwritten slip), breaking Victor's denial and extracting
  * the location of Sterling's base in the cellar of Mahoney's Bar.
  */
+
+let concludePredicate: () => boolean = () => true
+
+export function setScene4ConcludePredicate(fn: () => boolean): void {
+  concludePredicate = fn
+}
 
 export const SCENE4_TAPE_CAUTION: DialogueGraph = {
   id: 'scene4.tape.caution',
@@ -61,7 +67,12 @@ export const SCENE4_VICTOR_INTERROGATION: DialogueGraph = {
         { id: 'bootprint', label: 'We have your bootprints in the mud outside Room 1A.', next: 'boot_branch' },
         { id: 'slip', label: 'We found the slip on your table: "grab the book. S."', next: 'slip_branch' },
         { id: 'sterling', label: 'Where is Sterling right now?', next: 'sterling_branch' },
-        { id: 'conclude', label: 'Interview concluded. Moretti, book him.', next: 'conclude_branch' },
+        {
+          id: 'conclude',
+          label: 'Interview concluded. Moretti, book him.',
+          next: 'conclude_branch',
+          when: () => concludePredicate(),
+        },
       ],
     },
 
@@ -69,7 +80,7 @@ export const SCENE4_VICTOR_INTERROGATION: DialogueGraph = {
     hammer_branch: {
       id: 'hammer_branch',
       speaker: 'Miller',
-      line: "The bricklayer's hammer we pulled out of the garden bed at the Paradise Lodge. Blood on the face, hair on the claw.",
+      line: "The bricklayer's hammer we pulled from beside the iron shed at the Paradise Lodge. Blood on the face, hair on the claw.",
       next: 'hammer_ans1',
     },
     hammer_ans1: {
@@ -139,13 +150,13 @@ export const SCENE4_VICTOR_INTERROGATION: DialogueGraph = {
     slip_break3: {
       id: 'slip_break3',
       speaker: 'Miller',
-      line: "Then why toss the hammer in the shrubs?",
+      line: "Then why dump the hammer out by the shed?",
       next: 'slip_break4',
     },
     slip_break4: {
       id: 'slip_break4',
       speaker: 'Victor Rakov',
-      line: "Because I panicked! I heard sirens down Fitzroy Street, I dropped the tool in the garden, and I bolted over the back verandah!",
+      line: "Because I panicked! I heard sirens down Fitzroy Street, dropped the tool by the shed, and bolted down the back verandah stairs!",
       next: 'hub',
     },
 

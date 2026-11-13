@@ -2,9 +2,7 @@
  * Save data written on a scene boundary.
  *
  * Only what the next boot needs: which scenes are finished, which evidence is
- * filed, and which scene would load if more than one existed. Scene 2 is not
- * built yet, so a completed scene 1 still boots into scene 1's world — the
- * save is the boundary record, not a teleporter.
+ * filed, and which scene to resume next across `SCENE_ORDER` (`scene1`..`scene5`).
  */
 
 export type SceneId = 'scene1' | 'scene2' | 'scene3' | 'scene4' | 'scene5'

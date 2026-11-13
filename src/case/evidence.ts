@@ -144,7 +144,7 @@ export const SCENE3_EVIDENCE: readonly EvidenceDef[] = [
   {
     id: 'cottage_slip',
     label: 'Handwritten slip',
-    look: 'Scrap of receipt paper on the cottage kitchen bench.',
+    look: 'Scrap of receipt paper on the cottage porch table.',
     examine:
       'Pencil scribble: "Fitzroy St - grab the book. S." Sterling sent him for the diary.',
     landsIn: ['S4', 'S5'],

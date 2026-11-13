@@ -38,6 +38,11 @@ export class LookRaycaster {
     return this.current
   }
 
+  /** Clear the active look target on scene teardown without emitting look:exit. */
+  clear(): void {
+    this.current = undefined
+  }
+
   update(): void {
     this.raycaster.setFromCamera(this.centre, this.camera)
 

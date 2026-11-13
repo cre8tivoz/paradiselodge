@@ -1,9 +1,15 @@
 import {
+  Box3,
+  BoxGeometry,
+  CanvasTexture,
   Group,
   Mesh,
   MeshStandardMaterial,
   NoColorSpace,
   Object3D,
+  PlaneGeometry,
+  SRGBColorSpace,
+  Vector3,
   type Texture,
 } from 'three'
 import { EXRLoader } from 'three/addons/loaders/EXRLoader.js'
@@ -112,6 +118,101 @@ function collectStairs(scene: Group): Group {
   roots.forEach((child) => stairs.add(child))
   scene.add(stairs)
   return stairs
+}
+
+function makeDoorPlaqueTexture(label: string): CanvasTexture {
+  const canvas = document.createElement('canvas')
+  canvas.width = 128
+  canvas.height = 128
+  const ctx = canvas.getContext('2d')
+  if (ctx !== null) {
+    ctx.fillStyle = '#8b6f3b'
+    ctx.fillRect(0, 0, 128, 128)
+    ctx.fillStyle = '#b8944f'
+    ctx.fillRect(8, 8, 112, 112)
+    ctx.strokeStyle = '#3a2a12'
+    ctx.lineWidth = 4
+    ctx.strokeRect(10, 10, 108, 108)
+    // Corner screws
+    ctx.fillStyle = '#3a2a12'
+    for (const [sx, sy] of [
+      [18, 18],
+      [110, 18],
+      [18, 110],
+      [110, 110],
+    ] as const) {
+      ctx.beginPath()
+      ctx.arc(sx, sy, 3.2, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    // Engraved lettering
+    ctx.fillStyle = '#1d1409'
+    ctx.font = 'bold 56px Georgia, "Times New Roman", serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(label, 64, 67)
+  }
+  const tex = new CanvasTexture(canvas)
+  tex.colorSpace = SRGBColorSpace
+  tex.needsUpdate = true
+  return tex
+}
+
+function attachPlaqueOverlay(parent: Object3D, pos: Vector3, label: string, withBacking: boolean): void {
+  const group = new Group()
+  group.name = `hall_plaque_${label}`
+  group.position.copy(pos)
+  if (withBacking) {
+    const backing = new Mesh(
+      new BoxGeometry(0.012, 0.15, 0.15),
+      new MeshStandardMaterial({ color: 0x6f572c, roughness: 0.48, metalness: 0.65 }),
+    )
+    group.add(backing)
+  }
+  const face = new Mesh(
+    new PlaneGeometry(0.146, 0.146),
+    new MeshStandardMaterial({
+      map: makeDoorPlaqueTexture(label),
+      roughness: 0.42,
+      metalness: 0.55,
+      envMapIntensity: 0.6,
+    }),
+  )
+  face.rotation.y = -Math.PI / 2
+  face.position.x = withBacking ? -0.007 : -0.002
+  face.castShadow = false
+  face.receiveShadow = true
+  group.add(face)
+  parent.add(group)
+}
+
+/**
+ * Stamps numbered brass plaques (`1A`, `1B`, `1C`) onto the upstairs corridor
+ * doors and jambs so the hallway rooms read clearly in both Dusk and Day modes.
+ */
+export function installDoorNumberPlates(unitAScene: Object3D, roomGroup: Object3D): void {
+  unitAScene.updateMatrixWorld(true)
+  roomGroup.updateMatrixWorld(true)
+
+  const mountExisting = (nodeName: string, label: string): void => {
+    const plate = unitAScene.getObjectByName(nodeName)
+    if (plate === undefined) return
+    const box = new Box3().setFromObject(plate)
+    if (box.isEmpty()) return
+    const center = box.getCenter(new Vector3())
+    attachPlaqueOverlay(unitAScene, new Vector3(box.min.x, center.y, center.z), label, false)
+  }
+
+  mountExisting('first_floor_hall_door_3_number_plate', '1B')
+  mountExisting('first_floor_hall_door_2_number_plate', '1C')
+
+  const pier1A = roomGroup.getObjectByName('wall_hall_pier0')
+  if (pier1A !== undefined) {
+    const pierBox = new Box3().setFromObject(pier1A)
+    if (!pierBox.isEmpty()) {
+      attachPlaqueOverlay(unitAScene, new Vector3(pierBox.min.x - 0.006, 4.905, pierBox.min.z + 0.18), '1A', true)
+    }
+  }
 }
 
 /** Load the complete Blender-authored interior and restore its five baked atlases. */

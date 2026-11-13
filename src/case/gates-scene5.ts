@@ -35,8 +35,10 @@ export const SCENE5_GATES: readonly GateDef[] = [
     isMet: (f) =>
       f.heard('sterling_intro') ||
       f.heard('sterling_hub') ||
-      f.chosen('sterling_talk') ||
-      f.seen('mahoneys.sterling'),
+      f.chosen('victor_leverage') ||
+      f.chosen('refuse_cellar') ||
+      f.heard('victor_response') ||
+      f.heard('warrant_demand'),
   },
   {
     id: 'brawl_distraction',
@@ -46,7 +48,6 @@ export const SCENE5_GATES: readonly GateDef[] = [
     isMet: (f) =>
       f.heard('brawl_erupts') ||
       f.chosen('trigger_brawl') ||
-      f.seen('mahoneys.brawl') ||
       f.heard('moretti_covers'),
   },
   {
@@ -68,8 +69,7 @@ export const SCENE5_GATES: readonly GateDef[] = [
     isMet: (f) =>
       f.filed('sterling_ledger') ||
       f.heard('safe_cracked') ||
-      f.chosen('open_safe') ||
-      f.seen('cellar.safe'),
+      f.chosen('open_safe'),
   },
   {
     id: 'cell_slam_ending',
