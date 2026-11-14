@@ -148,7 +148,7 @@ Cell door, corridor, and the only third-person camera in the game.
 |---|---|---|
 | **Miller** | Hands only, until the epilogue | Gloves in scene 1. Cuff state per scene. Silhouette shown beside Moretti in Scene 5 Watchhouse epilogue still. **Hand mesh done:** source `assets/blender/miller-hand.blend`, shipped `public/models/miller-hand.glb`, ref `images/characters/miller-hands.png` |
 | **Moretti** | Full, mid distance | Uniform constable. Never closer than two metres. Generated locally from `images/characters/moretti-sheet.png` to `public/models/moretti.glb` (preserving Three.js joint hierarchy across S1–S5) |
-| **Rosie** | Full, close | Mid 50s, shoulder-length red and grey, ugly cardigan, cigarette always lit. **Live mesh:** `public/models/rosie-rigged.glb` (Mixamo `idle` loop + cigarette ember pulse). Older `public/models/rosie.glb` is retired and queued for removal. Source in `art-source/characters/rosie/`. See `docs/MOVING-FORWARD.md` |
+| **Rosie** | Full, close | Mid 50s, shoulder-length red and grey, ugly cardigan, cigarette always lit. **Live mesh:** `public/models/rosie-rigged.glb` (Mixamo `idle` loop + cigarette ember pulse). Older `public/models/rosie.glb` has been removed. Source in `art-source/characters/rosie/`. See `docs/MOVING-FORWARD.md` |
 | **Crystal Vance** | Full, very close | 22, blonde, petite, well dressed. Twelve hours dead. Lividity and rigor visible. Generated locally from `images/characters/crystal-sheet.png` to `public/models/crystal.glb`. On the bed in room 1A |
 | **Mark** | Full, mid | Bouncer build (Prince of Wales, Fitzroy St), black shirt, ponytail. Mapped from `images/characters/mark-sheet.png` to `public/models/mark.glb` (seated in S2 Interview Room 2) |
 | **Victor Rakov** | Full, distance and interview | Seen running in Scene 3, then across a table in Scene 4. Mapped from `images/characters/victor-sheet.png` to `public/models/victor.glb` |
@@ -167,13 +167,13 @@ Hybrid Web Audio synthesis + 5-track ElevenLabs Music neo-noir soundtrack.
 - **Street:** traffic on Fitzroy Street, a tram two blocks off, gulls
 - **Lodge interior:** the building settling, a clock, a radio in another room, silence with weight
 - **Room 1A:** almost nothing. Distant traffic through the open sash. Flies. Low sustained room tone
-- **Station (Scene 2), Prahran Laneway (Scene 3), Interview Room (Scene 4), Mahoney's (Scene 5):** procedural ambience beds planned/queued to replace Scene 1 bleed
+- **Station (Scene 2), Prahran Laneway (Scene 3), Interview Room (Scene 4), Mahoney's (Scene 5):** dedicated procedural ambience beds (`src/audio/ambience.ts`) tuned per scene without Scene 1 bleed
 
 ### Foley
-Web Audio mathematical synthesizers (`src/audio/footsteps.ts`, `src/audio/foley.ts`): footsteps on marble, carpet, floorboards, verandah timber, bitumen (plus `bluestone` / `gravel` queued). Gloves going on. Sash window. Wardrobe. Paper. Lighter. Ashtray. Watchhouse cell door slam (`cellSlam`). Cassette recorder (`tapeClick` / `tapeHum`) and rotary safe dial (`safeDialClick`) queued.
+Web Audio mathematical synthesizers (`src/audio/footsteps.ts`, `src/audio/foley.ts`): footsteps on marble, carpet, floorboards, verandah timber, bitumen, `bluestone`, and `gravel`. Gloves going on. Sash window. Wardrobe. Paper. Lighter. Ashtray. Watchhouse cell door slam (`cellSlam`). Cassette recorder (`tapeClick` / `tapeHum`) and rotary safe dial (`safeDialClick`).
 
 ### Music
-**Approved 5-track ElevenLabs Music score** (`public/audio/soundtrack/01-theme-paradise-lodge.mp3` through `05-theme-mahoneys-end.mp3`), streamed via `SoundtrackPlayer` (`src/audio/soundtrack.ts`) alongside Web Audio foley and ambience beds. Stage 2 audio task will route `SoundtrackPlayer` through Web Audio `Mixer` for smooth scene crossfading and dialogue ducking, and deduplicate the 18 MB copy in `assets/audio/soundtrack/`.
+**Approved 5-track ElevenLabs Music score** (`public/audio/soundtrack/01-theme-paradise-lodge.mp3` through `05-theme-mahoneys-end.mp3`), streamed via `SoundtrackPlayer` (`src/audio/soundtrack.ts`) routed through the Web Audio `Mixer` for scene crossfading and dialogue ducking alongside Web Audio foley and ambience beds. The duplicate 18 MB copy in `assets/audio/soundtrack/` has been removed.
 
 **Never score the discoveries.** No sting when Miller finds the temple. The absence is the effect.
 
@@ -188,7 +188,7 @@ Image gen is used for turnaround sheets, portraits, paper props and decals. Char
 | Asset | Why |
 |---|---|
 | **The photo in the frame** | Crystal and Mark, 1994 snapshot. Slightly overexposed, bad flash, pub background. This is a texture, and it is the single most loaded object in room 1A |
-| **Victor's record photo** | Scene 2. `public/textures/victor-record.jpg` — wire onto Manila folder / LEAP dossier |
+| **Victor's record photo** | Scene 2. **Done:** `public/textures/victor-record.jpg` wired onto the Scene 2 CID LEAP dossier terminal |
 | **Travel magazines** | Cover art. Early-90s travel mag layout (`public/textures/magazines.jpg`) |
 | **The map with pins** | Folded paper texture, creases, pin holes (`public/textures/map-pins.jpg`) |
 | **The note** | Handwriting. "fly out April 6th! Can't wait!" (`public/textures/note.jpg`) |

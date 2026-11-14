@@ -67,17 +67,17 @@ Large source art stays in the repo, so a wiped machine is not the only copy. `ar
 
 Git LFS is not used. The repo already stores binaries of this size as ordinary git objects. The Unit A GLB is about 31 MB and is fetched from R2 at runtime only because Pages rejects a single file over 25 MiB (`vite.config.mjs` strips `models/unit-a.glb` from `dist`). Nothing in the Rosie archive is near GitHub's 100 MB limit. LFS would make a clone, and a Pages build, depend on a client and a quota the rest of the repo does not use. If a single new file approaches 50 MB, stop and decide before committing it.
 
-## Roadmap / next quick wins
+## Roadmap / quick wins (Reconciled)
 
-Author decisions locked; tracking current status of each quick win before starting Stage 2 fixes:
+Author decisions locked; Stage 1 quick wins and Stage 2 cross-scene upgrades are complete:
 
-1. **Rigged Rosie at reception & parlour — Partial (wired, polish queued):** `public/models/rosie-rigged.glb` is now wired with Mixamo `idle` and ember glow. Remaining quick wins: fix `head.rotation` additive `+=` drift in `src/npc/rosie.ts`, remove dead `restLift` field, remove retired `public/models/rosie.glb`, and strip editorialising `"infamous"` from Rosie's reception description.
-2. **Reception camera (`03-reception-with-rosie.png`) — Decision locked (OTS retired):** Keep strict first person throughout reception and all playable dialogue so Miller stays unseen until the Watchhouse epilogue still (optional subtle first-person eye framing on reception talk only, never a third-person body).
-3. **Wet-road neon streak reflections — Done (S1):** Implemented in `src/materials/look.ts` `asphaltMaterial()` (`THE PARADISE LODGE` pink / `ROOMS TO LET` cyan). In Stage 2, decouple Scene 3 Regent Street asphalt from Scene 1's lodge neon X/Z reflection streaks.
-4. **More ornate exterior facade — Done (S1):** Authored `public/models/lodge-exterior.glb` and exterior dressing integrated. Cleanup queued: remove or wire the detached `neonMat` flicker inside `src/world/lodge.ts` (overridden when exterior GLB replaces `lodge.props.neon`).
-5. **Rest of the cast — In progress:** Map Moretti, Crystal, Mark (S2), Victor (S3/S4), and Sterling (S5) directly from `images/characters/*-sheet.png` via `tools/characters/build_characters.py` and wire articulated Three.js poses across Scenes 1–5 (zero Blender/Hunyuan3D/Mixamo required).
-6. **Portrait art in dialogue panel — Partial:** `public/portraits/{mark,moretti,rosie,sterling,victor}.png` are wired in `src/dialogue/panel.ts`, but exact-key lookup misses variants like `'Moretti (Radio)'`, `'Victor Rakov'`, `'Kenneth Sterling'`, `'Forensics Tech'`, `'Punter'`, `'Detective Graham Miller'`. Normalize speaker matching in Stage 2.
-7. **Richer hall and stairs — Partial:** Turned balusters and runner shipped in `unit-a.glb`; upstairs room number plates (`1A`, `1B`, `1C`) queued as a Scene 1 polish quick win.
-8. **Parlour/Reception visual fixes — Partial:** Fix Parlour `sunBeam` slicing across Rosie (`src/render/dusk.ts`), refine the reception CRT cabinet corner and Parlour armchair/TV finish, and bring Scenes 2–5 into the shared `installPost()` film grade (removing `AmbientLight` and dark void skyboxes).
+1. **Rigged Rosie at reception & parlour — Done:** `public/models/rosie-rigged.glb` is live with Mixamo `idle` and ember glow; fixed `head.rotation` additive `+=` drift in `src/npc/rosie.ts`, removed dead `restLift`, removed retired `public/models/rosie.glb`, and stripped editorialising copy from Rosie's description.
+2. **Reception camera (`03-reception-with-rosie.png`) — Done (OTS retired):** Strict first person preserved throughout reception and all playable dialogue so Miller stays unseen until the Watchhouse epilogue still.
+3. **Wet-road neon streak reflections — Done:** Implemented in `src/materials/look.ts` `asphaltMaterial()`, and decoupled Scene 3 Regent Street asphalt from Scene 1's lodge neon X/Z reflection streaks.
+4. **More ornate exterior facade — Done:** Authored `public/models/lodge-exterior.glb` and exterior dressing integrated; dead `neonMat` flicker in `src/world/lodge.ts` cleaned up.
+5. **Rest of the cast — Done:** Mapped Moretti, Crystal, Mark (S2), Victor (S3/S4), and Sterling (S5) directly from `images/characters/*-sheet.png` via `tools/characters/build_characters.py` and wired articulated Three.js poses across Scenes 1–5 (zero Blender/Hunyuan3D/Mixamo required).
+6. **Portrait art in dialogue panel — Done:** Normalised speaker matching in `src/dialogue/panel.ts` (`'Moretti (Radio)'`, `'Victor Rakov'`, `'Kenneth Sterling'`, `'Forensics Tech'`, `'Punter'`, `'Detective Graham Miller'`) mapped onto `public/portraits/*.png`.
+7. **Richer hall and stairs — Done:** Turned balusters and runner shipped in `unit-a.glb`, plus upstairs room number plates (`1A`, `1B`, `1C`) installed via `installDoorNumberPlates()`.
+8. **Parlour/Reception/S2–S5 lookdev — Done:** Fixed Parlour `sunBeam` slicing Rosie, refined Parlour TV/chair/CRT placement, eliminated Reception outer `lodge.ts` wall Z-fighting against `unit-a.glb`, fixed Crystal's Room 1A bed orientation & dusk brightness, and brought Scenes 2–5 onto the shared `post.ts` film grade (removing `AmbientLight` and dark void skyboxes).
 
-Gameplay verbs, evidence rules, and Scenes 2–5 structural P0 fixes are tracked in `docs/ROADMAP.md`.
+Gameplay verbs, evidence rules, and Scenes 2–5 delivery state are tracked in `docs/ROADMAP.md`.

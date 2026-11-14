@@ -94,16 +94,21 @@ export function bankersLamp(pos: Vector3, rotY = 0, intensity = 7, spill = 2.2):
   arm.position.set(0, 0.36, 0)
   arm.rotation.x = Math.PI / 2
   g.add(arm)
-  for (const m of [base, stem, shade]) {
+  for (const m of [base, stem]) {
     m.castShadow = true
     m.receiveShadow = true
     g.add(m)
   }
+  shade.castShadow = false
+  shade.receiveShadow = true
+  g.add(shade)
   g.add(inner)
-  const spot = new SpotLight(TUNGSTEN, intensity, 6, Math.PI * 0.42, 0.75, 2)
+  const spot = new SpotLight(TUNGSTEN, intensity, 6, Math.PI * 0.36, 0.78, 2)
   spot.position.set(0, 0.32, 0.03)
   spot.target.position.set(0, -1, 0.2)
-  shadowSpot(spot, 512)
+  shadowSpot(spot, 1024)
+  spot.shadow.camera.near = 0.05
+  spot.shadow.bias = -0.001
   g.add(spot, spot.target)
   const spillL = new PointLight(TUNGSTEN, spill, 3.5, 2)
   spillL.position.set(0, 0.28, 0.12)

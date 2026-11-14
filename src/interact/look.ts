@@ -44,6 +44,7 @@ export class LookRaycaster {
   }
 
   update(): void {
+    this.camera.updateMatrixWorld()
     this.raycaster.setFromCamera(this.centre, this.camera)
 
     const hits = this.raycaster.intersectObject(this.world, true)

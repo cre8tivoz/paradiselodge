@@ -48,3 +48,43 @@ export async function launchBrowser(extraArgs = []) {
     ],
   })
 }
+
+export async function closeBrowser(browser, page, server) {
+  try {
+    if (page && !page.isClosed()) {
+      await Promise.race([
+        page
+          .evaluate(() => {
+            window.__lodge?.loop?.stop?.()
+          })
+          .catch(() => {}),
+        new Promise((resolve) => setTimeout(resolve, 800)),
+      ])
+      await Promise.race([
+        page.close().catch(() => {}),
+        new Promise((resolve) => setTimeout(resolve, 1500)),
+      ])
+    }
+  } catch {
+    // Ignore page close timeouts during SwiftShader teardown
+  }
+
+  try {
+    if (browser) {
+      await Promise.race([
+        browser.close().catch(() => {}),
+        new Promise((resolve) => setTimeout(resolve, 2000)),
+      ])
+    }
+  } catch {
+    // Ignore browser close hangs when SwiftShader gpu-process lingers
+  }
+
+  if (server) {
+    try {
+      server.kill('SIGKILL')
+    } catch {
+      // Ignore already exited dev server
+    }
+  }
+}

@@ -21,7 +21,7 @@ Full sets under `public/textures/pbr/<id>/`, 2k jpg, named as shipped: albedo
 
 | Set | Used on | Source | Author | Licence |
 |---|---|---|---|---|
-| `wood_planks` | Room 1A floor, and `boards_worn` in the library | [Poly Haven — Wood Planks](https://polyhaven.com/a/wood_planks) | Amal Kumar | CC0 |
+| `wood_planks` | Room 1A bake & historical `boards_worn` library source (duplicate standalone `public/textures/pbr/wood_planks/` removed) | [Poly Haven — Wood Planks](https://polyhaven.com/a/wood_planks) | Amal Kumar | CC0 |
 | `beige_wall_001` | `plaster_nicotine` and `plaster_cornice` | [Poly Haven — Beige Wall 001](https://polyhaven.com/a/beige_wall_001) | Dimitrios Savva, Rico Cilliers | CC0 |
 | `dirty_carpet` | `carpet_runner`, the hall and stair runner | [Poly Haven — Dirty Carpet](https://polyhaven.com/a/dirty_carpet) | Rohit Seervi | CC0 |
 | `dark_wood` | `timber_dark`, skirtings, banister, desk, picture rail | [Poly Haven — Dark Wood](https://polyhaven.com/a/dark_wood) | Dario Barresi, Dimitrios Savva, Rico Cilliers | CC0 |
@@ -137,7 +137,7 @@ are stand-ins for sourced PBR sets and go as each one is replaced.
 
 ## Rosie v2
 
-Not loaded by the game yet. The character design is the project's own sheet,
+Live shipped mesh (`public/models/rosie-rigged.glb`; retired `public/models/rosie.glb` removed). The character design is the project's own sheet,
 `images/characters/rosie-sheet.png`. Shape, rig and the shipped mesh:
 
 | File | Source | Licence note |
@@ -146,3 +146,7 @@ Not loaded by the game yet. The character design is the project's own sheet,
 | `art-source/characters/rosie/rosie3d-v2-mixamo.fbx` | A-pose uploaded to Mixamo | Same |
 | `art-source/characters/rosie/mixamo/*.fbx` | [Mixamo](https://www.mixamo.com/) idle and walk downloads | Same |
 | `art-source/characters/rosie/rosie-v2-*.png`, `apose-*.png` | Baked and drawn from the project sheet | Project art |
+
+## Cast GLBs (`tools/characters/build_characters.py`)
+
+`public/models/moretti.glb`, `public/models/crystal.glb`, `public/models/mark.glb`, `public/models/victor.glb`, and `public/models/sterling.glb` are project-authored meshes and texture atlases generated directly in-repo from the turnaround sheets in `images/characters/*-sheet.png` via `tools/characters/build_characters.py` and Three.js, with zero external Blender, Hunyuan3D, or Mixamo dependencies.

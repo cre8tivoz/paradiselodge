@@ -25,17 +25,17 @@ A resident, Crystal Vance (22), is dead in room 1A, staged as an overdose. It is
 
 | Scene | What it is |
 |---|---|
-| 1 | The lodge. Cold open, investigation, theorise with Moretti. Playable (polish quick wins queued) |
-| 2 | Police station. Forensics, LEAP terminal, Mark's statement. Built (P0 collision/gate fixes queued) |
-| 3 | Victor chase. 14 Regent St cottage, bluestone alley sprint, VHF arrest. Built (P0 collision/transition fixes queued) |
-| 4 | Interrogation. Section 464A caution, exhibit confrontation, Victor confession. Built (P0 collision/gate fixes queued) |
-| 5 | Mahoney's. Brawl, collar grab, cellar safe, ledger, arrest & Watchhouse epilogue. Built (P0 collision/cellar/gate fixes queued) |
+| 1 | The lodge. Cold open, investigation, theorise with Moretti. Complete & Playwright-verified |
+| 2 | Police station. Forensics, LEAP terminal, Mark's statement. Complete & Playwright-verified |
+| 3 | Victor chase. 14 Regent St cottage, bluestone alley sprint, VHF arrest. Complete & Playwright-verified |
+| 4 | Interrogation. Section 464A caution, exhibit confrontation, Victor confession. Complete & Playwright-verified |
+| 5 | Mahoney's. Brawl, collar grab, cellar safe, ledger, arrest & Watchhouse epilogue. Complete & Playwright-verified |
 
 ## Status
 
-Scene 1 gameplay is complete and stays that way until a task opens it. The default picture is the dusk code look: practicals, grade, wet street. `?look=day` restores the 3pm HDRI and the baked interior. Authoritative status and reconciliation live in `docs/ROADMAP.md` and `docs/MOVING-FORWARD.md`.
+Scene 1–5 gameplay, transitions, photo-mapped cast GLBs, dusk/night post-processing, and audio are complete and Playwright-verified across all 28 gates. The default picture is the dusk code look: practicals, grade, wet street. `?look=day` restores the 3pm HDRI and the baked interior. Authoritative status and reconciliation live in `docs/ROADMAP.md` and `docs/MOVING-FORWARD.md`.
 
-The live Rosie is `public/models/rosie-rigged.glb` (with Mixamo `idle` loop and cigarette ember pulse). The older `public/models/rosie.glb` is retired and queued for removal. Source art is `art-source/characters/rosie/`. The look-test harness is `tools/lookdev/` and is not part of the game build.
+The live Rosie is `public/models/rosie-rigged.glb` (with Mixamo `idle` loop and cigarette ember pulse; the older `public/models/rosie.glb` has been removed). Source art is `art-source/characters/rosie/`. The look-test harness is `tools/lookdev/` and is not part of the game build.
 
 Repo: `github.com/cre8tivoz/paradiselodge`, branch `main`. Live at `https://paradiselodge-game.pages.dev` (Cloudflare Pages project `paradiselodge-game`). Custom domain `lodge.billyhaddad.au` is not wired. Deploys are manual:
 
@@ -61,7 +61,7 @@ Node 20+. No new npm scripts, config files or tooling. The stack is Vite, TypeSc
 
 ## Code conventions
 
-- TypeScript `strict`, `noImplicitOverride`. No `any`. No non-null assertions. (`src/main.ts` still has `floors: any[]`, queued to fix to `WalkableRegion[]`.)
+- TypeScript `strict`, `noImplicitOverride`. No `any`. No non-null assertions. (`src/main.ts` uses `WalkableRegion[]`.)
 - Imports at the top of the module. An inline import needs a real cycle, and a comment that says so.
 - `switch` on a union or enum ends in a `never` check.
 - One subsystem per directory. Subsystems talk through the event bus in `src/core/`. They do not reach into each other.
@@ -171,7 +171,7 @@ Leave it alone unless the task is about it. The expensive facts, so they are not
 - Everything solid is under a `world` group. The camera is a sibling. The hands are children of the camera, which keeps them out of the look ray. Do not raycast the whole scene. Do not split them onto another render layer: a light only illuminates its own layer, and the hands go black.
 - Wrist roll goes through a wrist pivot, never the hand root.
 - The walkable set is `WalkableRegion` boxes. `groundAt` picks a floor. No floor means the move is refused. Stairs are tread lids. Solids block only in the band from the feet to the head, which is what keeps a lintel from bricking the doorway.
-- `LOOP.maxDelta` is 0.05. Collision is a pushout, not a swept test. Raising it, or `runSpeed`, puts Miller through a wall on a stalled frame. (`aabb` order is `(x0, x1, y0, y1, z0, z1)` — Scenes 2–5 currently pass `(x0, y0, z0, x1, y1, z1)`, tracked as P0 bug in `docs/ROADMAP.md`.)
+- `LOOP.maxDelta` is 0.05. Collision is a pushout, not a swept test. Raising it, or `runSpeed`, puts Miller through a wall on a stalled frame. (`aabb` order is `(x0, x1, y0, y1, z0, z1)` across all five scenes.)
 - Run is Shift plus forward, standing only. Refused backwards, strafing, or crouched. No stamina.
 - Gloves go on at the hall threshold. Leave that trigger.
 - Rosie is one mesh (`public/models/rosie-rigged.glb`), two stations, registered through `registerRosie()`. She moves on gate `body` (needle and temple filed), not when Miller reaches the first floor. Her collision box is rewritten in place.
@@ -186,10 +186,10 @@ Leave it alone unless the task is about it. The expensive facts, so they are not
 
 | Who | Live mesh | Notes / Next |
 |---|---|---|
-| Rosie | `public/models/rosie-rigged.glb` | Fix `head.rotation` drift, remove dead `restLift`, retire `public/models/rosie.glb` |
-| Moretti | `public/models/moretti.glb` | Photo-mapped articulated GLB generated from `images/characters/moretti-sheet.png`, plus S2/S4/S5 integration |
-| Crystal | `public/models/crystal.glb` | Photo-mapped articulated GLB generated from `images/characters/crystal-sheet.png` (preserving `head`/`arm_l_0`/`needle`/`sling`) |
+| Rosie | `public/models/rosie-rigged.glb` | `head.rotation` drift fixed, dead `restLift` removed, legacy `public/models/rosie.glb` deleted |
+| Moretti | `public/models/moretti.glb` | Photo-mapped articulated GLB generated from `images/characters/moretti-sheet.png`; integrated & verified across S1–S5 |
+| Crystal | `public/models/crystal.glb` | Photo-mapped articulated GLB generated from `images/characters/crystal-sheet.png` (preserving `head`/`arm_l_0`/`needle`/`sling`), verified in Room 1A |
 | Miller's hands | `public/models/miller-hand.glb` | Silhouette in Watchhouse epilogue still (`src/ui/ending-screen.ts`) |
-| Mark, Victor, Sterling | `public/models/{mark,victor,sterling}.glb` | Photo-mapped articulated GLBs generated from `images/characters/*-sheet.png` replacing S2–S5 primitives |
+| Mark, Victor, Sterling | `public/models/{mark,victor,sterling}.glb` | Photo-mapped articulated GLBs generated from `images/characters/*-sheet.png`, integrated & verified across S2–S5 |
 
 Cast meshes after Rosie are generated locally in-repo from the turnaround sheets in `images/characters/` via `tools/characters/build_characters.py` and rendered/posed in Three.js — no Blender, Hunyuan3D or Mixamo required. Do not start a character change inside a lighting task unless scoped together.

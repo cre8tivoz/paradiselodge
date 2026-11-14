@@ -62,7 +62,7 @@ type UnitSpace = 'room1a' | 'parlour' | 'reception' | 'staircase' | 'hallway'
 
 const SPACES: readonly UnitSpace[] = ['room1a', 'parlour', 'reception', 'staircase', 'hallway']
 const DUSK_DIR = new Vector3(0.16, -0.4, 0.9).normalize()
-const ROOM1A_LIGHTMAP = 6
+const ROOM1A_LIGHTMAP = 10.5
 
 interface ManagedLight {
   readonly light: Light

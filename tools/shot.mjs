@@ -5,7 +5,7 @@
  *   node tools/shot.mjs           # shots/1a.png
  *   node tools/shot.mjs --shot=1a --out=shots/1a.png
  */
-import { launchBrowser } from './browser.mjs'
+import { closeBrowser, launchBrowser } from './browser.mjs'
 import { spawn } from 'node:child_process'
 import { mkdirSync, existsSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
@@ -22,6 +22,7 @@ const PORT = Number(args.port ?? 5173)
 const W = Number(args.w ?? 1280)
 const H = Number(args.h ?? 960)
 const SHOT = String(args.shot ?? '1a')
+const SHOTS = args.shots ? String(args.shots).split(',').map((s) => s.trim()).filter(Boolean) : [SHOT]
 const OUT = resolve(args.out ?? `shots/${SHOT}.png`)
 const TIMEOUT = Number(args.timeout ?? 120000)
 const SETTLE = Number(args.settle ?? (process.platform === 'linux' ? 2 : 60))
@@ -74,66 +75,66 @@ page.on('pageerror', (e) => {
 
 let failed = null
 try {
-  await page.goto(`http://localhost:${PORT}/?capture=1&shot=${encodeURIComponent(SHOT)}`, {
+  await page.goto(`http://localhost:${PORT}/?capture=1&pause=1&shot=${encodeURIComponent(SHOTS[0])}`, {
     waitUntil: 'domcontentloaded',
     timeout: TIMEOUT,
   })
 
   await page.waitForFunction('window.__READY__ === true', null, { timeout: TIMEOUT })
 
-  const applied = await page.evaluate(
-    ({ s }) => (window.__APPLY_SHOT__ ? window.__APPLY_SHOT__(s) : 'no-shot-api'),
-    { s: SHOT },
-  )
-  logs.push(`[shot] ${applied}`)
+  for (const shotName of SHOTS) {
+    const outPath = SHOTS.length === 1 && args.out ? resolve(String(args.out)) : resolve(`shots/${shotName}.png`)
+    mkdirSync(dirname(outPath), { recursive: true })
 
-  await page.evaluate(
-    (n) =>
-      new Promise((done) => {
-        let i = 0
-        const tick = () => (++i >= n ? done() : requestAnimationFrame(tick))
-        requestAnimationFrame(tick)
-      }),
-    SETTLE,
-  )
+    const applied = await page.evaluate(
+      ({ s, settle }) => {
+        const result = window.__APPLY_SHOT__ ? window.__APPLY_SHOT__(s) : 'no-shot-api'
+        const L = window.__lodge
+        if (typeof L?.step === 'function') {
+          for (let i = 0; i < settle; i += 1) {
+            L.step(0.016, false)
+          }
+        }
+        return result
+      },
+      { s: shotName, settle: SETTLE },
+    )
+    logs.push(`[shot] ${applied}`)
 
-  // One more explicit render after the settle, so shadows and the last
-  // camera sync land before the PNG is written. Dusk draws through its
-  // composer; a bare renderer.render would wipe the grade off the canvas.
-  await page.evaluate(() => {
-    const L = window.__lodge
-    if (typeof L?.dusk?.render === 'function') {
-      L.dusk.render()
-    } else if (typeof L?.post?.render === 'function') {
-      L.post.render()
-    } else if (L?.grade && L?.scene && L?.camera && L?.renderer) {
-      L.grade.render(L.renderer, L.scene, L.camera)
-    } else if (L?.renderer && L?.scene && L?.camera) {
-      L.renderer.render(L.scene, L.camera)
+    // Explicit single render after camera/preset sync, so shadows and the last
+    // camera sync land before the PNG is written. Dusk draws through its
+    // composer; a bare renderer.render would wipe the grade off the canvas.
+    const dataUrl = await page.evaluate(() => {
+      const L = window.__lodge
+      if (typeof L?.dusk?.render === 'function') {
+        L.dusk.render()
+      } else if (typeof L?.post?.render === 'function') {
+        L.post.render()
+      } else if (L?.grade && L?.scene && L?.camera && L?.renderer) {
+        L.grade.render(L.renderer, L.scene, L.camera)
+      } else if (L?.renderer && L?.scene && L?.camera) {
+        L.renderer.render(L.scene, L.camera)
+      }
+      const canvas = document.querySelector('canvas#game')
+      return canvas instanceof HTMLCanvasElement ? canvas.toDataURL('image/png') : null
+    })
+
+    if (dataUrl && dataUrl.startsWith('data:image/png;base64,')) {
+      const base64 = dataUrl.replace(/^data:image\/png;base64,/, '')
+      writeFileSync(outPath, Buffer.from(base64, 'base64'))
+    } else {
+      await page.screenshot({ path: outPath, type: 'png', timeout: 120000 })
     }
-  })
 
-  const dataUrl = await page.evaluate(() => {
-    const canvas = document.querySelector('canvas#game')
-    return canvas instanceof HTMLCanvasElement ? canvas.toDataURL('image/png') : null
-  })
-
-  if (dataUrl && dataUrl.startsWith('data:image/png;base64,')) {
-    const base64 = dataUrl.replace(/^data:image\/png;base64,/, '')
-    writeFileSync(OUT, Buffer.from(base64, 'base64'))
-  } else {
-    await page.screenshot({ path: OUT, type: 'png', timeout: 120000 })
+    if (!existsSync(outPath)) throw new Error(`screenshot missing at ${outPath}`)
+    console.log(`wrote ${outPath}`)
   }
-
-  if (!existsSync(OUT)) throw new Error(`screenshot missing at ${OUT}`)
-  console.log(`wrote ${OUT}`)
 } catch (err) {
   failed = err
   console.error(err)
   if (logs.length) console.error(logs.slice(-40).join('\n'))
 } finally {
-  await browser.close()
-  if (server) server.kill()
+  await closeBrowser(browser, page, server)
 }
 
-if (failed) process.exit(1)
+process.exit(failed ? 1 : 0)

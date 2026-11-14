@@ -181,6 +181,7 @@ interface DevHandle {
   scenes: SceneManager
   clips: typeof CLIPS
   Vector3: typeof Vector3
+  step: (delta?: number, shouldRender?: boolean) => void
 }
 
 async function main(): Promise<void> {
@@ -395,6 +396,7 @@ async function main(): Promise<void> {
         scenes,
         clips: CLIPS,
         Vector3,
+        step: () => {},
       }
     : undefined
 
@@ -1672,7 +1674,7 @@ async function main(): Promise<void> {
   }
   window.addEventListener('keydown', onEscape)
 
-  const loop = new Loop((delta) => {
+  const stepFrame = (delta: number, shouldRender = true): void => {
     sceneElapsed += delta
     switch (activeScene) {
       case 'scene1':
@@ -1708,7 +1710,7 @@ async function main(): Promise<void> {
         (leapTerminal !== undefined && leapTerminal.visible)
       ) {
         input.endFrame()
-        draw()
+        if (shouldRender) draw()
         return
       }
       if (hands.isPlaying) {
@@ -1731,7 +1733,7 @@ async function main(): Promise<void> {
         }
       }
       hands.update(delta)
-      draw()
+      if (shouldRender) draw()
       input.endFrame()
       return
     }
@@ -1750,7 +1752,7 @@ async function main(): Promise<void> {
 
     if (!coldOpenDone) {
       hands.update(delta)
-      draw()
+      if (shouldRender) draw()
       input.endFrame()
       return
     }
@@ -1768,15 +1770,25 @@ async function main(): Promise<void> {
     }
 
     hands.update(delta)
-    draw()
+    if (shouldRender) {
+      draw()
+    } else {
+      scene.updateMatrixWorld()
+    }
     input.endFrame()
-  })
+  }
+
+  const loop = new Loop((delta) => stepFrame(delta, true))
 
   if (devHandle !== undefined) {
     devHandle.loop = loop
+    devHandle.step = (delta = 0.016, shouldRender = true) => stepFrame(delta, shouldRender)
   }
 
-  loop.start()
+  const pauseLoop = import.meta.env.DEV && params.get('pause') === '1'
+  if (!pauseLoop) {
+    loop.start()
+  }
 
   if (import.meta.env.DEV && devHandle !== undefined) {
     Reflect.set(window, '__lodge', devHandle)
@@ -1789,7 +1801,11 @@ async function main(): Promise<void> {
       // One frame so the placed camera and the shadow map settle before the
       // harness is allowed to treat the page as ready.
       requestAnimationFrame(() => {
-        draw()
+        if (!pauseLoop) {
+          draw()
+        } else {
+          scene.updateMatrixWorld()
+        }
         Reflect.set(window, '__READY__', true)
       })
     } else {

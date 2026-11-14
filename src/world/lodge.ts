@@ -327,13 +327,20 @@ export function buildLodge(): Lodge {
     }
   }
 
-  // Sides and back. The right side stops short of 1A's sash: that opening is in
-  // room 1A's own wall, and doubling it here would brick the window up.
-  wall(group, solids, render, LEFT - 0.25, LEFT, PATH - 0.4, PARAPET, frontZ0, BACK + 0.25)
-  wall(group, solids, render, RIGHT, RIGHT + 0.25, PATH - 0.4, FIRST, frontZ0, BACK + 0.25)
-  wall(group, solids, render, RIGHT, RIGHT + 0.25, FIRST, PARAPET, STAIR_Z0, BACK + 0.25)
-  wall(group, solids, render, RIGHT, RIGHT + 0.25, CEIL_FIRST, PARAPET, frontZ0, STAIR_Z0)
-  wall(group, solids, render, LEFT - 0.25, RIGHT + 0.25, PATH - 0.4, PARAPET, BACK, BACK + 0.25)
+  // Sides and back. Keep visual inner faces 2.5cm outside unit-a interior walls
+  // so exterior masonry never Z-fights with reception/parlour/staircase plaster,
+  // while collision bounds remain flush with LEFT / RIGHT / BACK.
+  const WALL_CLEAR = 0.025
+  slab(group, render, LEFT - 0.25, LEFT - WALL_CLEAR, PATH - 0.4, PARAPET, frontZ0, BACK + 0.25)
+  solids.push(aabb(LEFT - 0.25, LEFT, PATH - 0.4, PARAPET, frontZ0, BACK + 0.25))
+  slab(group, render, RIGHT + WALL_CLEAR, RIGHT + 0.25, PATH - 0.4, FIRST, frontZ0, BACK + 0.25)
+  solids.push(aabb(RIGHT, RIGHT + 0.25, PATH - 0.4, FIRST, frontZ0, BACK + 0.25))
+  slab(group, render, RIGHT + WALL_CLEAR, RIGHT + 0.25, FIRST, PARAPET, STAIR_Z0, BACK + 0.25)
+  solids.push(aabb(RIGHT, RIGHT + 0.25, FIRST, PARAPET, STAIR_Z0, BACK + 0.25))
+  slab(group, render, RIGHT + WALL_CLEAR, RIGHT + 0.25, CEIL_FIRST, PARAPET, frontZ0, STAIR_Z0)
+  solids.push(aabb(RIGHT, RIGHT + 0.25, CEIL_FIRST, PARAPET, frontZ0, STAIR_Z0))
+  slab(group, render, LEFT - 0.25, RIGHT + 0.25, PATH - 0.4, PARAPET, BACK + WALL_CLEAR, BACK + 0.25)
+  solids.push(aabb(LEFT - 0.25, RIGHT + 0.25, PATH - 0.4, PARAPET, BACK, BACK + 0.25))
 
   /*
    * Rear elevation. Applied windows, not cut.

@@ -280,7 +280,7 @@ contains unverified completion claims (see `docs/ROADMAP.md` for actual P0 bugs,
   - 3D public bar on Fitzroy St: mahogany bar counter, chrome beer taps, pool table, and corner poker machine bank.
   - Initial confrontation with Kenneth Sterling, followed by scripted bar brawl distraction at the pool table.
   - Collar grab interaction cornering Sterling to extract the brass cellar key.
-  - Bluestone beer keg cellar with locked heavy grille door, containing a Chub floor safe with interactive rotating brass dial.
+  - Bluestone beer keg cellar with locked heavy grille door, containing a Chubb floor safe with interactive rotating brass dial.
   - Recovery of the black extortion ledger (`sterling_ledger`) detailing the loan-sharking operation.
   - Formal arrest of Sterling on murder and extortion charges.
 - **Ending & Epilogue**:
@@ -313,7 +313,7 @@ contains unverified completion claims (see `docs/ROADMAP.md` for actual P0 bugs,
    - The original plan kept Miller completely anonymous. In the final epilogue still, a procedural chiaroscuro canvas illustration down the Melbourne Watchhouse cell corridor reveals Miller's silhouette and weathered face, delivering a definitive 1994 Melbourne neo-noir resolution.
 
 4. **Automated Multi-Scene End-to-End Playtest Suite**:
-   - Built a comprehensive headless Chromium testing suite (`tools/playtest-scene1.mjs` through `tools/playtest-scene5.mjs`) verifying all 27 objective gates across all 5 scenes, state machines, dialogue branch selections, and `localStorage` persistence.
+   - Built a comprehensive headless Chromium testing suite (`tools/playtest-scene1.mjs` through `tools/playtest-scene5.mjs`) verifying all 28 objective gates across all 5 scenes (`8 + 5 + 5 + 5 + 5`), state machines, dialogue branch selections, and `localStorage` persistence.
 
 5. **Physical Human Input & Browser Controls Test Suite**:
    - Created `tools/test-controls.mjs` asserting real browser input handling in Chromium:
@@ -326,3 +326,18 @@ contains unverified completion claims (see `docs/ROADMAP.md` for actual P0 bugs,
      - DOM dialogue option button clicking.
      - Evidence bagging dispatch (`KeyG`).
    - Adapted SwiftShader software rendering flags and headless dev shm configuration for continuous integration reliability.
+
+---
+
+### Stage 2 Completion, Cast Integration & Visual Reconciliation (Verified)
+
+1. **P0 Collision, Walkability & Reception Canon Fixes**:
+   - Fixed inverted `aabb` argument ordering across Scenes 2–5 so all walls, counters, desks, and columns enforce proper collision bounds.
+   - Completed full reception desk and Rosie relocation into the Unit A stair hall (`unit-a.glb` / `src/world/lodge.ts` / `src/npc/rosie.ts`), and eliminated coplanar Z-fighting on the Lodge outer walls (`WALL_CLEAR = 0.025`).
+   - Hardened `src/main.ts` (`WalkableRegion[]`), tightened Scene 1 examine/collision polish, and matched Room 1A dusk visibility.
+2. **Photo-Mapped Cast GLB Pipeline & Scene 1–5 Integration**:
+   - Built `tools/characters/build_characters.py` using Three.js and project turnaround sheets (`images/characters/*-sheet.png`) with zero Blender/Hunyuan3D/Mixamo dependencies to ship `moretti.glb`, `crystal.glb`, `mark.glb`, `victor.glb`, and `sterling.glb`.
+   - Fixed Rosie (`rosie-rigged.glb`) head rotation drift, removed dead `restLift`, deleted legacy `public/models/rosie.glb`, eliminated arm/hip UV texture bleed and shoulder/seat seams across all five generated cast GLBs, and verified head orientation/normals in Python and Chromium screenshots across Scenes 1–5.
+3. **Audio, Post-Processing, Asset Cleanup & Gameplay Polish**:
+   - Routed `SoundtrackPlayer` (`src/audio/soundtrack.ts`) through the Web Audio `Mixer` with crossfades and dialogue ducking, removed the 18 MB duplicate `assets/audio/soundtrack/` folder and duplicate `public/textures/pbr/wood_planks/` folder, and completed S2–S5 procedural ambience beds plus `bluestone`/`gravel` footsteps and `tapeClick`/`tapeHum`/`safeDialClick` foley.
+   - Upgraded Scene 2–5 lighting & post polish (`GTAOPass`, selective bloom, directional shadows, ACES/film grade), wired `victor-record.jpg` onto the Scene 2 LEAP dossier, added interactive Scene 2–5 `examine` beats and clickable dialogue choices, and unified mobile touch HUD sizing.

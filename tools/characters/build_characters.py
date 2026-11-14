@@ -469,6 +469,7 @@ class CharacterEnvelope:
     prof_top: int
     prof_bot: int
     prof_spine_x: float
+    prof_head_cx: float
     prof_z_bounds: np.ndarray  # (N, 2) [z_front_px, z_back_px]
     # Vertical landmark heights (in meters)
     y_crotch: float
@@ -774,6 +775,23 @@ def analyze_character(
                     else:
                         arr_b[ii] = last_valid_bounds
 
+    # Clamp & symmetrize arm radii so merged jacket sleeves / elbows never inflate shoulder or bicep spheres
+    upper_arm_mask = heights >= y_elbow if "y_elbow" in locals() else heights >= y_armpit - 0.14
+    h_elb_approx = (spec.shoulder_height_ratio - spec.upper_arm_ratio) * spec.height
+    for arr_rx in (arm_l_rx, arm_r_rx):
+        for ii, h_m in enumerate(heights):
+            if h_m >= h_elb_approx:
+                arr_rx[ii] = float(np.clip(arr_rx[ii], 0.032, 0.064))
+            else:
+                arr_rx[ii] = float(np.clip(arr_rx[ii], 0.025, 0.052))
+        arr_rx[:] = smooth_1d(arr_rx, 3)
+    # Catch one-sided merged jacket runs (e.g. Victor left coat edge 0.108 vs symmetric right 0.041)
+    for ii, h_m in enumerate(heights):
+        if arm_l_rx[ii] > arm_r_rx[ii] * 1.45:
+            arm_l_rx[ii] = min(arm_l_rx[ii], max(arm_r_rx[ii] * 1.25, 0.056))
+        elif arm_r_rx[ii] > arm_l_rx[ii] * 1.45:
+            arm_r_rx[ii] = min(arm_r_rx[ii], max(arm_l_rx[ii] * 1.25, 0.056))
+
     # Legs interpolation cleanly across crouch/shoes
     for arr_cx, arr_rx, arr_b in (
         (leg_l_cx, leg_l_rx, front_leg_l_bounds),
@@ -792,39 +810,80 @@ def analyze_character(
     torso_rz_front = np.full(N_SAMP, 0.11)
     torso_rz_back = np.full(N_SAMP, 0.11)
     head_rz_front = np.full(N_SAMP, 0.095)
-    head_rz_back = np.full(N_SAMP, 0.105)
+    head_rz_back = np.full(N_SAMP, 0.095)
     ponytail_rz_back = np.zeros(N_SAMP)
     prof_z_bounds = np.zeros((N_SAMP, 2), dtype=np.float32)
 
     p_scale = spec.height / float(p_h)
+    head_prof_mid_samples: list[float] = []
     for i, h_m in enumerate(heights):
         ry = max(py0, min(py1, int(round(py1 - h_m / p_scale))))
         runs = row_runs(prof_mask[ry])
         if not runs:
             continue
-        # Main body run is the longest or leftmost/frontmost main column; ponytail on Mark appears behind nape as separate run!
+        # Main body run is the longest run; ponytail on Mark appears behind nape as separate run
         main_run = max(runs, key=lambda r: r[1] - r[0])
         r0, r1 = main_run
-        z0 = sign_z * (r0 - prof_spine_x) * p_scale
-        z1 = sign_z * (r1 - prof_spine_x) * p_scale
-        zf, zb = min(z0, z1), max(z0, z1)  # negative is front (-Z), positive is back (+Z)
         prof_z_bounds[i] = [r0, r1]
-        if h_m >= y_chin:
-            head_rz_front[i] = max(0.04, -zf)
-            head_rz_back[i] = max(0.04, zb)
-        else:
-            torso_rz_front[i] = max(0.045, min(0.22, -zf))
-            torso_rz_back[i] = max(0.045, min(0.22, zb))
+        if y_chin + 0.015 <= h_m <= spec.height - 0.04:
+            head_prof_mid_samples.append(0.5 * (r0 + r1))
+        if h_m < y_chin:
+            z0 = sign_z * (r0 - prof_spine_x) * p_scale
+            z1 = sign_z * (r1 - prof_spine_x) * p_scale
+            zf, zb = min(z0, z1), max(z0, z1)
+            torso_rz_front[i] = max(0.045, min(0.18, -zf))
+            torso_rz_back[i] = max(0.045, min(0.18, zb))
 
+    prof_head_cx = float(np.median(head_prof_mid_samples)) if head_prof_mid_samples else prof_spine_x
+
+    for i, h_m in enumerate(heights):
+        r0, r1 = prof_z_bounds[i]
+        if r1 <= r0:
+            continue
+        if h_m >= y_chin:
+            z0h = sign_z * (r0 - prof_head_cx) * p_scale
+            z1h = sign_z * (r1 - prof_head_cx) * p_scale
+            zfh, zbh = min(z0h, z1h), max(z0h, z1h)
+            head_rz_front[i] = float(np.clip(-zfh, 0.068, 0.118))
+            head_rz_back[i] = float(np.clip(zbh, 0.068, 0.118))
         # Mark's ponytail (or behind-neck detached/protruding tail)
         if spec.has_ponytail and y_shoulder - 0.08 <= h_m <= y_head_center(spec, y_chin):
-            back_edge = max(b if sign_z > 0 else -a for a, b in runs)
-            ponytail_rz_back[i] = max(0.0, back_edge - max(zb / p_scale, head_rz_back[i] / p_scale)) * p_scale
+            ry = max(py0, min(py1, int(round(py1 - h_m / p_scale))))
+            runs = row_runs(prof_mask[ry])
+            if runs:
+                back_edge = max(b if sign_z > 0 else -a for a, b in runs)
+                zb_head_px = head_rz_back[i] / p_scale
+                ponytail_rz_back[i] = max(0.0, back_edge - zb_head_px) * p_scale
+
+    # Taper upper torso collar depth smoothly above armpit so chest never protrudes past the neck
+    for i, h_m in enumerate(heights):
+        if y_armpit <= h_m <= y_neck + 0.04:
+            t_col = float(np.clip((h_m - y_armpit) / max(1e-4, y_neck - y_armpit), 0.0, 1.0))
+            max_neck_d = 0.072
+            torso_rz_front[i] = min(torso_rz_front[i], torso_rz_front[i] * (1.0 - t_col) + max_neck_d * t_col)
+            torso_rz_back[i] = min(torso_rz_back[i], torso_rz_back[i] * (1.0 - t_col) + max_neck_d * t_col)
 
     torso_rz_front = smooth_1d(torso_rz_front, 3)
     torso_rz_back = smooth_1d(torso_rz_back, 3)
-    head_rz_front = smooth_1d(head_rz_front, 2)
-    head_rz_back = smooth_1d(head_rz_back, 2)
+
+    # Blend head depth/width smoothly through neck -> jaw -> chin so chin underside never forms a downward shelf
+    chin_idx = int(np.searchsorted(heights, y_chin))
+    chin_idx = min(max(chin_idx, 1), N_SAMP - 1)
+    neck_r = float(np.clip(min(torso_rx[min(chin_idx, N_SAMP - 1)], 0.060), 0.046, 0.064))
+    zf_chin = float(head_rz_front[chin_idx])
+    zb_chin = float(head_rz_back[chin_idx])
+    rx_chin = float(head_rx[chin_idx])
+    for i, h_m in enumerate(heights):
+        if h_m < y_chin:
+            t_nk = float(np.clip((h_m - y_shoulder) / max(1e-4, y_chin - y_shoulder), 0.0, 1.0))
+            t_ease = t_nk * t_nk * (3.0 - 2.0 * t_nk)
+            head_rx[i] = neck_r * (1.0 - t_ease) + rx_chin * t_ease
+            head_rz_front[i] = (neck_r * 0.96) * (1.0 - t_ease) + zf_chin * t_ease
+            head_rz_back[i] = (neck_r * 0.96) * (1.0 - t_ease) + zb_chin * t_ease
+
+    head_rx = smooth_1d(head_rx, 2)
+    head_rz_front = smooth_1d(head_rz_front, 3)
+    head_rz_back = smooth_1d(head_rz_back, 3)
 
     skirt_rx = np.where(heights >= y_skirt_hem, torso_rx, 0.22)
     skirt_rz = np.where(heights >= y_skirt_hem, 0.5 * (torso_rz_front + torso_rz_back), 0.14)
@@ -861,6 +920,7 @@ def analyze_character(
         prof_top=py0,
         prof_bot=py1,
         prof_spine_x=prof_spine_x,
+        prof_head_cx=prof_head_cx,
         prof_z_bounds=prof_z_bounds,
         y_crotch=y_crotch,
         y_armpit=y_armpit,
@@ -1062,8 +1122,10 @@ def generate_face_texture(
     hair_band = (hs_1d >= env.y_eye + 0.005)[:, None, None]
     cf = np.where(hair_band, cf_s[..., :3] * cf_s[..., 3:4] + hair_col[None, None, :] * (1.0 - cf_s[..., 3:4]), cf_s[..., :3])
 
-    # Map Profile: z = sign_z * (px - prof_spine_x) * p_scale => px = prof_spine_x + sign_z * (z / p_scale)
-    px_p = (env.prof_spine_x + sign_z * (zs * 0.94) / p_scale) * 3.0
+    # Map Profile around prof_head_cx (smoothly blended from prof_spine_x below chin)
+    head_mix = np.clip((hs - env.y_neck) / max(1e-4, env.y_chin - env.y_neck), 0.0, 1.0)
+    prof_cx_h = env.prof_spine_x * (1.0 - head_mix) + env.prof_head_cx * head_mix
+    px_p = (prof_cx_h + sign_z * (zs * 0.94) / p_scale) * 3.0
     py_p = ((env.prof_bot - hs / p_scale) - py_min) * 3.0
     cp_s = bilinear_sample(p4_rgba, px_p, py_p)
     cp = np.where(hair_band, cp_s[..., :3] * cp_s[..., 3:4] + hair_col[None, None, :] * (1.0 - cp_s[..., 3:4]), cp_s[..., :3])
@@ -1085,7 +1147,7 @@ def generate_face_texture(
         col_opp = np.where(right_neck[:, :, None], cf_opp, col_opp)
 
     # Rear of skull + nape hair: + sign_z * rzb maps to rear edge of Profile panel!
-    nape_px = (env.prof_spine_x + sign_z * (rzb[:, None] * 0.72) / p_scale) * 3.0
+    nape_px = (prof_cx_h + sign_z * (rzb[:, None] * 0.72) / p_scale) * 3.0
     cb_s = bilinear_sample(p4_rgba, nape_px, py_p)
     c_back_prof = cb_s[..., :3] * cb_s[..., 3:4] + hair_col[None, None, :] * (1.0 - cb_s[..., 3:4])
     strand_noise = np.sin(uu * 310.0) * 0.025 + np.sin(uu * 730.0 + vv * 14.0) * 0.015
@@ -1230,7 +1292,7 @@ def generate_body_atlas(
     fpy_t = env.y_bot - hs_t / scale
     cf_t = bilinear_sample(f_rgba, fpx_t, fpy_t)[..., :3]
 
-    # Sample Profile torso strictly inside prof_z_bounds
+    # Sample Profile torso strictly inside prof_z_bounds (avoiding mid-body hanging arms below armpit)
     pb0_t = env.prof_z_bounds[ih_t, 0]
     pb1_t = env.prof_z_bounds[ih_t, 1]
     pmid = 0.5 * (pb0_t + pb1_t)
@@ -1248,12 +1310,20 @@ def generate_body_atlas(
         sw_idx = np.clip(np.round(u_sw[0]).astype(np.int32), 0, 31)
         cb_t[r_idx] = row_sw[sw_idx]
 
+    # On lower torso/hip/pelvis sides below the armpit, the Profile panel's hanging arm/hand
+    # overlaps the mid-depth torso; replace side skin bleed with clean front/back hip fabric.
+    hip_arm_band = (hs_t < env.y_armpit - 0.02).astype(np.float32)
+    cp_skin = (cp_t[..., 0] - cp_t[..., 2] > 0.11) & (cp_t[..., 0] > 0.34)
+    cf_skin = (cf_t[..., 0] - cf_t[..., 2] > 0.11) & (cf_t[..., 0] > 0.34)
+    bleed_t = (hip_arm_band > 0.5) & cp_skin & (~cf_skin)
+    cp_t = np.where(bleed_t[:, :, None], cb_t, cp_t)
+
     cos_t = np.cos(th_t)
     sin_t = np.sin(th_t)
     wf = np.clip((cos_t - 0.08) / 0.92, 0.0, 1.0) ** 1.3
     ws = np.clip(np.abs(sin_t) - 0.15, 0.0, 1.0) ** 1.2 * (1.0 - np.clip((-cos_t) / 0.85, 0.0, 1.0) * 0.45)
+    ws = ws * (1.0 - 0.65 * hip_arm_band)
     wb = np.clip((-cos_t - 0.05) / 0.75, 0.0, 1.0) ** 1.25
-    # On Moretti's chest/waist belt pouches & Victor/Crystal asymmetry, keep Front/Profile dominant where appropriate
     w_sum = wf + ws + wb + 1e-6
     tex[ty0 : ty1 + 1, tx0 : tx1 + 1] = (
         cf_t * wf[:, :, None] + cp_t * ws[:, :, None] + cb_t * wb[:, :, None]
@@ -1358,6 +1428,14 @@ def generate_body_atlas(
         fpx_l_mid = lmid[:, None] + np.sin(th_l) * (lhalf[:, None] * 0.35)
         cb_l = bilinear_sample(f_rgba, fpx_l_mid, fpy_l)[..., :3] * 0.88
 
+        # Prevent hanging hands/fingertips in Profile from painting skin onto trouser upper thighs
+        if not env.spec.is_skirt:
+            trouser_zone = (hs_l > 0.14 * env.spec.height).astype(np.float32)
+            cp_l_skin = (cp_l[..., 0] - cp_l[..., 2] > 0.10) & (cp_l[..., 0] > 0.34)
+            cf_l_skin = (cf_l[..., 0] - cf_l[..., 2] > 0.10) & (cf_l[..., 0] > 0.34)
+            bleed_l = (trouser_zone > 0.5) & cp_l_skin & (~cf_l_skin)
+            cp_l = np.where(bleed_l[:, :, None], cb_l, cp_l)
+
         w_f = np.clip((np.cos(th_l) + 0.15) / 1.15, 0.0, 1.0) ** 1.3
         w_s = np.clip(np.abs(np.sin(th_l)) - 0.10, 0.0, 1.0) ** 1.1
         w_b = np.clip((-np.cos(th_l) + 0.1) / 1.1, 0.0, 1.0) ** 1.2
@@ -1432,8 +1510,8 @@ def make_sphere_part(
             b = a + 1
             c = a + stride
             d = c + 1
-            tris.append([a, b, c])
-            tris.append([b, d, c])
+            tris.append([a, c, b])
+            tris.append([b, c, d])
     p_arr = np.array(verts, dtype=np.float32)
     t_arr = np.array(tris, dtype=np.int32)
     return MeshData(
@@ -2313,9 +2391,10 @@ def build_character_glb(spec: CharacterSpec) -> dict:
         (1.0, "r", (0.76, 0.99), env.arm_r_rx, math.radians(6.0) if spec.has_crystal_fx else math.radians(8.0), math.radians(-5.0) if spec.has_crystal_fx else 0.0),
     ):
         uarm_mesh = make_limb_segment(
-            env, mat_body, h_sh + 0.015, h_elb - 0.01, 0.015, rx_arr, 0.92, u_range, arm_lo, arm_hi, (0.01, 0.55), n_rings=12
+            env, mat_body, h_sh, h_elb - 0.01, 0.015, rx_arr, 0.92, u_range, arm_lo, arm_hi, (0.01, 0.55), n_rings=12
         )
-        deltoid_mesh = make_sphere_part(0.0, 0.0, 0.0, float(np.interp(h_sh, env.heights, rx_arr)), float(np.interp(h_sh, env.heights, rx_arr)) * 1.05, float(np.interp(h_sh, env.heights, rx_arr)) * 0.95, (u_range[0] + 0.11, 0.04), mat_body)
+        sh_rad = min(0.056, float(np.interp(h_sh, env.heights, rx_arr)))
+        deltoid_mesh = make_sphere_part(0.0, -sh_rad * 0.45, 0.0, sh_rad * 0.72, sh_rad * 0.52, sh_rad * 0.70, (u_range[0] + 0.115, 0.06), mat_body)
         farm_mesh = make_limb_segment(
             env, mat_body, h_elb + 0.012, h_wr - 0.008, 0.012, rx_arr, 0.90, u_range, arm_lo, arm_hi, (0.01, 0.55), n_rings=10
         )
@@ -2363,9 +2442,10 @@ def build_character_glb(spec: CharacterSpec) -> dict:
                 g.add_node("sling", mesh=g.add_mesh("sling_m", [sling_band]), translation=[0.0, -0.150, 0.0])
             )
 
-        # Shoulder X sits comfortably outside torso width at shoulder height
+        # Tuck shoulder joint gently inside the torso shoulder slope so sleeves join seamlessly
         torso_half_sh = float(np.interp(h_sh, env.heights, env.torso_rx))
-        sh_x = side * (torso_half_sh + 0.025)
+        sh_in = 0.016 if torso_half_sh >= 0.12 else 0.0
+        sh_x = side * max(0.088, torso_half_sh - sh_in)
         fwd_x = math.radians(8.0) if (spec.has_crystal_fx and tag == "l") else math.radians(3.0)
         sh_n = g.add_node(
             f"arm_{tag}_0",
@@ -2429,13 +2509,13 @@ def build_character_glb(spec: CharacterSpec) -> dict:
         )
         leg_nodes.append(leg_n)
 
-    # Pelvis seat cap so bent sitting thighs have no underside hole
+    # Pelvis seat cap so bent sitting thighs have no underside hole (kept tucked inside standing profile)
     seat_m = make_sphere_part(
-        0.0, -0.04, 0.0,
-        float(np.interp(hip_y, env.heights, env.torso_rx)) * 0.94,
-        0.11,
-        0.11,
-        (0.24, 0.45),
+        0.0, -0.03, 0.0,
+        float(np.interp(hip_y, env.heights, env.torso_rx)) * 0.88,
+        0.09,
+        0.078,
+        (0.04, 0.47),
         mat_body,
     )
     seat_n = g.add_node("seat", mesh=g.add_mesh("seat_m", [seat_m]))

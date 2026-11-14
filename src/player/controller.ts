@@ -291,6 +291,7 @@ export class PlayerController {
     this.camera.position.copy(this.scratchCameraPos)
     this.euler.set(this.pitch, this.yaw, -this.lean * PLAYER.leanAngle)
     this.camera.quaternion.setFromEuler(this.euler)
+    this.camera.updateMatrixWorld()
   }
 }
 

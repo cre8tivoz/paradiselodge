@@ -136,8 +136,8 @@ const SOLID = ['wall_', 'wardrobe', 'bed', 'dresser', 'sideTable', 'chair', 'cha
  */
 const SPREAD_TOP = 0.505
 
-/** Head end of the bed, in room local z. The sourced frame runs -0.85 to 1.15. */
-const BED_HEAD_Z = -0.8
+/** Head end of the bed, in room local z (pillow sits at world x 4.70..4.97, headboard at 5.15). */
+const BED_HEAD_Z = 0.95
 const BED_CENTRE_X = -1.45
 
 /**
@@ -328,25 +328,25 @@ export async function buildRoom1A(
   group.updateMatrixWorld(true)
 
   /*
-   * Crystal on the bed, head to the headboard.
+   * Crystal on the bed, head to the headboard/pillow.
    *
    * She is loaded and placed here rather than baked into the room, because the
    * room is a lit box and she is a body in it: she has to be examinable, she
    * has to be able to not be there in some other scene, and she must never end
    * up in the indirect map.
    *
-   * The yaw of pi is what puts her head at -Z. She is modelled standing and the
-   * tilt in `crystal.ts` lays her out along +Z, so without it she would be head
-   * to the foot of the bed. Her root is at her heels, so the head end works out
-   * at BED_HEAD_Z + CRYSTAL_LENGTH.
+   * The tilt in `crystal.ts` lays her out from heels (origin) to head (+Z),
+   * so `rotation.y = 0` in room-local space puts her crown at `z = BED_HEAD_Z`
+   * on the pillow (`world.x = 4.95`) and her heels toward the foot of the bed
+   * (`BED_HEAD_Z - CRYSTAL_LENGTH`).
    */
   const crystal = await buildCrystalProp()
   crystal.root.position.set(
     BED_CENTRE_X,
     SPREAD_TOP + CRYSTAL_SPINE_OFFSET,
-    BED_HEAD_Z + CRYSTAL_LENGTH,
+    BED_HEAD_Z - CRYSTAL_LENGTH,
   )
-  crystal.root.rotation.y = Math.PI
+  crystal.root.rotation.y = 0
   if (unitAScene !== undefined) {
     crystal.root.position.applyAxisAngle(new Vector3(0, 1, 0), placement.rotationY)
     crystal.root.position.add(placement.position)

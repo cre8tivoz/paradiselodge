@@ -6,7 +6,7 @@
  * reports distributions and shader-program changes because a median alone can
  * hide the first-view stalls that matter in a short authored experience.
  */
-import { launchBrowser } from './browser.mjs'
+import { closeBrowser, launchBrowser } from './browser.mjs'
 import { spawn } from 'node:child_process'
 import { resolve } from 'node:path'
 import net from 'node:net'
@@ -154,6 +154,5 @@ console.log(JSON.stringify({
   errors,
 }, null, 2))
 
-await browser.close()
-if (server) server.kill()
-if (errors.length > 0) process.exitCode = 1
+await closeBrowser(browser, page, server)
+process.exit(errors.length > 0 ? 1 : 0)

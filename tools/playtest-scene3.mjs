@@ -14,7 +14,7 @@
  * Usage:
  *   node tools/playtest-scene3.mjs
  */
-import { launchBrowser } from './browser.mjs'
+import { closeBrowser, launchBrowser } from './browser.mjs'
 import { spawn } from 'node:child_process'
 import { resolve } from 'node:path'
 import net from 'node:net'
@@ -71,7 +71,7 @@ function assert(condition, message) {
 
 try {
   // Pre-seed localStorage with Scene 1 and Scene 2 completions
-  await page.goto(`http://localhost:${PORT}/?scene=scene3&capture=1`, {
+  await page.goto(`http://localhost:${PORT}/?scene=scene3&capture=1&pause=1`, {
     waitUntil: 'domcontentloaded',
     timeout: 60000,
   })
@@ -268,8 +268,7 @@ try {
   console.error('Recent browser logs:\n' + logs.slice(-25).join('\n'))
   process.exitCode = 1
 } finally {
-  await browser.close()
-  if (server) {
-    server.kill()
-  }
+  await closeBrowser(browser, page, server)
 }
+
+process.exit(passed ? 0 : 1)

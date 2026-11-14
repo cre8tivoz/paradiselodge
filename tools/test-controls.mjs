@@ -14,7 +14,7 @@
  * 7. Dialogue UI (DOM Choice Button Clicks & progression)
  * 8. Evidence Tagging Key G
  */
-import { launchBrowser } from './browser.mjs'
+import { closeBrowser, launchBrowser } from './browser.mjs'
 import { spawn } from 'node:child_process'
 import { resolve } from 'node:path'
 import net from 'node:net'
@@ -75,11 +75,16 @@ try {
   // Test 1: Page Load & Canvas Click Focus
   // -------------------------------------------------------------------------
   console.log('--- Test 1: Page Load & Canvas Focus ---')
-  await page.goto(`http://localhost:${PORT}/?capture=1`, {
+  await page.goto(`http://localhost:${PORT}/?capture=1&pause=1`, {
     waitUntil: 'domcontentloaded',
     timeout: 60000,
   })
   await page.waitForFunction('window.__READY__ === true', null, { timeout: 60000 })
+  await page.evaluate(() => {
+    const hud = document.getElementById('hud')
+    if (hud) hud.style.display = ''
+    window.__lodge.hands.setVisible(true)
+  })
   assert(true, 'DOM loaded and WebGL scene initialised')
 
   const canvas = await page.$('#game')
@@ -212,15 +217,12 @@ try {
   // -------------------------------------------------------------------------
   console.log('\n--- Test 5: Case File Notebook (KeyN / Esc toggle) ---')
   const stepFrames = (n = 2) =>
-    page.evaluate(
-      (count) =>
-        new Promise((done) => {
-          let i = 0
-          const tick = () => (++i >= count ? done() : requestAnimationFrame(tick))
-          requestAnimationFrame(tick)
-        }),
-      n,
-    )
+    page.evaluate((count) => {
+      const L = window.__lodge
+      for (let i = 0; i < count; i += 1) {
+        L.step(0.016, false)
+      }
+    }, n)
 
   // Step across the front door threshold into the lodge to conclude cold open
   await page.evaluate(() => {
@@ -263,11 +265,11 @@ try {
   // Test 6: Crosshair Raycast & Interaction Key F (Examine)
   // -------------------------------------------------------------------------
   console.log('\n--- Test 6: Crosshair Raycasting & Interaction Key F ---')
-  // Teleport inside Room 1A beside the bed facing Crystal / the examine target
+  // Teleport inside Room 1A beside the bed facing Crystal within 3m lookRange
   await page.evaluate(() => {
     const L = window.__lodge
     L.hands.cancel()
-    L.player.place(new L.Vector3(2.35, 3.45, 1.85), Math.PI + 1.05, -0.34)
+    L.player.place(new L.Vector3(3.35, 3.45, 2.65), Math.PI, -0.62)
     L.look.update()
   })
 
@@ -378,6 +380,7 @@ try {
   console.error('\nConsole logs:\n', logs.slice(-25).join('\n'))
   process.exitCode = 1
 } finally {
-  await browser.close()
-  if (server) server.kill()
+  await closeBrowser(browser, page, server)
 }
+
+process.exit(process.exitCode ?? 0)

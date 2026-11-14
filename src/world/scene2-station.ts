@@ -354,14 +354,14 @@ export async function buildStation(): Promise<StationWorld> {
     leg.hip.rotation.x = 1.48
     leg.knee.rotation.x = -1.48
   }
-  const markChestBase = -0.22
+  const markChestBase = -0.16
   markChest.rotation.x = markChestBase
-  markHead.rotation.x = -0.32
+  markHead.rotation.x = -0.06
   for (const arm of markArms) {
     const bind = arm.shoulder.quaternion.clone()
-    arm.shoulder.rotation.set(0.56, 0, arm.side === 'l' ? 0.14 : -0.14)
+    arm.shoulder.rotation.set(0.46, 0, arm.side === 'l' ? 0.14 : -0.14)
     arm.shoulder.quaternion.multiply(bind)
-    arm.elbow.rotation.x = 0.84
+    arm.elbow.rotation.x = 0.88
   }
 
   // --- Overhead Fluorescent & Soft Skylight Fill ---
