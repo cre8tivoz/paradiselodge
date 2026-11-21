@@ -109,7 +109,11 @@ export class Ambience {
     const t = this.mixer.now
     for (const bed of this.beds.values()) {
       for (const voice of bed.voices) {
-        voice.start(t)
+        if (voice instanceof AudioBufferSourceNode) {
+          voice.start(t, Math.random() * 1.8)
+        } else {
+          voice.start(t)
+        }
       }
     }
     for (const voice of this.toneVoices) {
@@ -180,30 +184,28 @@ export class Ambience {
   }
 
   private teardownBeds(): void {
-    if (this.bedsStarted) {
-      for (const bed of this.beds.values()) {
-        for (const voice of bed.voices) {
+    for (const bed of this.beds.values()) {
+      for (const voice of bed.voices) {
+        if (this.bedsStarted) {
           try {
             voice.stop()
           } catch {
             // Ignore nodes already stopped or never started
           }
-          voice.disconnect()
         }
-        bed.gain.disconnect()
+        voice.disconnect()
       }
-      for (const voice of this.toneVoices) {
+      bed.gain.disconnect()
+    }
+    for (const voice of this.toneVoices) {
+      if (this.bedsStarted) {
         try {
           voice.stop()
         } catch {
           // Ignore nodes already stopped or never started
         }
-        voice.disconnect()
       }
-    } else {
-      for (const bed of this.beds.values()) {
-        bed.gain.disconnect()
-      }
+      voice.disconnect()
     }
     this.tone?.disconnect()
     this.tone = undefined
@@ -243,14 +245,14 @@ export class Ambience {
 
     const tram = this.mixer.noiseSource()
     const tramBand = this.mixer.filter('bandpass', 88, 3.5)
-    const tramGain = this.mixer.gain(0.0)
+    const tramGain = this.mixer.gain(0.08)
     tram.connect(tramBand).connect(tramGain).connect(gain)
     voices.push(tram)
 
     const tramLfo = ctx.createOscillator()
     tramLfo.type = 'sine'
     tramLfo.frequency.value = 0.021
-    const tramDepth = this.mixer.gain(0.16)
+    const tramDepth = this.mixer.gain(0.08)
     tramLfo.connect(tramDepth).connect(tramGain.gain)
     voices.push(tramLfo)
 
@@ -493,8 +495,8 @@ export class Ambience {
     dripOsc.type = 'sine'
     dripOsc.frequency.value = 1420
     const dripBand = this.mixer.filter('bandpass', 1420, 14)
-    const dripGain = this.mixer.gain(0.0)
-    const dripDepth = this.mixer.gain(0.008)
+    const dripGain = this.mixer.gain(0.004)
+    const dripDepth = this.mixer.gain(0.004)
     dripLfo.connect(dripDepth).connect(dripGain.gain)
     dripOsc.connect(dripBand).connect(dripGain).connect(gain)
     voices.push(dripLfo, dripOsc)
