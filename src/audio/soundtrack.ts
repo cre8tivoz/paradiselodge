@@ -42,6 +42,7 @@ export class SoundtrackPlayer {
   private readonly trimGain: GainNode | undefined
   private activeSlot: TrackSlot | undefined
   private readonly fadingOut = new Set<FadingSlot>()
+  private incomingFadeInterval: number | undefined
   private currentTrack: TrackId | undefined
   private ducked = false
   private enabled = true
@@ -68,7 +69,8 @@ export class SoundtrackPlayer {
     const src = TRACKS[track]
     if (!src) return
 
-    // Ramp down any already-fading slots swiftly so rapid switching never leaks audio.
+    // Cancel any fallback fade-in on the previous slot and hasten fading-out slots.
+    this.clearIncomingFade()
     this.hastenFadingOut()
     const outgoing = this.activeSlot
     this.currentTrack = track
@@ -104,7 +106,8 @@ export class SoundtrackPlayer {
     }
 
     if (outgoing !== undefined) {
-      this.crossfade(outgoing, incoming)
+      this.fadeInSlot(incoming, CROSSFADE_SEC)
+      this.fadeOutSlot(outgoing, CROSSFADE_SEC)
     } else {
       this.fadeInSlot(incoming, 0.06)
     }
@@ -116,7 +119,12 @@ export class SoundtrackPlayer {
     const target = active ? DUCK_MULTIPLIER : 1.0
     if (this.mixer !== undefined && this.duckGain !== undefined) {
       this.mixer.fade(this.duckGain.gain, target, 0.25)
-    } else if (this.activeSlot !== undefined) {
+    }
+    if (
+      this.activeSlot !== undefined &&
+      this.activeSlot.gainNode === undefined &&
+      this.incomingFadeInterval === undefined
+    ) {
       this.activeSlot.audio.volume = this.targetVolume()
     }
   }
@@ -128,6 +136,7 @@ export class SoundtrackPlayer {
   }
 
   stop(): void {
+    this.clearIncomingFade()
     this.clearAllFadingOut()
     if (this.activeSlot !== undefined) {
       this.teardownSlot(this.activeSlot)
@@ -146,6 +155,13 @@ export class SoundtrackPlayer {
     return this.ducked ? BASE_VOLUME * DUCK_MULTIPLIER : BASE_VOLUME
   }
 
+  private clearIncomingFade(): void {
+    if (this.incomingFadeInterval !== undefined) {
+      window.clearInterval(this.incomingFadeInterval)
+      this.incomingFadeInterval = undefined
+    }
+  }
+
   private fadeInSlot(slot: TrackSlot, seconds: number): void {
     if (this.mixer !== undefined && slot.gainNode !== undefined) {
       const now = this.mixer.now
@@ -153,47 +169,55 @@ export class SoundtrackPlayer {
       g.cancelScheduledValues(now)
       g.setValueAtTime(0.0, now)
       g.linearRampToValueAtTime(1.0, now + Math.max(0.015, seconds))
-    } else {
-      slot.audio.volume = this.targetVolume()
+      return
     }
+
+    if (seconds <= 0.1) {
+      slot.audio.volume = this.targetVolume()
+      return
+    }
+
+    const steps = 18
+    const intervalMs = Math.max(16, Math.round((seconds * 1000) / steps))
+    let step = 0
+    this.incomingFadeInterval = window.setInterval(() => {
+      step += 1
+      const t = Math.min(1, step / steps)
+      slot.audio.volume = t * this.targetVolume()
+      if (t >= 1) {
+        this.clearIncomingFade()
+      }
+    }, intervalMs)
   }
 
-  private crossfade(outgoing: TrackSlot, incoming: TrackSlot): void {
-    if (this.mixer !== undefined && incoming.gainNode !== undefined && outgoing.gainNode !== undefined) {
+  private fadeOutSlot(outgoing: TrackSlot, seconds: number): void {
+    if (this.mixer !== undefined && outgoing.gainNode !== undefined) {
       const now = this.mixer.now
-
-      const inGain = incoming.gainNode.gain
-      inGain.cancelScheduledValues(now)
-      inGain.setValueAtTime(0.0, now)
-      inGain.linearRampToValueAtTime(1.0, now + CROSSFADE_SEC)
-
       const outGain = outgoing.gainNode.gain
       const currentOut = outGain.value
       outGain.cancelScheduledValues(now)
       outGain.setValueAtTime(currentOut, now)
-      outGain.linearRampToValueAtTime(0.0, now + CROSSFADE_SEC)
+      outGain.linearRampToValueAtTime(0.0, now + seconds)
 
       const entry: FadingSlot = {
         slot: outgoing,
         timer: window.setTimeout(() => {
           this.fadingOut.delete(entry)
           this.teardownSlot(outgoing)
-        }, Math.round(CROSSFADE_SEC * 1000) + 40),
+        }, Math.round(seconds * 1000) + 40),
       }
       this.fadingOut.add(entry)
       return
     }
 
-    // Fallback when Web Audio routing is unavailable.
     const steps = 18
-    const intervalMs = Math.max(16, Math.round((CROSSFADE_SEC * 1000) / steps))
+    const intervalMs = Math.max(16, Math.round((seconds * 1000) / steps))
     let step = 0
     const startVol = outgoing.audio.volume
     const entry: FadingSlot = { slot: outgoing, timer: 0 }
     entry.fallbackInterval = window.setInterval(() => {
       step += 1
       const t = Math.min(1, step / steps)
-      incoming.audio.volume = t * this.targetVolume()
       outgoing.audio.volume = (1 - t) * startVol
       if (t >= 1) {
         if (entry.fallbackInterval !== undefined) {
