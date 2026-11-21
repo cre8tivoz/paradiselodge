@@ -33,6 +33,7 @@ const BUS_GAIN: Readonly<Record<BusName, number>> = {
 export class Mixer {
   private readonly ctx: AudioContext
   private readonly master: GainNode
+  private readonly limiter: DynamicsCompressorNode
   private readonly buses = new Map<BusName, GainNode>()
   /** Shared, because every noise source in here wants the same two seconds. */
   private noise: AudioBuffer | undefined = undefined
@@ -42,7 +43,17 @@ export class Mixer {
 
     this.master = this.ctx.createGain()
     this.master.gain.value = 0.9
-    this.master.connect(this.ctx.destination)
+
+    // Transparent safety limiter preventing DAC clipping when sprint footsteps,
+    // heavy foley (cellDoorSlam), ambience, and soundtrack peak simultaneously.
+    this.limiter = this.ctx.createDynamicsCompressor()
+    this.limiter.threshold.value = -2
+    this.limiter.knee.value = 4
+    this.limiter.ratio.value = 12
+    this.limiter.attack.value = 0.003
+    this.limiter.release.value = 0.12
+
+    this.master.connect(this.limiter).connect(this.ctx.destination)
 
     for (const name of ['ambience', 'foley', 'music'] as const) {
       const bus = this.ctx.createGain()
@@ -129,10 +140,13 @@ export class Mixer {
    * cancelling a ramp that is already running to start another one clicks.
    */
   fade(param: AudioParam, to: number, seconds: number): void {
-    param.setTargetAtTime(to, this.ctx.currentTime, Math.max(seconds, 0.01) / 3)
+    const now = this.ctx.currentTime
+    param.cancelScheduledValues(now)
+    param.setTargetAtTime(to, now, Math.max(seconds, 0.01) / 3)
   }
 
   dispose(): void {
+    this.limiter.disconnect()
     void this.ctx.close()
   }
 }

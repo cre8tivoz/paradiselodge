@@ -7,6 +7,8 @@ const r2Assets = ['models/unit-a.glb']
 export default defineConfig({
   // Game entry only. tools/lookdev is a separate harness with its own index.html.
   build: {
+    // three@0.180.0 core is ~542 kB raw (~136 kB gzipped) after splitting three-addons.
+    chunkSizeWarningLimit: 600,
     rollupOptions: {
       input: resolve('index.html'),
       output: {

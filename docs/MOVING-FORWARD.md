@@ -53,15 +53,7 @@ A base M1 MacBook. About 16 ms a frame (60 fps) at 1080p.
 
 ## Workflow
 
-Work lands on a branch and a pull request. Cloudflare Pages builds a preview from the PR: command `npm run build`, output directory `dist`. Do not merge on a red preview.
-
-When a build is accepted, the manual production deploy is:
-
-```bash
-npm run build && wrangler pages deploy dist --project-name paradiselodge-game --branch main
-```
-
-Live site: `https://paradiselodge-game.pages.dev`.
+Work lands on a branch and a pull request. The GitHub repository is connected directly to Cloudflare Pages (`paradiselodge-game`): every PR builds a preview automatically (`npm run build`, output directory `dist`), and merging to `main` automatically deploys production to `https://paradiselodge-game.pages.dev`. Do not merge on a red preview.
 
 Large source art stays in the repo, so a wiped machine is not the only copy. `art-source/` holds FBX, textures and reference images the game does not load. `public/models/` holds a GLB the game will load. `tools/lookdev/` is the sandbox and is outside the Vite, `tsc` and Pages build.
 

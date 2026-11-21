@@ -73,14 +73,14 @@ export class Footsteps {
     const voice = VOICES[surface]
     const ctx = this.mixer.context
     const bus = this.mixer.bus('foley')
-    const t = this.mixer.now
+    const t = this.mixer.now + 0.005
 
     this.parity = !this.parity
     // A real pair of shoes is never two identical sounds, and a fixed offset
     // reads as a flanger. Small random detune plus a left/right bias.
     const tilt = this.parity ? 1.06 : 0.94
     const jitter = 0.9 + Math.random() * 0.2
-    const push = Math.min(speed / WALK_REFERENCE, 2.1)
+    const push = Math.min(speed / WALK_REFERENCE, 1.75)
 
     // --- The scuff ---
     const scuff = this.mixer.noiseSource()

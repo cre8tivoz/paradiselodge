@@ -14,15 +14,13 @@ and the characters no longer require a Blender session or a Cycles bake on a Mac
 | Tool | Why | Check |
 |---|---|---|
 | **Node.js 20+** | Runs Vite and the dev server | `node --version` |
+| **Python 3.10+** | Runs `tools/characters/build_characters.py` (`Pillow`, `numpy`) | `python3 --version` |
 | **Git** | Version control | `git --version` |
 | **VS Code or Cursor** | Reading the code, not writing it | — |
-| **GitHub account** | Hosts the repo | you have one |
-| **Cloudflare account** | Hosts the game | dash.cloudflare.com, free |
+| **GitHub account** | Hosts the repo (connected directly to Cloudflare Pages) | you have one |
+| **Cloudflare account** | Hosts the game (auto-deploys from GitHub) | dash.cloudflare.com, free |
 | **Claude Code** | Builds it | `npm install -g @anthropic-ai/claude-code` then `claude login` |
-| **Blender 5.1** | Only if you are rebuilding the historical Room 1A / Unit A blends. Not required for the dusk picture or for characters | — |
-| **BlenderMCP addon** | Only for those historical blends | TCP `localhost:9876`, started from the addon panel |
-| **A Sketchfab API key** | Sourcing models through the addon | Pasted into the BlenderMCP panel. It lives **on the scene**, so anything that wipes the scene wipes the key |
-| **`wrangler`** | Manual deploys | `npx wrangler --version` |
+| **Blender 5.1** *(historical only)* | Only if rebuilding the legacy Room 1A / Unit A `.blend` archives. Not required for the dusk picture, Scenes 2–5, or characters | — |
 
 ---
 
@@ -53,36 +51,36 @@ paradise-lodge/
 │   ├── BRIEF.md
 │   ├── ASSETS.md
 │   ├── CREDITS.md
-│   ├── IMAGE-PROMPTS.md
+│   ├── MOVING-FORWARD.md
+│   ├── ROADMAP.md
 │   └── SETUP.md
-├── images/              ← generated character and texture assets (reference only)
+├── images/              ← turnaround sheets, concept art, mood & texture sources
+├── art-source/          ← historical Rosie FBX/Mixamo archive (not loaded by game)
 ├── assets/
-│   ├── blender/         ← original .blend sources (committed, except room1a.blend)
-│   ├── sourced/         ← Sketchfab downloads (gitignored, ~230MB)
-│   └── bake/            ← raw Cycles output (gitignored, 50MB a sheet)
+│   └── blender/         ← legacy .blend archives for Room 1A / Unit A
 ├── tools/
-│   ├── blender/         ← build / bake / export scripts
-│   └── shot.mjs         ← headless capture
+│   ├── characters/      ← pure-Python cast GLB generator (build_characters.py)
+│   ├── blender/         ← historical room/kit scripts
+│   ├── playtest-scene*.mjs, test-controls.mjs, shot.mjs, profile.mjs
 ├── public/
 │   ├── env/             ← HDRIs
-│   ├── models/          ← shipped glTF
+│   ├── models/          ← shipped glTFs
+│   ├── portraits/       ← dialogue speaker portraits
 │   ├── textures/
 │   │   └── bake/        ← shipped lightmaps (EXR)
-│   └── audio/
+│   └── audio/soundtrack/ ← 5 approved ElevenLabs neo-noir MP3 cues
 ├── src/
 └── package.json
 ```
 
 `CLAUDE.md` goes in the **root**, not in docs. Everything else lives in `docs/`.
 
-**Blender sources stay in `assets/blender/`.** The runtime mesh is the exported glTF under `public/models/`. Do not delete the `.blend` after export. Autosaves (`*.blend1`) are gitignored.
-
-**Three directories are gitignored and all three are reproducible**, which is why losing them is not a problem: `assets/sourced/` re-fetches from the uids in `docs/CREDITS.md`, `assets/blender/room1a.blend` rebuilds from `tools/blender/build_room1a.py`, and `assets/bake/` rebuilds from `tools/blender/bake_room1a.py`. Everything else in `assets/blender/` is small and is the only copy of that geometry — keep it.
+**Historical Blender archives stay in `assets/blender/`.** The runtime meshes live under `public/models/`. `assets/sourced/`, `assets/bake/`, `assets/blender/room1a.blend`, `assets/blender/materials.blend`, and `assets/blender/unit-a.blend` are gitignored and reproducible from `docs/CREDITS.md` and `tools/blender/`.
 ---
 
 ## Step 3 — The images folder
 
-`/images` is the working folder for everything generated with gpt-image-2. It is **reference material, not shipped assets.**
+`/images` holds character turnaround sheets, paper/prop textures, concept art, and mood references.
 
 ```
 images/
@@ -105,21 +103,18 @@ images/
     └── (palette and location reference)
 ```
 
-**Naming is fixed.** `<character>-sheet.png`, lowercase, hyphenated. Claude Code will reference these by exact filename and will not go hunting.
+**Naming is fixed.** `<character>-sheet.png`, lowercase, hyphenated. Build scripts reference these by exact filename.
 
 ### What each folder is for
 
-- **`characters/`** — modelling reference only. Claude Code reads these to build geometry and materials against. They never ship.
-- **`assets/`** — these become real textures. When one is final, it gets processed and copied into `public/textures/`. Keep the original in `/images/assets` so you can regenerate at a different size later.
-- **`mood/`** — colour and location reference. Nobody builds from these, they're for keeping the look honest.
+- **`characters/`** — studio turnaround sheets consumed directly by `tools/characters/build_characters.py` to loft, project, and export compact `.glb` models under `public/models/`.
+- **`assets/`** — source artwork for real textures. When final, processed copies ship under `public/textures/`. Keep the originals in `/images/assets`.
+- **`mood/`** — colour and location reference for keeping the 1994 St Kilda look honest.
 
 ### Rules
 
-- Drop new versions in as `crystal-sheet-v2.png`. Don't overwrite. You'll want to compare.
 - `/images` is committed to the repo. It's small and losing it would hurt.
 - Textures that ship go in `public/textures/` at power-of-two dimensions. 1024×1024 for the photo, 512×512 for the note and diary page, 2048×512 for the neon sign.
-
-If a folder is empty when Claude Code needs it, say so in the prompt. It will otherwise invent a placeholder and you'll find it three sessions later.
 
 ---
 
@@ -132,23 +127,17 @@ If a folder is empty when Claude Code needs it, say so in the prompt. It will ot
 
 ## Step 5 — Cloudflare Pages
 
-1. dash.cloudflare.com → Workers & Pages → Create → Pages → Connect to Git
-2. Pick the repo
-3. Build command: `npm run build`
-4. Output directory: `dist`
-5. Deploy
+The GitHub repository (`cre8tivoz/paradiselodge`) is attached directly to the Cloudflare Pages project `paradiselodge-game`, live at `https://paradiselodge-game.pages.dev`:
 
-**Custom domain:** Pages → Custom domains → add `lodge.billyhaddad.au`. Cloudflare gives you a CNAME target. Add that CNAME wherever billyhaddad.au's DNS lives. The apex stays on Vercel and is not touched.
+1. Build command: `npm run build`
+2. Output directory: `dist`
+3. Every pull request automatically builds a Cloudflare Pages preview, and merging to `main` automatically deploys production (no manual `wrangler pages deploy` step needed).
+
+`vite.config.mjs` strips `models/unit-a.glb` (~30 MB, over Pages' 25 MiB per-file cap) from `dist`; at runtime `src/world/unit-a.ts` fetches it from Cloudflare R2.
 
 Cloudflare Pages static bandwidth is unmetered, which is the whole reason this isn't on Vercel with the author site.
 
-**Deploys are manual.** The project is `paradiselodge-game`, live at `https://paradiselodge-game.pages.dev`:
-
-```bash
-npm run build && wrangler pages deploy dist --project-name paradiselodge-game --branch main
-```
-
-`lodge.billyhaddad.au` is not wired up yet.
+**Custom domain (optional):** Pages → Custom domains → add `lodge.billyhaddad.au` and point a CNAME there whenever you want that subdomain active. The apex stays on Vercel and is not touched.
 
 ---
 
@@ -172,32 +161,11 @@ Check it in the browser between every step.
 
 ## The asset pipeline
 
-Everything the player looks at is sourced, assembled in Blender, baked, and loaded as a `.glb`. Nothing is modelled by hand and nothing is generated. Room 1A went through it first and is the worked example.
+Active visuals, lighting, post-processing, and character builds are **code-first Three.js + Python** (see `docs/MOVING-FORWARD.md`):
 
-**Turn the BlenderMCP addon on before the session starts.** Claude Code drives Blender over TCP `localhost:9876` and cannot start it for you.
-
-| Stage | Script | Writes |
-|---|---|---|
-| Source | `download_sketchfab_model` through the addon | `assets/sourced/<slot>.glb` |
-| Build | `tools/blender/build_room1a.py` | `assets/blender/room1a.blend` |
-| Bake | `tools/blender/bake_room1a.py` | `assets/bake/*.exr` |
-| Export | `tools/blender/export_room1a.py` | `public/models/*.glb`, `public/textures/bake/*.exr` |
-
-Run each one inside Blender:
-
-```
-exec(open('tools/blender/build_room1a.py').read())
-```
-
-### Three things that will bite
-
-- **The Sketchfab key lives on the scene.** `read_homefile(use_empty=True)` throws it away along with everything else, and the next download fails with an auth error that looks like the key was wrong. Every build script carries `MCP_SETTINGS` across the reset for exactly this reason. If you write a new one, carry it too
-- **Every failure in the bake pipeline is silent.** Bakes that write black squares and report success, UV packs that do not pack, size caps that skip half their input. CLAUDE.md lists the specific ones under *Every failure in this pipeline is silent*. Verify with numbers or with `preview()`, never by eye
-- **Blender 5 moved things.** The compositor is `scene.compositing_node_group`, and the MCP addon runs without a window context so operators need an explicit override. Anything written against a Blender 4 tutorial will need both
-
-### The hardware
-
-Apple Silicon. **Cycles runs on Metal, not OptiX**, and the bake numbers in CLAUDE.md are set for that. Confirm the render device is Metal GPU before a final bake: more than about twenty minutes means it is quietly on CPU.
+- **Lighting & lookdev:** authored directly in Three.js (`src/render/dusk.ts`, `src/render/post.ts`, `src/materials/look.ts`). No local Mac Cycles bake is required.
+- **Characters:** Rosie ships from `public/models/rosie-rigged.glb`; the rest of the cast (`moretti`, `crystal`, `mark`, `victor`, `sterling`) are generated directly from `images/characters/` turnaround sheets via `python3 tools/characters/build_characters.py` (`Pillow` + `numpy`, zero Blender/Hunyuan3D/Mixamo dependencies) and styled/posed in Three.js (`src/npc/`).
+- **Historical Room 1A / Unit A bakes (archived):** the existing lightmapped Lodge interior (`public/models/unit-a.glb`, `public/models/room1a.glb`, `public/textures/bake/*.exr`) was built with the legacy Blender 5 / Sketchfab scripts under `tools/blender/` (`build_room1a.py`, `bake_room1a.py`, `export_room1a.py`). Leave those bakes intact unless explicitly rebuilding Unit A.
 
 ---
 
@@ -242,9 +210,9 @@ If you do port any source file, keep the MIT notice with it.
 
 ## Working rules
 
-- **One step per session.** Don't stack them. The engine's fifteen steps are done; the asset pipeline's are not.
-- **Verify in the browser between every step.** Not at the end of the day.
+- **One deliverable slice per PR.** Keep changes scoped and verifiable against `docs/ROADMAP.md`.
+- **Verify in the browser between every step.** Run `npx tsc --noEmit && npm run build` and the Playwright suites (`tools/test-controls.mjs`, `tools/playtest-scene1..5.mjs`).
 - **Commit after every working step.** Two commits and no history is how you end up unable to find where it broke.
 - **Nothing sourced gets committed without a row in `docs/CREDITS.md`.** Author, source URL, licence, in the same commit as the asset. CC-BY says attribution ships with the work, and a baked room is a distribution.
-- If Claude Code proposes a physics engine, an inventory, combat, or a quest marker, the answer is no. It's in the do-not-build list for a reason.
-- If it proposes tuning a light to fix how a room looks, the answer is also no. That is what the bake is for.
+- If an agent proposes a physics engine, an inventory, combat, or a quest marker, the answer is no. It's in the do-not-build list for a reason.
+- Keep lighting code-first (`src/render/dusk.ts`, `src/render/post.ts`, practicals) without adding `AmbientLight` or re-running Cycles bakes.
