@@ -253,7 +253,7 @@ export async function buildStation(): Promise<StationWorld> {
   lampShade.rotation.x = Math.PI / 3
   root.add(lampBase, lampPole, lampShade)
 
-  const deskLampLight = new PointLight(new Color(1.0, 0.82, 0.52), 4.2, 7.5, 1.6)
+  const deskLampLight = new PointLight(new Color(1.0, 0.88, 0.68), 6.5, 8.5, 1.5)
   deskLampLight.position.set(-1.05, 1.12, 0.78)
   deskLampLight.castShadow = true
   root.add(deskLampLight)
@@ -365,16 +365,20 @@ export async function buildStation(): Promise<StationWorld> {
   }
 
   // --- Overhead Fluorescent & Soft Skylight Fill ---
-  const bullpenFill = new HemisphereLight(new Color(0xd0dce8), new Color(0x4a4238), 0.45)
+  const bullpenFill = new HemisphereLight(new Color(0xdce6f2), new Color(0x6e6a62), 0.55)
   root.add(bullpenFill)
 
-  const tube1 = new PointLight(new Color(0.85, 0.92, 1.0), 3.5, 12, 1.8)
-  tube1.position.set(-2.0, 3.0, -1.0)
-  const tube2 = new PointLight(new Color(0.85, 0.92, 1.0), 3.5, 12, 1.8)
+  const tube1 = new PointLight(new Color(0.92, 0.96, 1.0), 9.5, 15, 1.4)
+  tube1.position.set(-2.0, 3.0, -1.5)
+  const tube2 = new PointLight(new Color(0.92, 0.96, 1.0), 9.5, 15, 1.4)
   tube2.position.set(-2.0, 3.0, 2.5)
-  const tubeInterview = new PointLight(new Color(0.9, 0.88, 0.8), 2.8, 8, 1.6)
-  tubeInterview.position.set(5.35, 2.9, -3.2)
-  root.add(tube1, tube2, tubeInterview)
+  const tubeEast = new PointLight(new Color(0.92, 0.96, 1.0), 9.0, 15, 1.4)
+  tubeEast.position.set(2.2, 3.0, 1.0)
+  const tubeForensics = new PointLight(new Color(0.94, 0.97, 1.0), 6.5, 10, 1.4)
+  tubeForensics.position.set(-2.5, 2.95, -3.5)
+  const tubeInterview = new PointLight(new Color(0.96, 0.95, 0.9), 8.5, 10, 1.4)
+  tubeInterview.position.set(5.35, 2.9, -3.1)
+  root.add(tube1, tube2, tubeEast, tubeForensics, tubeInterview)
 
   // Spawn position: In front of the entry doors facing -Z into the bullpen
   const spawn = new Vector3(-1.5, 0, 3.6)

@@ -23,7 +23,12 @@ import { buildSceneLighting } from './render/lighting.ts'
 import { readLookMode } from './render/look-mode.ts'
 import { installDuskLook } from './render/dusk.ts'
 import { buildPost, GRADES, type PostStack } from './render/post.ts'
-import { installNightSkyEnvironment, type SkyEnvironment } from './world/exterior-dusk.ts'
+import {
+  installInteriorEnvironment,
+  installNightSkyEnvironment,
+  type InteriorEnvironment,
+  type SkyEnvironment,
+} from './world/exterior-dusk.ts'
 import { buildLodge } from './world/lodge.ts'
 import { loadLodgeExterior } from './world/lodge-exterior.ts'
 import { loadCommodore } from './world/commodore.ts'
@@ -245,6 +250,7 @@ async function main(): Promise<void> {
 
   let s25Post: PostStack | undefined
   let s25Sky: SkyEnvironment | undefined
+  let s25Env: InteriorEnvironment | undefined
 
   let gates: GateTracker | undefined
   let gates2: Scene2GateTracker | undefined
@@ -449,6 +455,8 @@ async function main(): Promise<void> {
     s25Post = undefined
     s25Sky?.dispose()
     s25Sky = undefined
+    s25Env?.dispose()
+    s25Env = undefined
 
     gates?.dispose()
     gates = undefined
@@ -910,6 +918,12 @@ async function main(): Promise<void> {
         gates2 = new Scene2GateTracker(caseFile)
         leapTerminal = new LeapTerminal(hudRoot, caseFile)
 
+        s25Env = installInteriorEnvironment(renderer, scene, {
+          top: [0.85, 0.9, 0.98],
+          mid: [0.56, 0.58, 0.62],
+          bottom: [0.28, 0.26, 0.24],
+          intensity: 0.42,
+        })
         renderer.toneMapping = NoToneMapping
         renderer.toneMappingExposure = 1
         s25Post = buildPost(renderer, scene, camera, () => [])
@@ -1102,6 +1116,12 @@ async function main(): Promise<void> {
             (gates4.has('sterlings_hideout') || caseFile.has('sterlings_orders')),
         )
 
+        s25Env = installInteriorEnvironment(renderer, scene, {
+          top: [0.86, 0.91, 0.98],
+          mid: [0.54, 0.56, 0.58],
+          bottom: [0.26, 0.25, 0.23],
+          intensity: 0.38,
+        })
         renderer.toneMapping = NoToneMapping
         renderer.toneMappingExposure = 1
         s25Post = buildPost(renderer, scene, camera, () => [])
@@ -1169,6 +1189,12 @@ async function main(): Promise<void> {
           console.debug('gate5', gateId)
         }
 
+        s25Env = installInteriorEnvironment(renderer, scene, {
+          top: [0.96, 0.84, 0.66],
+          mid: [0.56, 0.48, 0.40],
+          bottom: [0.28, 0.22, 0.18],
+          intensity: 0.45,
+        })
         renderer.toneMapping = NoToneMapping
         renderer.toneMappingExposure = 1
         s25Post = buildPost(renderer, scene, camera, () => [])

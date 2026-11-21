@@ -29,13 +29,13 @@ import { NOISE_GLSL } from '../materials/look.ts'
  * the sun is the other caster, and both stay static between updates.
  */
 
-export const TUNGSTEN = new Color().setRGB(1.0, 0.62, 0.3)
-export const TUNGSTEN_WARM = new Color().setRGB(1.0, 0.52, 0.2)
-export const SKY_FILL = new Color().setRGB(0.55, 0.7, 0.95)
-export const SUN = new Color().setRGB(1.0, 0.72, 0.42)
-export const SODIUM = new Color().setRGB(1.0, 0.55, 0.18)
-export const NEON_PINK = new Color().setRGB(1.0, 0.08, 0.42)
-export const NEON_CYAN = new Color().setRGB(0.1, 0.85, 1.0)
+export const TUNGSTEN = new Color().setRGB(1.0, 0.84, 0.64)
+export const TUNGSTEN_WARM = new Color().setRGB(1.0, 0.76, 0.52)
+export const SKY_FILL = new Color().setRGB(0.68, 0.8, 1.0)
+export const SUN = new Color().setRGB(1.0, 0.86, 0.66)
+export const SODIUM = new Color().setRGB(1.0, 0.74, 0.4)
+export const NEON_PINK = new Color().setRGB(1.0, 0.12, 0.46)
+export const NEON_CYAN = new Color().setRGB(0.14, 0.88, 1.0)
 
 let areaLightsReady = false
 
@@ -62,7 +62,7 @@ function shadowSpot(light: SpotLight, size: number): void {
   light.shadow.camera.far = 8
 }
 
-export function bankersLamp(pos: Vector3, rotY = 0, intensity = 7, spill = 2.2): Practical {
+export function bankersLamp(pos: Vector3, rotY = 0, intensity = 9, spill = 4.5): Practical {
   const g = new Group()
   g.position.copy(pos)
   g.rotation.y = rotY
@@ -103,20 +103,20 @@ export function bankersLamp(pos: Vector3, rotY = 0, intensity = 7, spill = 2.2):
   shade.receiveShadow = true
   g.add(shade)
   g.add(inner)
-  const spot = new SpotLight(TUNGSTEN, intensity, 6, Math.PI * 0.36, 0.78, 2)
+  const spot = new SpotLight(TUNGSTEN, intensity, 8, Math.PI * 0.4, 0.78, 1.5)
   spot.position.set(0, 0.32, 0.03)
   spot.target.position.set(0, -1, 0.2)
   shadowSpot(spot, 1024)
   spot.shadow.camera.near = 0.05
   spot.shadow.bias = -0.001
   g.add(spot, spot.target)
-  const spillL = new PointLight(TUNGSTEN, spill, 3.5, 2)
+  const spillL = new PointLight(TUNGSTEN, spill, 5.5, 1.5)
   spillL.position.set(0, 0.28, 0.12)
   g.add(spillL)
   return { root: g, lights: [spot, spillL] }
 }
 
-export function pendant(pos: Vector3, intensity = 10, drop = 0.7): Practical {
+export function pendant(pos: Vector3, intensity = 12, drop = 0.7): Practical {
   const g = new Group()
   g.position.copy(pos)
   g.name = 'ld_pendant'
@@ -129,28 +129,28 @@ export function pendant(pos: Vector3, intensity = 10, drop = 0.7): Practical {
   const shade = new Mesh(
     new CylinderGeometry(0.14, 0.3, 0.26, 24, 1, true),
     new MeshStandardMaterial({
-      color: 0xd9b98a,
+      color: 0xe2cca4,
       roughness: 0.9,
       side: DoubleSide,
       emissive: TUNGSTEN,
-      emissiveIntensity: 0.55,
+      emissiveIntensity: 0.65,
     }),
   )
   g.add(shade)
-  const bulb = new Mesh(new SphereGeometry(0.045, 12, 10), emissive(TUNGSTEN, 18))
+  const bulb = new Mesh(new SphereGeometry(0.045, 12, 10), emissive(TUNGSTEN, 16))
   bulb.position.y = -0.04
   g.add(bulb)
-  const spot = new SpotLight(TUNGSTEN, intensity, 9, Math.PI * 0.36, 0.6, 2)
+  const spot = new SpotLight(TUNGSTEN, intensity, 12, Math.PI * 0.44, 0.65, 1.5)
   spot.position.set(0, -0.02, 0)
   spot.target.position.set(0, -2, 0)
   g.add(spot, spot.target)
-  const up = new PointLight(TUNGSTEN, intensity * 0.18, 5, 2)
+  const up = new PointLight(TUNGSTEN, intensity * 0.34, 8, 1.5)
   up.position.y = 0.05
   g.add(up)
   return { root: g, lights: [spot, up] }
 }
 
-export function sconce(pos: Vector3, facing: Vector3, intensity = 2.2): Practical {
+export function sconce(pos: Vector3, facing: Vector3, intensity = 5.0): Practical {
   const g = new Group()
   g.position.copy(pos)
   g.name = 'ld_sconce'
@@ -165,9 +165,9 @@ export function sconce(pos: Vector3, facing: Vector3, intensity = 2.2): Practica
   const tulip = new Mesh(
     new SphereGeometry(0.075, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.6),
     new MeshStandardMaterial({
-      color: 0xf0d8a8,
+      color: 0xf4e4c4,
       emissive: TUNGSTEN,
-      emissiveIntensity: 3.5,
+      emissiveIntensity: 3.2,
       side: DoubleSide,
       transparent: true,
       opacity: 0.95,
@@ -176,13 +176,13 @@ export function sconce(pos: Vector3, facing: Vector3, intensity = 2.2): Practica
   tulip.position.set(0, 0.04, 0.16)
   g.add(tulip)
   g.lookAt(pos.clone().add(facing))
-  const light = new PointLight(TUNGSTEN, intensity, 4.5, 2)
+  const light = new PointLight(TUNGSTEN, intensity, 8.5, 1.45)
   light.position.set(0, 0.06, 0.16)
   g.add(light)
   return { root: g, lights: [light] }
 }
 
-export function standardLamp(pos: Vector3, intensity = 6): Practical {
+export function standardLamp(pos: Vector3, intensity = 10): Practical {
   const g = new Group()
   g.position.copy(pos)
   g.name = 'ld_standard_lamp'
@@ -196,9 +196,9 @@ export function standardLamp(pos: Vector3, intensity = 6): Practical {
   const shade = new Mesh(
     new CylinderGeometry(0.17, 0.27, 0.32, 24, 1, true),
     new MeshStandardMaterial({
-      color: 0xf2dcae,
-      emissive: new Color(1.0, 0.68, 0.36),
-      emissiveIntensity: 2.4,
+      color: 0xf4e4c4,
+      emissive: TUNGSTEN,
+      emissiveIntensity: 2.2,
       side: DoubleSide,
       roughness: 1,
     }),
@@ -208,9 +208,9 @@ export function standardLamp(pos: Vector3, intensity = 6): Practical {
   const fringe = new Mesh(
     new CylinderGeometry(0.275, 0.285, 0.05, 32, 1, true),
     new MeshStandardMaterial({
-      color: 0xd9bb88,
-      emissive: new Color(1.0, 0.62, 0.3),
-      emissiveIntensity: 1.2,
+      color: 0xe2cca4,
+      emissive: TUNGSTEN_WARM,
+      emissiveIntensity: 1.1,
       side: DoubleSide,
       transparent: true,
       opacity: 0.85,
@@ -220,13 +220,13 @@ export function standardLamp(pos: Vector3, intensity = 6): Practical {
   g.add(fringe)
   base.castShadow = true
   pole.castShadow = true
-  const light = new PointLight(TUNGSTEN_WARM, intensity, 7, 2)
+  const light = new PointLight(TUNGSTEN, intensity, 10, 1.45)
   light.position.y = 1.6
   g.add(light)
   return { root: g, lights: [light] }
 }
 
-export function tableLamp(pos: Vector3, intensity = 3.2): Practical {
+export function tableLamp(pos: Vector3, intensity = 7.5): Practical {
   const g = new Group()
   g.position.copy(pos)
   g.name = 'ld_table_lamp'
@@ -240,16 +240,16 @@ export function tableLamp(pos: Vector3, intensity = 3.2): Practical {
   const shade = new Mesh(
     new CylinderGeometry(0.13, 0.2, 0.22, 20, 1, true),
     new MeshStandardMaterial({
-      color: 0xe8c690,
+      color: 0xf0d9b0,
       emissive: TUNGSTEN_WARM,
-      emissiveIntensity: 1.6,
+      emissiveIntensity: 1.8,
       side: DoubleSide,
       roughness: 1,
     }),
   )
   shade.position.y = 0.43
   g.add(shade)
-  const light = new PointLight(TUNGSTEN_WARM, intensity, 6, 2)
+  const light = new PointLight(TUNGSTEN_WARM, intensity, 9, 1.45)
   light.position.y = 0.41
   g.add(light)
   return { root: g, lights: [light] }

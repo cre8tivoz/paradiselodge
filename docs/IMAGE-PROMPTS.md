@@ -140,6 +140,52 @@ The date stamp puts it eleven months before her death, roughly when they started
 
 ---
 
+## Cast Companion Detail Sheets (Nano Banana)
+
+Companion 3-panel turnaround sheets generated at **`3:2`** aspect ratio using each character's base turnaround sheet (`images/characters/<name>-sheet.png`) as the single reference image, saved to `images/characters/<name>-detail-sheet.jpg` for consumption by [`tools/characters/build_characters.py`](../tools/characters/build_characters.py).
+
+### Constable Moretti
+
+- **Reference input:** `images/characters/moretti-sheet.png`
+- **Saved output:** `images/characters/moretti-detail-sheet.jpg`
+- **Aspect ratio:** `3:2`
+
+> Photorealistic studio character turnaround companion sheet matching the exact same man, face, haircut, 1994 Victoria Police uniform (pale blue short-sleeve buttoned shirt with shoulder tabs and two chest pockets, black leather duty belt with black leather pouches, navy uniform trousers with dark side stripe, black lace-up leather boots), neutral studio lighting, and seamless medium-grey studio cyclorama backdrop from the reference image. Arrange three evenly spaced views left to right with clean grey margin between them: LEFT panel is a full-body straight BACK view standing head to heels facing directly away from camera with arms relaxed slightly away from the sides showing the back of his short dark hair, collar, pale blue shirt back, leather belt and pouches, navy trousers, and black boots; CENTER panel is a full-body straight LEFT-FACING side profile standing head to heels facing left; RIGHT panel is a sharp, high-resolution eye-level close-up front headshot portrait from mid-chest up showing crisp facial pores, dark brows, short stubble, ears, neck, and pale blue shirt collar. Clean studio photography, no text, no labels, no props, identical lighting and colors to the reference sheet.
+
+### Crystal Vance
+
+- **Reference input:** `images/characters/crystal-sheet.png`
+- **Saved output:** `images/characters/crystal-detail-sheet.jpg`
+- **Aspect ratio:** `3:2`
+
+> Photorealistic studio character turnaround companion sheet matching the exact same 22-year-old blonde woman, wavy shoulder-length blonde hair with soft fringe, cream floral-print cap-sleeve V-neck summer dress, slim gold bracelet, cream low-heel court shoes, neutral studio lighting, and seamless medium-grey studio cyclorama backdrop from the reference image. Arrange three evenly spaced views left to right with clean grey margin between them: LEFT panel is a full-body straight BACK view standing head to heels facing directly away from camera with arms relaxed slightly away from sides showing the back of her wavy blonde shoulder-length bob hair, cream floral dress back zipper seam, bare legs, and cream low heels; CENTER panel is a full-body straight RIGHT-FACING side profile standing head to heels facing right; RIGHT panel is a sharp, high-resolution eye-level close-up front headshot portrait from mid-chest up of the exact same woman with her eyes peacefully closed, relaxed lips, slightly pale cool-ivory complexion, subtle faint bruise near her left temple edge under her fringe, delicate gold pendant necklace, and V-neck dress collar. Clean studio photography, no text, no labels, no props, identical wardrobe and backdrop to the reference sheet.
+
+### Mark
+
+- **Reference input:** `images/characters/mark-sheet.png`
+- **Saved output:** `images/characters/mark-detail-sheet.jpg`
+- **Aspect ratio:** `3:2`
+
+> Photorealistic studio character turnaround companion sheet matching the exact same muscular bouncer man, slicked-back dark hair tied in a low ponytail, dark goatee and moustache, tight black short-sleeve button-up shirt unbuttoned at top, black leather belt with silver buckle, black tailored trousers, black leather shoes, neutral studio lighting, and seamless medium-grey studio cyclorama backdrop from the reference image. Arrange three evenly spaced views left to right with clean grey margin between them: LEFT panel is a full-body straight BACK view standing head to heels facing directly away from camera with arms relaxed slightly away from sides showing the back of his slicked dark hair tied in a ponytail hanging down his nape, broad shoulders in the black short-sleeve shirt, belt, black trousers, and black shoes; CENTER panel is a full-body straight LEFT-FACING side profile standing head to heels facing left; RIGHT panel is a sharp, high-resolution eye-level close-up front headshot portrait from mid-chest up showing crisp facial skin texture, eyebrows, eyes, goatee beard detail, ears, neck, and open black shirt collar. Clean studio photography, no text, no labels, no props, identical lighting and colors to the reference sheet.
+
+### Victor Rakov
+
+- **Reference input:** `images/characters/victor-sheet.png`
+- **Saved output:** `images/characters/victor-detail-sheet.jpg`
+- **Aspect ratio:** `3:2`
+
+> Photorealistic studio character turnaround companion sheet matching the exact same lean Eastern European man in his late 30s, short cropped receding dark hair, weathered gaunt face, small star tattoo on left side of neck, forearm tattoos, black zip-up nylon track jacket over white crew-neck t-shirt with thin gold chain, faded charcoal jeans, worn white sneakers, neutral studio lighting, and seamless medium-grey studio cyclorama backdrop from the reference image. Arrange three evenly spaced views left to right with clean grey margin between them: LEFT panel is a full-body straight BACK view standing head to heels facing directly away from camera with arms relaxed slightly away from sides showing the back of his short dark hair, collar, black nylon track jacket back and elastic waistband, charcoal jeans back pockets, and worn white sneakers; CENTER panel is a full-body straight RIGHT-FACING side profile standing head to heels facing right (showing clean right neck without tattoo); RIGHT panel is a sharp, high-resolution eye-level close-up front headshot portrait from mid-chest up showing crisp weathered facial skin texture, creases, brows, intense eyes, ears, gold chain at white tee collar, and zipped black nylon jacket collar. Clean studio photography, no text, no labels, no props, identical lighting and colors to the reference sheet.
+
+### Kenneth Sterling
+
+- **Reference input:** `images/characters/sterling-sheet.png`
+- **Saved output:** `images/characters/sterling-detail-sheet.jpg`
+- **Aspect ratio:** `3:2`
+
+> Photorealistic studio character turnaround companion sheet matching the exact same smug middle-aged Australian publican man in his early 50s, swept-back graying sandy-brown hair, faint smirk, light blue collared button-down shirt with rolled-up sleeves to mid-forearm, brown leather belt with brass buckle, gold wristwatch and signet ring, dark navy chinos, polished brown leather dress shoes, neutral studio lighting, and seamless medium-grey studio cyclorama backdrop from the reference image. Arrange three evenly spaced views left to right with clean grey margin between them: LEFT panel is a full-body straight BACK view standing head to heels facing directly away from camera with arms relaxed slightly away from sides showing the back of his swept-back graying hair, light blue shirt collar and back yoke with rolled-up sleeves, brown belt, dark navy chinos back pockets, and brown leather dress shoes; CENTER panel is a full-body straight LEFT-FACING side profile standing head to heels facing left; RIGHT panel is a sharp, high-resolution eye-level close-up front headshot portrait from mid-chest up showing crisp weathered skin texture, crow's feet, confident half-smile, brows, ears, neck, and open light blue shirt collar. Clean studio photography, no text, no labels, no props, identical lighting and colors to the reference sheet.
+
+---
+
 ## Notes
 
 - **Say "no text" on every character sheet.** Uniforms and clothing are where models hallucinate logos.

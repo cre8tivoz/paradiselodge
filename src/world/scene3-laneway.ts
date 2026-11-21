@@ -95,36 +95,36 @@ export async function buildLaneway(): Promise<LanewayWorld> {
   const solids: Box3[] = []
   const floors: WalkableRegion[] = []
 
-  // Melbourne night sky hemisphere fill and soft moon light
-  const nightSkyFill = new HemisphereLight(new Color(0x283652), new Color(0x161412), 0.55)
-  const moonLight = new DirectionalLight(new Color(0.32, 0.40, 0.55), 0.9)
+  // Melbourne night sky hemisphere fill and crisp moonlight
+  const nightSkyFill = new HemisphereLight(new Color(0x4b6690), new Color(0x26282e), 0.68)
+  const moonLight = new DirectionalLight(new Color(0.68, 0.78, 0.96), 1.15)
   moonLight.position.set(5.0, 16.0, 5.0)
   root.add(nightSkyFill, moonLight)
 
   // Materials
   const asphaltMat = asphaltMaterial(false)
   const bluestoneMat = new MeshStandardMaterial({
-    color: new Color(0.24, 0.27, 0.30), // wet dark Melbourne bluestone
+    color: new Color(0.30, 0.33, 0.37), // wet Melbourne bluestone
     roughness: 0.35,
     metalness: 0.1,
   })
   const timberMat = darkWoodMaterial(0.7)
   const weatherboardMat = new MeshStandardMaterial({
-    color: new Color(0.78, 0.74, 0.68), // peeling municipal off-white paint
+    color: new Color(0.82, 0.78, 0.72), // peeling municipal off-white paint
     roughness: 0.85,
   })
   const corrugatedMat = new MeshStandardMaterial({
-    color: new Color(0.55, 0.58, 0.60), // galvanised zinc / rusted iron
+    color: new Color(0.60, 0.63, 0.66), // galvanised zinc / rusted iron
     roughness: 0.5,
     metalness: 0.55,
     side: DoubleSide,
   })
   const brickMat = new MeshStandardMaterial({
-    color: new Color(0.58, 0.28, 0.22), // red brick chimney
+    color: new Color(0.62, 0.34, 0.28), // red brick chimney
     roughness: 0.9,
   })
   const mudMat = new MeshStandardMaterial({
-    color: new Color(0.22, 0.18, 0.14), // wet Melbourne clay mud
+    color: new Color(0.28, 0.23, 0.18), // wet Melbourne clay mud
     roughness: 0.3,
   })
 
@@ -134,7 +134,7 @@ export async function buildLaneway(): Promise<LanewayWorld> {
   floors.push(walk(aabb(-9.5, 9.5, -0.2, 0.0, 9.0, 17.5), 'bitumen'))
 
   // Concrete footpath & curb (Z: 7.5 to 9.0)
-  const curbMat = new MeshStandardMaterial({ color: new Color(0.52, 0.50, 0.48), roughness: 0.75 })
+  const curbMat = new MeshStandardMaterial({ color: new Color(0.56, 0.54, 0.52), roughness: 0.75 })
   const curbMesh = slab(new Box3(new Vector3(-10.0, 0.0, 7.5), new Vector3(10.0, 0.15, 9.0)), curbMat)
   root.add(curbMesh)
   floors.push(walk(aabb(-9.5, 9.5, -0.05, 0.15, 7.4, 9.0), 'bitumen'))
@@ -144,14 +144,16 @@ export async function buildLaneway(): Promise<LanewayWorld> {
   solids.push(aabb(-10.2, -9.8, 0, 3.0, 7.0, 18.0)) // West street limit
   solids.push(aabb(9.8, 10.2, 0, 3.0, 7.0, 18.0)) // East street limit
 
-  // Sodium streetlight casting amber glow over Regent Street curb
-  const streetLight = new PointLight(new Color(1.0, 0.72, 0.32), 4.5, 16, 1.8)
+  // Sodium streetlight casting amber glow over Regent Street curb + opposite lamp spill
+  const streetLight = new PointLight(new Color(1.0, 0.80, 0.50), 14.0, 24, 1.4)
   streetLight.position.set(-4.5, 4.5, 10.5)
   streetLight.castShadow = true
-  root.add(streetLight)
+  const streetEastFill = new PointLight(new Color(0.84, 0.88, 1.0), 8.0, 20, 1.4)
+  streetEastFill.position.set(2.5, 4.5, 11.0)
+  root.add(streetLight, streetEastFill)
 
   // Streetlight pole
-  const poleMat = new MeshStandardMaterial({ color: new Color(0.2, 0.22, 0.25), roughness: 0.6 })
+  const poleMat = new MeshStandardMaterial({ color: new Color(0.24, 0.26, 0.30), roughness: 0.6 })
   const pole = new Mesh(new CylinderGeometry(0.08, 0.1, 4.5, 10), poleMat)
   pole.position.set(-4.5, 2.25, 10.5)
   root.add(pole)
@@ -160,9 +162,9 @@ export async function buildLaneway(): Promise<LanewayWorld> {
   // Parked Commodore on Regent Street (X: -5.5 to -3.5, Z: 10.5 to 15.2)
   const commodore = new Group()
   commodore.name = 'commodore'
-  const carBodyMat = new MeshStandardMaterial({ color: new Color(0.78, 0.72, 0.54), roughness: 0.65 }) // fleet beige
-  const carGlassMat = new MeshStandardMaterial({ color: new Color(0.12, 0.15, 0.22), roughness: 0.2, metalness: 0.8 })
-  const carTyreMat = new MeshStandardMaterial({ color: new Color(0.1, 0.1, 0.1), roughness: 0.9 })
+  const carBodyMat = new MeshStandardMaterial({ color: new Color(0.80, 0.74, 0.58), roughness: 0.6 }) // fleet beige
+  const carGlassMat = new MeshStandardMaterial({ color: new Color(0.14, 0.18, 0.26), roughness: 0.2, metalness: 0.8 })
+  const carTyreMat = new MeshStandardMaterial({ color: new Color(0.12, 0.12, 0.13), roughness: 0.9 })
   const CX = -4.5
   const CZ = 13.0
   const CY = 0.0
@@ -212,15 +214,15 @@ export async function buildLaneway(): Promise<LanewayWorld> {
   // Front door standing ajar
   const cottageDoor = new Group()
   cottageDoor.name = 'cottageDoor'
-  const doorMat = new MeshStandardMaterial({ color: new Color(0.3, 0.18, 0.12), roughness: 0.7 })
+  const doorMat = new MeshStandardMaterial({ color: new Color(0.36, 0.24, 0.16), roughness: 0.7 })
   const doorLeaf = slab(new Box3(new Vector3(-3.8, 0.2, 5.4), new Vector3(-3.0, 2.2, 5.48)), doorMat)
   doorLeaf.rotation.y = 0.55 // standing open
   cottageDoor.add(doorLeaf)
   root.add(cottageDoor)
 
-  // Warm tungsten light spilling out of cottage doorway
-  const cottageLight = new PointLight(new Color(1.0, 0.78, 0.45), 2.2, 6, 2)
-  cottageLight.position.set(-3.2, 1.8, 4.8)
+  // Warm tungsten light spilling out of cottage doorway onto porch & dropped slip
+  const cottageLight = new PointLight(new Color(1.0, 0.86, 0.64), 7.5, 10, 1.4)
+  cottageLight.position.set(-3.1, 2.0, 5.3)
   root.add(cottageLight)
 
   // Table on porch with dropped slip of paper
@@ -261,12 +263,14 @@ export async function buildLaneway(): Promise<LanewayWorld> {
   root.add(alleyRightFence)
   solids.push(aabb(2.4, 2.6, 0, 2.4, -20.5, 7.5))
 
-  // Alley sodium lamps for moody noir lighting
-  const alleyLamp1 = new PointLight(new Color(1.0, 0.75, 0.35), 3.2, 10, 2)
-  alleyLamp1.position.set(0.5, 3.2, -2.0)
-  const alleyLamp2 = new PointLight(new Color(0.9, 0.85, 0.65), 3.0, 11, 2)
-  alleyLamp2.position.set(0.5, 3.2, -12.5)
-  root.add(alleyLamp1, alleyLamp2)
+  // Alley lamps spaced cleanly from mouth to dead-end fence (including Commercial Rd security spill)
+  const alleyLamp1 = new PointLight(new Color(1.0, 0.82, 0.52), 9.5, 14, 1.4)
+  alleyLamp1.position.set(0.5, 3.2, 2.5)
+  const alleyLamp2 = new PointLight(new Color(0.92, 0.90, 0.78), 10.0, 15, 1.4)
+  alleyLamp2.position.set(0.5, 3.2, -7.5)
+  const alleyLamp3 = new PointLight(new Color(0.76, 0.88, 1.0), 11.0, 14, 1.4)
+  alleyLamp3.position.set(0.5, 3.1, -18.2)
+  root.add(alleyLamp1, alleyLamp2, alleyLamp3)
 
   // --- Obstacles in Laneway ---
   // Green plastic wheelie bin at Z = 1.0, X = 1.6

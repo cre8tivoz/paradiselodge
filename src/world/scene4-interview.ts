@@ -174,21 +174,33 @@ export async function buildInterviewRoom(): Promise<InterviewWorld> {
   root.add(interviewDoor)
 
   // --- 2. Lighting ---
-  const roomFill = new HemisphereLight(new Color(0xc2d0d8), new Color(0x3a352e), 0.5)
+  const roomFill = new HemisphereLight(new Color(0xdce6ee), new Color(0x625c54), 0.52)
   root.add(roomFill)
 
   // Central overhead fluorescent fixture
   const battenHousing = slab(new Box3(new Vector3(-0.8, 2.9, -0.15), new Vector3(0.8, 2.98, 0.15)), steelMat)
-  root.add(battenHousing)
-  const tubeLight = new PointLight(new Color(0.9, 0.95, 1.0), 3.8, 7.5, 1.6)
-  tubeLight.position.set(0, 2.85, 0)
+  battenHousing.castShadow = false
+  const tubeMat = new MeshStandardMaterial({
+    color: new Color(0xf4f8ff),
+    emissive: new Color(0xe8f4ff),
+    emissiveIntensity: 2.0,
+    roughness: 0.2,
+  })
+  const tubeBar = new Mesh(new BoxGeometry(1.45, 0.04, 0.08), tubeMat)
+  tubeBar.position.set(0, 2.88, 0)
+  root.add(battenHousing, tubeBar)
+
+  const tubeLight = new PointLight(new Color(0.94, 0.97, 1.0), 9.0, 11, 1.4)
+  tubeLight.position.set(0, 2.8, 0)
   tubeLight.castShadow = true
   root.add(tubeLight)
 
-  // Soft secondary warm fill
-  const tableFill = new PointLight(new Color(1.0, 0.85, 0.65), 1.2, 4.0, 2.0)
-  tableFill.position.set(0, 1.5, 0)
-  root.add(tableFill)
+  // Soft secondary warm bounce over table + observer corner fill
+  const tableFill = new PointLight(new Color(1.0, 0.92, 0.8), 3.5, 6.5, 1.5)
+  tableFill.position.set(0, 1.55, 0)
+  const observerFill = new PointLight(new Color(0.92, 0.96, 1.0), 3.2, 6.5, 1.5)
+  observerFill.position.set(1.85, 2.25, 0.65)
+  root.add(tableFill, observerFill)
 
   // --- 3. Interview Table & Chairs ---
   const interviewTable = new Group()

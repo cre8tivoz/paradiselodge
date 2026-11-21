@@ -5,6 +5,7 @@ import {
   DirectionalLight,
   FogExp2,
   Group,
+  HemisphereLight,
   Mesh,
   MeshPhysicalMaterial,
   MeshStandardMaterial,
@@ -50,8 +51,8 @@ import { buildExteriorDressing, installSkyEnvironment, tuneExteriorMaterials } f
 /**
  * Dusk look for Scene 1. Code lights and a film grade replace the baked
  * indirect maps in reception, the parlour, the stairs and the hall. Room 1A
- * keeps its lightmaps, pulled down so the grade does not blow them out.
- * `?look=day` never calls this.
+ * keeps its lightmaps, reinforced with directional afternoon window light so
+ * it stays the clearest room in the house. `?look=day` never calls this.
  *
  * Lights outside the room Miller is standing in are switched off. The sun
  * shadow map is not refreshed every frame.
@@ -62,7 +63,7 @@ type UnitSpace = 'room1a' | 'parlour' | 'reception' | 'staircase' | 'hallway'
 
 const SPACES: readonly UnitSpace[] = ['room1a', 'parlour', 'reception', 'staircase', 'hallway']
 const DUSK_DIR = new Vector3(0.16, -0.4, 0.9).normalize()
-const ROOM1A_LIGHTMAP = 10.5
+const ROOM1A_LIGHTMAP = 14.5
 
 interface ManagedLight {
   readonly light: Light
@@ -126,18 +127,17 @@ export async function installDuskLook(input: DuskInput): Promise<DuskLook> {
   renderer.toneMapping = NoToneMapping
   renderer.toneMappingExposure = 1
   renderer.shadowMap.autoUpdate = false
-  renderer.setClearColor(0x07060a, 1)
+  renderer.setClearColor(0x0c0e14, 1)
   camera.far = 140
   camera.updateProjectionMatrix()
 
-  scene.fog = new FogExp2(new Color(0.18, 0.11, 0.07), 0.013)
   const skyEnv = installSkyEnvironment(renderer, scene, DUSK_DIR.clone().negate())
   tuneExteriorMaterials(input.exterior, input.lodge, input.commodore)
   restyleInterior(interior)
 
   const focus = new Vector3(0.2, 1.4, 3.4)
   sun.color.copy(SUN)
-  sun.intensity = 2.05
+  sun.intensity = 2.8
   sun.position.copy(focus).addScaledVector(DUSK_DIR, -32)
   sun.target.position.copy(focus)
   sun.shadow.mapSize.set(2048, 2048)
@@ -176,6 +176,11 @@ export async function installDuskLook(input: DuskInput): Promise<DuskLook> {
     shaders.push(object)
   }
 
+  // Directional cool-ceiling / warm-floor interior bounce (never flat AmbientLight)
+  const interiorBounce = new HemisphereLight(new Color(0xd0d8e4), new Color(0x6e5e4e), 0.52)
+  root.add(interiorBounce)
+  track(interiorBounce, ['reception', 'parlour', 'hall', 'upstairs'])
+
   const lamp = bankersLamp(new Vector3(4.9, 1.14, 2.42))
   root.add(lamp.root)
   const spot = lamp.lights[0]
@@ -183,33 +188,33 @@ export async function installDuskLook(input: DuskInput): Promise<DuskLook> {
   if (spot !== undefined) track(spot, ['reception'])
   if (spill !== undefined) track(spill, ['reception', 'hall', 'outside'])
 
-  const recPend = pendant(new Vector3(4.35, 2.55, 2.1), 8, 0.7)
+  const recPend = pendant(new Vector3(4.35, 2.55, 2.1), 14, 0.7)
   root.add(recPend.root)
   trackMany(recPend.lights, ['reception', 'hall', 'outside'])
 
-  const sconceA = sconce(new Vector3(2.25, 2.05, 5.03), new Vector3(0, 0, -1), 2)
-  const sconceB = sconce(new Vector3(5.75, 2.05, 5.03), new Vector3(0, 0, -1), 2)
+  const sconceA = sconce(new Vector3(2.25, 2.05, 5.03), new Vector3(0, 0, -1), 5.5)
+  const sconceB = sconce(new Vector3(5.75, 2.05, 5.03), new Vector3(0, 0, -1), 5.5)
   root.add(sconceA.root, sconceB.root)
   trackMany(sconceA.lights, ['reception'])
   trackMany(sconceB.lights, ['reception'])
 
-  const recWin = windowFill(new Vector3(3.1, 1.85, -0.04), 1.1, 1.7, 2, SKY_FILL, new Vector3(0, 0, 1))
+  const recWin = windowFill(new Vector3(3.1, 1.85, -0.04), 1.2, 1.8, 4.5, SKY_FILL, new Vector3(0, 0, 1))
   root.add(recWin.root)
   trackMany(recWin.lights, ['reception', 'hall', 'outside'])
 
-  const hallPend = pendant(new Vector3(0.15, 2.55, 3.6), 12, 0.65)
+  const hallPend = pendant(new Vector3(0.15, 2.55, 3.6), 16, 0.65)
   root.add(hallPend.root)
   trackMany(hallPend.lights, ['hall', 'reception', 'parlour', 'outside', 'upstairs'])
 
-  const hallSconce = sconce(new Vector3(1.55, 2.25, 6.6), new Vector3(-1, 0, 0), 2.2)
+  const hallSconce = sconce(new Vector3(1.55, 2.25, 6.6), new Vector3(-1, 0, 0), 5.5)
   root.add(hallSconce.root)
   trackMany(hallSconce.lights, ['hall', 'upstairs'])
 
-  const landing = sconce(new Vector3(-1.0, 5.15, 10.35), new Vector3(0, 0, -1), 2.6)
+  const landing = sconce(new Vector3(-1.0, 5.15, 10.35), new Vector3(0, 0, -1), 6.5)
   root.add(landing.root)
   trackMany(landing.lights, ['hall', 'upstairs'])
 
-  const upper = pendant(new Vector3(-0.6, 5.7, 8.4), 7, 0.55)
+  const upper = pendant(new Vector3(-0.6, 5.7, 8.4), 13, 0.55)
   root.add(upper.root)
   trackMany(upper.lights, ['upstairs', 'hall'])
 
@@ -217,8 +222,8 @@ export async function installDuskLook(input: DuskInput): Promise<DuskLook> {
     new Vector3(0, 1.35, -0.05),
     1.1,
     2.0,
-    1.4,
-    new Color(1, 0.84, 0.62),
+    3.2,
+    new Color(1, 0.9, 0.74),
     new Vector3(0, 0, 1),
   )
   root.add(doorFill.root)
@@ -227,28 +232,63 @@ export async function installDuskLook(input: DuskInput): Promise<DuskLook> {
   const parlourLamp = glowExisting(interior.getObjectByName('standardLamp'), root)
   if (parlourLamp !== undefined) track(parlourLamp, ['parlour', 'hall', 'outside'])
 
-  const table = tableLamp(new Vector3(-4.05, 0.5, 2.15), 2.8)
+  const table = tableLamp(new Vector3(-4.05, 0.5, 2.15), 8.5)
   root.add(table.root)
   trackMany(table.lights, ['parlour'])
+
+  // Soft warm ceiling bounce in the parlour so Rosie, upholstery, and curtains read cleanly
+  const parlourBounce = new PointLight(TUNGSTEN, 7.5, 10, 1.4)
+  parlourBounce.position.set(-3.8, 2.75, 2.6)
+  root.add(parlourBounce)
+  track(parlourBounce, ['parlour', 'hall'])
 
   const tvLight = televisionGlow(interior.getObjectByName('television'), root, updaters)
   if (tvLight !== undefined) track(tvLight, ['parlour', 'hall'])
 
+  // Room 1A: golden afternoon sash sunlight + front street sky fill (clearest room in the lodge)
+  const room1aSashFill = windowFill(
+    new Vector3(5.65, 5.0, 2.65),
+    1.5,
+    1.8,
+    7.5,
+    SUN,
+    new Vector3(-1, -0.15, 0),
+  )
+  root.add(room1aSashFill.root)
+  trackMany(room1aSashFill.lights, ['upstairs'])
+
+  const room1aBedKey = new SpotLight(SUN, 18, 9, Math.PI * 0.42, 0.75, 1.3)
+  room1aBedKey.position.set(5.55, 5.55, 2.65)
+  room1aBedKey.target.position.set(3.85, 3.95, 3.1)
+  root.add(room1aBedKey, room1aBedKey.target)
+  track(room1aBedKey, ['upstairs'])
+
+  const room1aStreetFill = windowFill(
+    new Vector3(3.8, 5.0, 0.35),
+    1.2,
+    1.7,
+    4.2,
+    SKY_FILL,
+    new Vector3(0, -0.1, 1),
+  )
+  root.add(room1aStreetFill.root)
+  trackMany(room1aStreetFill.lights, ['upstairs'])
+
   const beamDir = DUSK_DIR.clone()
   const recCorners = corners(2.63, 3.57, 1.02, 2.65, -0.02)
-  addFx(sunBeam(recCorners, beamDir, 4.2, 0.32), ['reception', 'hall', 'outside'])
+  addFx(sunBeam(recCorners, beamDir, 4.2, 0.24), ['reception', 'hall', 'outside'])
   addFx(dustMotes(recCorners, beamDir, 4.2, 500), ['reception', 'hall', 'outside'])
   const doorCorners = corners(-0.5, 0.5, 0.1, 2.1, -0.08)
-  addFx(sunBeam(doorCorners, beamDir, 4.2, 0.06), ['hall', 'outside'])
+  addFx(sunBeam(doorCorners, beamDir, 4.2, 0.05), ['hall', 'outside'])
   addFx(dustMotes(doorCorners, beamDir, 4.2, 220), ['hall', 'outside'])
   // Place parlour light shafts through curtain edge gaps clear of Rosie at x = -3.05, z = 0.75.
   for (const gapX of [-5.35, -2.70]) {
     const gap = corners(gapX - 0.06, gapX + 0.08, 1.05, 2.6, -0.02)
-    addFx(sunBeam(gap, beamDir, 3.8, 0.42), ['parlour', 'hall', 'outside'])
+    addFx(sunBeam(gap, beamDir, 3.8, 0.28), ['parlour', 'hall', 'outside'])
     addFx(dustMotes(gap, beamDir, 3.8, 140), ['parlour', 'outside'])
   }
   for (const cx of [-5.35, -3.05]) {
-    const fill = windowFill(new Vector3(cx, 1.8, -0.04), 0.2, 1.6, 2.4, SKY_FILL, new Vector3(0, 0, 1))
+    const fill = windowFill(new Vector3(cx, 1.8, -0.04), 0.55, 1.6, 4.8, SKY_FILL, new Vector3(0, 0, 1))
     root.add(fill.root)
     trackMany(fill.lights, ['parlour', 'hall', 'outside'])
     hangCurtains(root, cx)
@@ -274,7 +314,12 @@ export async function installDuskLook(input: DuskInput): Promise<DuskLook> {
   const outside = buildExteriorDressing()
   root.add(outside.root)
   for (const light of outside.lights) {
-    const presets: readonly Preset[] = light instanceof SpotLight ? ['outside'] : ['outside', 'hall', 'reception']
+    const presets: readonly Preset[] =
+      light instanceof SpotLight
+        ? ['outside']
+        : light instanceof HemisphereLight
+          ? ['outside']
+          : ['outside', 'hall', 'reception', 'upstairs']
     track(light, presets)
   }
   fx.push(...outside.fx)
@@ -295,6 +340,9 @@ export async function installDuskLook(input: DuskInput): Promise<DuskLook> {
       if (on) item.light.intensity = item.intensity
     }
     for (const item of managedFx) item.object.visible = item.presets.includes(next)
+    if (scene.fog instanceof FogExp2) {
+      scene.fog.density = next === 'outside' ? 0.007 : 0.002
+    }
     const nextGrade = gradeFor(next)
     if (nextGrade !== grade) {
       grade = nextGrade
@@ -371,7 +419,7 @@ function glowExisting(object: Object3D | undefined, parent: Group): PointLight |
   if (object === undefined) return undefined
   const box = new Box3().setFromObject(object)
   if (box.isEmpty()) return undefined
-  const light = new PointLight(TUNGSTEN, 6, 7, 2)
+  const light = new PointLight(TUNGSTEN, 14, 11, 1.4)
   light.position.set((box.min.x + box.max.x) * 0.5, box.max.y - 0.08, (box.min.z + box.max.z) * 0.5)
   parent.add(light)
   const seen = new Map<string, MeshStandardMaterial>()
@@ -380,8 +428,8 @@ function glowExisting(object: Object3D | undefined, parent: Group): PointLight |
     let mat = seen.get(node.material.uuid)
     if (mat === undefined) {
       mat = node.material.clone()
-      mat.emissive.setRGB(1, 0.6, 0.28)
-      mat.emissiveIntensity = 0.65
+      mat.emissive.setRGB(1, 0.82, 0.56)
+      mat.emissiveIntensity = 0.85
       mat.lightMap = null
       seen.set(node.material.uuid, mat)
     }
@@ -402,12 +450,12 @@ function televisionGlow(
   const intoRoom = new Vector3(-3.2, center.y, 2.4).sub(center)
   if (intoRoom.lengthSq() < 1e-4) intoRoom.set(1, 0, 0)
   intoRoom.normalize()
-  const light = new PointLight(new Color(0.5, 0.7, 1), 0.85, 4, 2)
+  const light = new PointLight(new Color(0.55, 0.76, 1), 1.4, 5, 1.6)
   light.position.copy(center).addScaledVector(intoRoom, 0.35)
   parent.add(light)
   updaters.push((time) => {
     const f = 0.8 + 0.2 * Math.sin(time * 7.3) * Math.sin(time * 2.9)
-    if (light.visible) light.intensity = 0.85 * f
+    if (light.visible) light.intensity = 1.4 * f
   })
   return light
 }
@@ -454,9 +502,9 @@ function restyleInterior(root: Object3D): void {
         return glass
       }
       if (name === 'unit_a_parlour_upholstery') return fabric
-      if (name.startsWith('carpet')) return ageClone(material, [1, 0.72, 0.52], 0.95)
-      if (name === 'unit_a_brass_verdigris') return ageClone(material, [0.9, 0.75, 0.5], 0.4)
-      return ageClone(material, [0.92, 0.8, 0.64], null)
+      if (name.startsWith('carpet')) return ageClone(material, [1, 0.88, 0.76], 0.95)
+      if (name === 'unit_a_brass_verdigris') return ageClone(material, [0.95, 0.86, 0.7], 0.4)
+      return ageClone(material, [0.96, 0.9, 0.82], null)
     })
     const first = next[0]
     if (first === undefined) return
