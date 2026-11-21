@@ -54,16 +54,19 @@ class CharacterSpec:
     hip_height_ratio: float
     shoulder_height_ratio: float
     head_height_ratio: float
+    detail_sheet: str = ""
     is_skirt: bool = False
     has_ponytail: bool = False
     has_duty_belt: bool = False
     has_crystal_fx: bool = False
+    has_swept_hair: bool = False
 
 
 SPECS: dict[str, CharacterSpec] = {
     "moretti": CharacterSpec(
         name="moretti",
         sheet="moretti-sheet.png",
+        detail_sheet="moretti-detail-sheet.jpg",
         height=1.82,
         profile_faces="right",
         thigh_ratio=0.247,
@@ -78,6 +81,7 @@ SPECS: dict[str, CharacterSpec] = {
     "crystal": CharacterSpec(
         name="crystal",
         sheet="crystal-sheet.png",
+        detail_sheet="crystal-detail-sheet.jpg",
         height=1.62,
         profile_faces="left",
         thigh_ratio=0.259,
@@ -93,6 +97,7 @@ SPECS: dict[str, CharacterSpec] = {
     "mark": CharacterSpec(
         name="mark",
         sheet="mark-sheet.png",
+        detail_sheet="mark-detail-sheet.jpg",
         height=1.88,
         profile_faces="right",
         thigh_ratio=0.245,
@@ -107,6 +112,7 @@ SPECS: dict[str, CharacterSpec] = {
     "victor": CharacterSpec(
         name="victor",
         sheet="victor-sheet.png",
+        detail_sheet="victor-detail-sheet.jpg",
         height=1.77,
         profile_faces="left",
         thigh_ratio=0.250,
@@ -120,6 +126,7 @@ SPECS: dict[str, CharacterSpec] = {
     "sterling": CharacterSpec(
         name="sterling",
         sheet="sterling-sheet.png",
+        detail_sheet="sterling-detail-sheet.jpg",
         height=1.74,
         profile_faces="right",
         thigh_ratio=0.242,
@@ -129,6 +136,7 @@ SPECS: dict[str, CharacterSpec] = {
         hip_height_ratio=0.525,
         shoulder_height_ratio=0.815,
         head_height_ratio=0.918,
+        has_swept_hair=True,
     ),
 }
 
@@ -1060,6 +1068,277 @@ def extract_back_cloth_row_swatches(
     return swatches
 
 
+@dataclass
+class DetailSheet:
+    """Parsed Nano Banana companion sheet: full Back view + NCC-aligned Front close-up headshot."""
+    back_rgb: np.ndarray
+    back_mask: np.ndarray
+    back_rgba: np.ndarray
+    back_top: int
+    back_bot: int
+    back_cx: float
+    back_scale: float
+    back_torso_bounds: np.ndarray   # (N_SAMP, 2) [x0, x1] in Back image pixels
+    back_head_bounds: np.ndarray    # (N_SAMP, 2) [x0, x1] in Back image pixels
+    back_arm_l_bounds: np.ndarray   # (N_SAMP, 2) character LEFT (-X) = screen LEFT in Back view
+    back_arm_r_bounds: np.ndarray   # (N_SAMP, 2) character RIGHT (+X) = screen RIGHT in Back view
+    back_leg_l_bounds: np.ndarray   # (N_SAMP, 2) character LEFT (-X) = screen LEFT in Back view
+    back_leg_r_bounds: np.ndarray   # (N_SAMP, 2) character RIGHT (+X) = screen RIGHT in Back view
+    hs_rgb: np.ndarray
+    hs_mask: np.ndarray
+    hs_rgba: np.ndarray
+    hs_scale: float                 # pixels in hs_rgb per pixel in front_rgb
+    hs_x0_map: float                # front pixel x0 maps to hs pixel hs_x0_map
+    hs_y0_map: float                # front pixel y0 maps to hs pixel hs_y0_map
+    front_ref_x0: int
+    front_ref_y0: int
+    hs_color_gain: np.ndarray       # (3,) RGB gain matching headshot skin/exposure to front_rgb
+
+
+def load_detail_sheet(
+    spec: CharacterSpec,
+    front_rgb: np.ndarray,
+    front_mask: np.ndarray,
+    env: CharacterEnvelope,
+) -> DetailSheet | None:
+    """Split and align images/characters/<name>-detail-sheet.jpg (Back + Profile + Close-up Headshot)."""
+    if not spec.detail_sheet:
+        return None
+    path = SHEETS_DIR / spec.detail_sheet
+    if not path.exists():
+        return None
+
+    arr = np.asarray(Image.open(path).convert("RGB"), dtype=np.uint8)
+    h, w, _ = arr.shape
+    f = arr.astype(np.float32)
+
+    # 1. Detect vertical seam separating studio full-body panels from the Right close-up headshot
+    dx = np.abs(np.diff(f, axis=1)).mean(axis=(0, 2))
+    seam_x = int(w * 0.55) + int(np.argmax(dx[int(w * 0.55) : int(w * 0.75)]))
+
+    # 2. Split Back panel (leftmost) from Center profile panel via quiet grey valley
+    left_two = f[:, : max(16, seam_x - 4)]
+    edge_bg = np.median(left_two[:, :12, :], axis=1)
+    diff = np.sqrt(np.mean((left_two - edge_bg[:, None, :]) ** 2, axis=2))
+    chroma = np.max(left_two, axis=2) - np.min(left_two, axis=2)
+    fg_score = smooth_1d(np.mean((diff > 18.0) | (chroma > 12.0), axis=0), 4)
+    a, b = int(seam_x * 0.34), int(seam_x * 0.64)
+    c_back = a + int(np.argmin(fg_score[a:b]))
+
+    back_rgb = arr[:, :c_back]
+    back_mask, _ = segment_panel(back_rgb)
+    ys_b, xs_b = np.nonzero(back_mask)
+    if ys_b.size < 200:
+        return None
+    back_top = int(ys_b.min())
+    back_bot = int(ys_b.max())
+    back_h_px = max(1, back_bot - back_top)
+    back_scale = spec.height / float(back_h_px)
+
+    # Center spine X from torso rows [25%..55% down from top]
+    mid_rows = slice(back_top + int(back_h_px * 0.25), back_top + int(back_h_px * 0.55))
+    mid_xs = np.nonzero(back_mask[mid_rows])[1]
+    back_cx = float(np.median(mid_xs)) if mid_xs.size else float(0.5 * (xs_b.min() + xs_b.max()))
+    back_rgba = build_dilated_rgba(back_rgb, back_mask, passes=24)
+
+    # Extract per-height Back bounds. Note Back view horizontal orientation:
+    # character LEFT (-X) is screen LEFT (px < back_cx), character RIGHT (+X) is screen RIGHT (px > back_cx).
+    back_torso_bounds = np.zeros((N_SAMP, 2), dtype=np.float32)
+    back_head_bounds = np.zeros((N_SAMP, 2), dtype=np.float32)
+    back_arm_l_bounds = np.zeros((N_SAMP, 2), dtype=np.float32)
+    back_arm_r_bounds = np.zeros((N_SAMP, 2), dtype=np.float32)
+    back_leg_l_bounds = np.zeros((N_SAMP, 2), dtype=np.float32)
+    back_leg_r_bounds = np.zeros((N_SAMP, 2), dtype=np.float32)
+
+    for i, h_m in enumerate(env.heights):
+        ry = max(back_top, min(back_bot, int(round(back_bot - h_m / back_scale))))
+        runs = row_runs(back_mask[ry])
+        if not runs:
+            back_torso_bounds[i] = (back_cx - 10, back_cx + 10)
+            back_head_bounds[i] = (back_cx - 10, back_cx + 10)
+            back_arm_l_bounds[i] = (back_cx - 30, back_cx - 16)
+            back_arm_r_bounds[i] = (back_cx + 16, back_cx + 30)
+            back_leg_l_bounds[i] = (back_cx - 24, back_cx - 2)
+            back_leg_r_bounds[i] = (back_cx + 2, back_cx + 24)
+            continue
+
+        center_run = None
+        for r0, r1 in runs:
+            if r0 - 4 <= back_cx <= r1 + 4:
+                center_run = (r0, r1)
+                break
+
+        # Character Left (-X) = screen LEFT (r1 < back_cx), Character Right (+X) = screen RIGHT (r0 > back_cx)
+        side_l = [
+            (r0, r1)
+            for (r0, r1) in runs
+            if r1 < back_cx - 6 and (r1 - r0 + 1) >= 5 and (center_run is None or r1 < center_run[0])
+        ]
+        side_r = [
+            (r0, r1)
+            for (r0, r1) in runs
+            if r0 > back_cx + 6 and (r1 - r0 + 1) >= 5 and (center_run is None or r0 > center_run[1])
+        ]
+
+        if center_run is not None:
+            back_head_bounds[i] = center_run
+            # Above armpit, clamp core torso width to anatomical torso_rx so sleeves stay on arm charts
+            max_tx = max(8.0, env.torso_rx[i] / back_scale)
+            c0, c1 = float(center_run[0]), float(center_run[1])
+            if h_m > env.y_armpit and (c1 - c0) > 2.2 * max_tx:
+                back_torso_bounds[i] = (back_cx - max_tx, back_cx + max_tx)
+            else:
+                back_torso_bounds[i] = (c0, c1)
+        else:
+            max_tx = max(8.0, env.torso_rx[i] / back_scale)
+            back_torso_bounds[i] = (back_cx - max_tx, back_cx + max_tx)
+            back_head_bounds[i] = (back_cx - max_tx * 0.5, back_cx + max_tx * 0.5)
+
+        if side_l:
+            back_arm_l_bounds[i] = (min(r[0] for r in side_l), max(r[1] for r in side_l))
+        else:
+            x_out = back_cx - (abs(env.arm_l_cx[i]) + env.arm_l_rx[i]) / back_scale
+            x_in = back_cx - max(0.02, abs(env.arm_l_cx[i]) - env.arm_l_rx[i]) / back_scale
+            back_arm_l_bounds[i] = (max(0.0, x_out), max(2.0, x_in))
+
+        if side_r:
+            back_arm_r_bounds[i] = (min(r[0] for r in side_r), max(r[1] for r in side_r))
+        else:
+            x_in = back_cx + max(0.02, abs(env.arm_r_cx[i]) - env.arm_r_rx[i]) / back_scale
+            x_out = back_cx + (abs(env.arm_r_cx[i]) + env.arm_r_rx[i]) / back_scale
+            back_arm_r_bounds[i] = (min(back_rgb.shape[1] - 3.0, x_in), min(back_rgb.shape[1] - 1.0, x_out))
+
+        # Legs (screen left < back_cx is character left -X; screen right >= back_cx is character right +X)
+        xs_l = [x for (r0, r1) in runs for x in range(r0, r1 + 1) if x < back_cx]
+        xs_r = [x for (r0, r1) in runs for x in range(r0, r1 + 1) if x >= back_cx]
+        if xs_l:
+            back_leg_l_bounds[i] = (min(xs_l), max(xs_l))
+        else:
+            back_leg_l_bounds[i] = (back_cx - 26, back_cx - 2)
+        if xs_r:
+            back_leg_r_bounds[i] = (min(xs_r), max(xs_r))
+        else:
+            back_leg_r_bounds[i] = (back_cx + 2, back_cx + 26)
+
+    for arr_b in (back_torso_bounds, back_head_bounds, back_arm_l_bounds, back_arm_r_bounds, back_leg_l_bounds, back_leg_r_bounds):
+        arr_b[:, 0] = smooth_1d(arr_b[:, 0], 3)
+        arr_b[:, 1] = smooth_1d(arr_b[:, 1], 3)
+
+    # 3. Extract & segment Close-Up Headshot (right of seam_x + 4)
+    hs_rgb = arr[:, min(w - 16, seam_x + 4) :]
+    hh, hw, _ = hs_rgb.shape
+    hf = hs_rgb.astype(np.float32)
+    bg_top = np.median(np.concatenate([hf[:20, :20], hf[:20, -20:]], axis=1).reshape(-1, 3), axis=0)
+    hdiff = np.sqrt(np.mean((hf - bg_top[None, None, :]) ** 2, axis=2))
+    hch = np.max(hf, axis=2) - np.min(hf, axis=2)
+    hs_mask = keep_largest_component((hdiff > 13.5) | (hch > 9.5))
+    hs_rgba = build_dilated_rgba(hs_rgb, hs_mask, passes=48)
+
+    # 4. Sub-pixel NCC template alignment of Close-Up Headshot onto front_rgb head crop
+    scale = env.scale_m_per_px
+    fy0 = max(0, int(round(env.y_bot - spec.height / scale)))
+    fy1 = min(front_rgb.shape[0], int(round(env.y_bot - (env.y_chin - 0.02) / scale)))
+    hw_f = int(round(0.11 / scale))
+    fx0 = max(0, int(round(env.cx - hw_f)))
+    fx1 = min(front_rgb.shape[1], int(round(env.cx + hw_f)))
+    tg = front_rgb[fy0:fy1, fx0:fx1].astype(np.float32).mean(axis=2)
+    hg = hf.mean(axis=2)
+    th_orig, tw_orig = tg.shape
+
+    # Coarse 2x scan
+    hg2 = hg[::2, ::2]
+    best = (-1e9, 3.0, 20.0, 40.0)
+    for s in np.linspace(2.2, 5.2, 31):
+        nt_h = max(12, int(round(th_orig * s * 0.5)))
+        nt_w = max(12, int(round(tw_orig * s * 0.5)))
+        if nt_h >= hg2.shape[0] - 4 or nt_w >= hg2.shape[1] - 4:
+            continue
+        t_rs = np.asarray(Image.fromarray(tg.astype(np.uint8)).resize((nt_w, nt_h), Image.Resampling.BILINEAR), dtype=np.float32)
+        t_zm = t_rs - t_rs.mean()
+        t_norm = float(np.sqrt(np.sum(t_zm * t_zm)) + 1e-6)
+        x_mid = (hg2.shape[1] - nt_w) // 2
+        for yy in range(0, min(hg2.shape[0] - nt_h, int(hg2.shape[0] * 0.25)), 3):
+            for xx in range(max(0, x_mid - 28), min(hg2.shape[1] - nt_w, x_mid + 28), 3):
+                patch = hg2[yy : yy + nt_h, xx : xx + nt_w]
+                p_zm = patch - patch.mean()
+                score = float(np.sum(t_zm * p_zm)) / (t_norm * float(np.sqrt(np.sum(p_zm * p_zm)) + 1e-6))
+                if score > best[0]:
+                    best = (score, float(s), float(yy * 2), float(xx * 2))
+
+    # Fine 1x refinement around coarse lock
+    _, s_c, y_c, x_c = best
+    best_fine = best
+    for s in np.linspace(max(2.0, s_c - 0.14), s_c + 0.14, 9):
+        nt_h = max(24, int(round(th_orig * s)))
+        nt_w = max(24, int(round(tw_orig * s)))
+        if nt_h >= hg.shape[0] - 2 or nt_w >= hg.shape[1] - 2:
+            continue
+        t_rs = np.asarray(Image.fromarray(tg.astype(np.uint8)).resize((nt_w, nt_h), Image.Resampling.BILINEAR), dtype=np.float32)
+        t_zm = t_rs - t_rs.mean()
+        t_norm = float(np.sqrt(np.sum(t_zm * t_zm)) + 1e-6)
+        y_lo = max(0, int(y_c) - 6)
+        y_hi = min(hg.shape[0] - nt_h, int(y_c) + 7)
+        x_lo = max(0, int(x_c) - 6)
+        x_hi = min(hg.shape[1] - nt_w, int(x_c) + 7)
+        for yy in range(y_lo, y_hi, 2):
+            for xx in range(x_lo, x_hi, 2):
+                patch = hg[yy : yy + nt_h, xx : xx + nt_w]
+                p_zm = patch - patch.mean()
+                score = float(np.sum(t_zm * p_zm)) / (t_norm * float(np.sqrt(np.sum(p_zm * p_zm)) + 1e-6))
+                if score > best_fine[0]:
+                    best_fine = (score, float(s), float(yy), float(xx))
+
+    _, hs_scale, hs_y0_map, hs_x0_map = best_fine
+
+    # Gentle per-channel exposure/color match between headshot face and front_rgb face
+    nt_h = max(16, int(round(th_orig * hs_scale)))
+    nt_w = max(16, int(round(tw_orig * hs_scale)))
+    hy0_i = max(0, min(hh - 8, int(round(hs_y0_map))))
+    hx0_i = max(0, min(hw - 8, int(round(hs_x0_map))))
+    hy1_i = min(hh, hy0_i + nt_h)
+    hx1_i = min(hw, hx0_i + nt_w)
+    f_crop = front_rgb[fy0:fy1, fx0:fx1].astype(np.float32) / 255.0
+    f_m = front_mask[fy0:fy1, fx0:fx1]
+    h_crop = hs_rgb[hy0_i:hy1_i, hx0_i:hx1_i].astype(np.float32) / 255.0
+    h_m = hs_mask[hy0_i:hy1_i, hx0_i:hx1_i]
+    # Use warm skin pixels in central face for neutral exposure matching (keep Crystal's pale look!)
+    f_skin = f_m & (f_crop[..., 0] > 0.35) & (f_crop[..., 0] - f_crop[..., 2] > 0.06)
+    h_skin = h_m & (h_crop[..., 0] > 0.35) & (h_crop[..., 0] - h_crop[..., 2] > 0.06)
+    if f_skin.sum() > 40 and h_skin.sum() > 200 and not spec.has_crystal_fx:
+        f_med = np.median(f_crop[f_skin], axis=0)
+        h_med = np.median(h_crop[h_skin], axis=0)
+        gain = np.clip(f_med / np.maximum(h_med, 0.08), 0.88, 1.12).astype(np.float32)
+        # Blend 50% toward unity so headshot tonal fidelity stays rich
+        hs_color_gain = (0.5 + 0.5 * gain).astype(np.float32)
+    else:
+        hs_color_gain = np.ones(3, dtype=np.float32)
+
+    return DetailSheet(
+        back_rgb=back_rgb,
+        back_mask=back_mask,
+        back_rgba=back_rgba,
+        back_top=back_top,
+        back_bot=back_bot,
+        back_cx=back_cx,
+        back_scale=back_scale,
+        back_torso_bounds=back_torso_bounds,
+        back_head_bounds=back_head_bounds,
+        back_arm_l_bounds=back_arm_l_bounds,
+        back_arm_r_bounds=back_arm_r_bounds,
+        back_leg_l_bounds=back_leg_l_bounds,
+        back_leg_r_bounds=back_leg_r_bounds,
+        hs_rgb=hs_rgb,
+        hs_mask=hs_mask,
+        hs_rgba=hs_rgba,
+        hs_scale=hs_scale,
+        hs_x0_map=hs_x0_map,
+        hs_y0_map=hs_y0_map,
+        front_ref_x0=fx0,
+        front_ref_y0=fy0,
+        hs_color_gain=hs_color_gain,
+    )
+
+
 def generate_face_texture(
     front_rgb: np.ndarray,
     front_mask: np.ndarray,
@@ -1068,14 +1347,15 @@ def generate_face_texture(
     q3_rgb: np.ndarray,
     q3_mask: np.ndarray,
     env: CharacterEnvelope,
-    size: int = 512,
-) -> tuple[Image.Image, np.ndarray]:
-    """Bake 512x512 photo-sharp face+head+hair texture (RGB)."""
+    detail: DetailSheet | None = None,
+    size: int = 1024,
+) -> tuple[Image.Image, np.ndarray, np.ndarray]:
+    """Bake 1024x1024 photo-sharp face+head+hair texture (RGB) using Nano Banana close-up headshot & true Back view."""
     h_lo = max(env.y_shoulder - 0.02, env.y_neck - 0.06)
     h_hi = env.spec.height
     p_scale = env.spec.height / float(max(1, env.prof_bot - env.prof_top))
 
-    # Crop each panel around the head/neck/upper-shoulder region before 3x upscaling (~7x faster)
+    # Crop each panel around the head/neck/upper-shoulder region before 3x upscaling
     fy_min = max(0, int(math.floor(env.y_bot - h_hi / env.scale_m_per_px)) - 12)
     fy_max = min(front_rgb.shape[0], int(math.ceil(env.y_bot - h_lo / env.scale_m_per_px)) + 20)
     f_up = upscale_sharpen(front_rgb[fy_min:fy_max], 3)
@@ -1087,8 +1367,6 @@ def generate_face_texture(
     p_up = upscale_sharpen(prof_rgb[py_min:py_max], 3)
     p_mask_up = np.repeat(np.repeat(prof_mask[py_min:py_max], 3, axis=0), 3, axis=1)
     p4_rgba = build_dilated_rgba(p_up, p_mask_up, passes=48)
-
-    tex = np.zeros((size, size, 3), dtype=np.float32)
 
     # Hair crown base color for clean crown cap
     hair_ys = np.arange(env.y_top, env.y_top + max(6, int(0.055 / env.scale_m_per_px)))
@@ -1114,15 +1392,43 @@ def generate_face_texture(
     xs = -rxs[:, None] * np.sin(thetas)
     zs = -rzs * np.cos(thetas)
 
-    # Map Front: px_f within cropped f4_rgba
-    px_f = (env.cx - (xs * 0.94) / env.scale_m_per_px) * 3.0
-    py_f = ((env.y_bot - hs / env.scale_m_per_px) - fy_min) * 3.0
-    cf_s = bilinear_sample(f4_rgba, px_f, py_f)
+    # Front sampling: use razor-sharp NCC-aligned Nano Banana headshot when available!
+    px_f_base = env.cx - (xs * 0.94) / env.scale_m_per_px
+    py_f_base = env.y_bot - hs / env.scale_m_per_px
     hs_1d = hs[:, 0]
     hair_band = (hs_1d >= env.y_eye + 0.005)[:, None, None]
-    cf = np.where(hair_band, cf_s[..., :3] * cf_s[..., 3:4] + hair_col[None, None, :] * (1.0 - cf_s[..., 3:4]), cf_s[..., :3])
 
-    # Map Profile around prof_head_cx (smoothly blended from prof_spine_x below chin)
+    if detail is not None:
+        px_hs = detail.hs_x0_map + (px_f_base - detail.front_ref_x0) * detail.hs_scale
+        py_hs = detail.hs_y0_map + (py_f_base - detail.front_ref_y0) * detail.hs_scale
+        hs_s = bilinear_sample(detail.hs_rgba, px_hs, py_hs)
+        hs_rgb_cal = np.clip(hs_s[..., :3] * detail.hs_color_gain[None, None, :], 0.0, 1.0)
+        # Keep in-bounds mask so neck base below headshot smoothly falls back to front_rgb
+        in_hs = (
+            (px_hs >= 2.0)
+            & (px_hs <= detail.hs_rgb.shape[1] - 3.0)
+            & (py_hs >= 2.0)
+            & (py_hs <= detail.hs_rgb.shape[0] - 3.0)
+        )
+        cf_base_s = bilinear_sample(f4_rgba, px_f_base * 3.0, (py_f_base - fy_min) * 3.0)
+        cf_base = np.where(
+            hair_band,
+            cf_base_s[..., :3] * cf_base_s[..., 3:4] + hair_col[None, None, :] * (1.0 - cf_base_s[..., 3:4]),
+            cf_base_s[..., :3],
+        )
+        hs_clean = np.where(
+            hair_band,
+            hs_rgb_cal * hs_s[..., 3:4] + hair_col[None, None, :] * (1.0 - hs_s[..., 3:4]),
+            hs_rgb_cal,
+        )
+        # Keep razor-sharp headshot all the way down to collar where in-bounds
+        hs_w = in_hs.astype(np.float32)
+        cf = hs_clean * hs_w[:, :, None] + cf_base * (1.0 - hs_w[:, :, None])
+    else:
+        cf_s = bilinear_sample(f4_rgba, px_f_base * 3.0, (py_f_base - fy_min) * 3.0)
+        cf = np.where(hair_band, cf_s[..., :3] * cf_s[..., 3:4] + hair_col[None, None, :] * (1.0 - cf_s[..., 3:4]), cf_s[..., :3])
+
+    # Profile sampling around prof_head_cx
     head_mix = np.clip((hs - env.y_neck) / max(1e-4, env.y_chin - env.y_neck), 0.0, 1.0)
     prof_cx_h = env.prof_spine_x * (1.0 - head_mix) + env.prof_head_cx * head_mix
     px_p = (prof_cx_h + sign_z * (zs * 0.94) / p_scale) * 3.0
@@ -1132,48 +1438,69 @@ def generate_face_texture(
 
     cos_t = np.cos(thetas)
     sin_t = np.sin(thetas)
-    # Keep full front face (cheeks/jaw/beard) from Front photo without early side seam!
-    wf = np.clip((cos_t + 0.12) / 0.85, 0.0, 1.0) ** 1.15
+    wf = np.clip((cos_t + 0.14) / 0.85, 0.0, 1.0) ** 1.15
     on_prof_side = (sin_t <= 0.08) if env.spec.profile_faces == "right" else (sin_t >= -0.08)
-    wb = np.clip((-cos_t - 0.15) / 0.65, 0.0, 1.0) ** 1.3
+    wb = np.clip((-cos_t - 0.12) / 0.65, 0.0, 1.0) ** 1.25
 
-    # Opposite cheek/ear: blend inward front edge with matching profile ear/hair (never mirror Victor's neck tattoo)
-    px_f_opp = (env.cx - np.sign(xs) * np.minimum(np.abs(xs), rxs[:, None] * 0.88) / env.scale_m_per_px) * 3.0
-    cf_opp_s = bilinear_sample(f4_rgba, px_f_opp, py_f)
-    cf_opp = np.where(hair_band, cf_opp_s[..., :3] * cf_opp_s[..., 3:4] + hair_col[None, None, :] * (1.0 - cf_opp_s[..., 3:4]), cf_opp_s[..., :3])
-    col_opp = 0.55 * cf_opp + 0.45 * cp
+    # Opposite cheek/ear: sample headshot/front inward edge + profile ear/hair (never mirror Victor's neck tattoo)
+    px_f_opp_base = env.cx - np.sign(xs) * np.minimum(np.abs(xs), rxs[:, None] * 0.88) / env.scale_m_per_px
+    if detail is not None:
+        px_ho = detail.hs_x0_map + (px_f_opp_base - detail.front_ref_x0) * detail.hs_scale
+        py_ho = detail.hs_y0_map + (py_f_base - detail.front_ref_y0) * detail.hs_scale
+        cf_opp_s = bilinear_sample(detail.hs_rgba, px_ho, py_ho)
+        cf_opp_raw = np.clip(cf_opp_s[..., :3] * detail.hs_color_gain[None, None, :], 0.0, 1.0)
+        cf_opp = np.where(hair_band, cf_opp_raw * cf_opp_s[..., 3:4] + hair_col[None, None, :] * (1.0 - cf_opp_s[..., 3:4]), cf_opp_raw)
+    else:
+        cf_opp_s = bilinear_sample(f4_rgba, px_f_opp_base * 3.0, (py_f_base - fy_min) * 3.0)
+        cf_opp = np.where(hair_band, cf_opp_s[..., :3] * cf_opp_s[..., 3:4] + hair_col[None, None, :] * (1.0 - cf_opp_s[..., 3:4]), cf_opp_s[..., :3])
+    col_opp = 0.58 * cf_opp + 0.42 * cp
     if env.spec.name == "victor":
         right_neck = (sin_t < -0.15) & (hs < env.y_chin + 0.02)
         col_opp = np.where(right_neck[:, :, None], cf_opp, col_opp)
 
-    # Rear of skull + nape hair: + sign_z * rzb maps to rear edge of Profile panel!
-    nape_px = (prof_cx_h + sign_z * (rzb[:, None] * 0.72) / p_scale) * 3.0
-    cb_s = bilinear_sample(p4_rgba, nape_px, py_p)
-    c_back_prof = cb_s[..., :3] * cb_s[..., 3:4] + hair_col[None, None, :] * (1.0 - cb_s[..., 3:4])
-    strand_noise = np.sin(uu * 310.0) * 0.025 + np.sin(uu * 730.0 + vv * 14.0) * 0.015
-    back_hair_shade = np.clip(c_back_prof + strand_noise[:, :, None], 0.0, 1.0)
-    c_back = np.where(
-        (hs_1d > env.spec.height - 0.055)[:, None, None],
-        0.4 * back_hair_shade + 0.6 * hair_col[None, None, :],
-        back_hair_shade,
-    )
+    # Rear of skull + nape hair: use true photographic Back view when detail sheet is available!
+    if detail is not None:
+        ih_b = np.clip(np.round((hs_1d / env.spec.height) * (N_SAMP - 1)).astype(np.int32), 0, N_SAMP - 1)
+        bh0 = detail.back_head_bounds[ih_b, 0]
+        bh1 = detail.back_head_bounds[ih_b, 1]
+        bh_mid = 0.5 * (bh0 + bh1)
+        bh_half = np.maximum(4.0, 0.5 * (bh1 - bh0) * 0.90)
+        # Back view: character Left (-X, sin_t > 0) is screen LEFT -> bh_mid - sin_t * bh_half
+        px_b = bh_mid[:, None] - sin_t * bh_half[:, None]
+        py_b = detail.back_bot - hs / detail.back_scale
+        cb_s = bilinear_sample(detail.back_rgba, px_b, py_b)
+        c_back = np.where(
+            hair_band,
+            cb_s[..., :3] * cb_s[..., 3:4] + hair_col[None, None, :] * (1.0 - cb_s[..., 3:4]),
+            cb_s[..., :3],
+        )
+    else:
+        nape_px = (prof_cx_h + sign_z * (rzb[:, None] * 0.72) / p_scale) * 3.0
+        cb_s = bilinear_sample(p4_rgba, nape_px, py_p)
+        c_back_prof = cb_s[..., :3] * cb_s[..., 3:4] + hair_col[None, None, :] * (1.0 - cb_s[..., 3:4])
+        strand_noise = np.sin(uu * 310.0) * 0.025 + np.sin(uu * 730.0 + vv * 14.0) * 0.015
+        back_hair_shade = np.clip(c_back_prof + strand_noise[:, :, None], 0.0, 1.0)
+        c_back = np.where(
+            (hs_1d > env.spec.height - 0.055)[:, None, None],
+            0.4 * back_hair_shade + 0.6 * hair_col[None, None, :],
+            back_hair_shade,
+        )
 
     side_col = np.where(on_prof_side[:, :, None], cp, col_opp)
     ws = np.clip(np.abs(sin_t) - 0.52, 0.0, 1.0) ** 1.35 * (1.0 - wb * 0.55)
     w_tot = wf + ws + wb + 1e-6
     tex = (cf * wf[:, :, None] + side_col * ws[:, :, None] + c_back * wb[:, :, None]) / w_tot[:, :, None]
-    crown_w = (np.clip((hs_1d - (env.spec.height - 0.045)) / 0.040, 0.0, 1.0) ** 1.25)[:, None, None]
-    tex = tex * (1.0 - crown_w * 0.85) + hair_col[None, None, :] * (crown_w * 0.85)
+    crown_w = (np.clip((hs_1d - (env.spec.height - 0.036)) / 0.034, 0.0, 1.0) ** 1.35)[:, None, None]
+    tex = tex * (1.0 - crown_w * 0.72) + hair_col[None, None, :] * (crown_w * 0.72)
 
-    # Crystal specific postmortem realism: gently close eyelids at true iris row and add subtle left-temple contusion
-    if env.spec.has_crystal_fx:
-        # Left temple contusion subtly tinted under left fringe (theta ~ +0.75..+1.15 rad = left temple -X, -Z)
+    # Crystal postmortem detail: with Nano Banana detail headshot, closed eyelids and left-temple bruise
+    # are already photographic! Only reinforce subtle left-temple contusion if no detail sheet exists.
+    if env.spec.has_crystal_fx and detail is None:
         t_dist = ((thetas - 0.88) / 0.24) ** 2 + ((hs - (env.y_eye + 0.012)) / 0.022) ** 2
         bruise_w = np.clip(1.0 - t_dist, 0.0, 1.0) ** 1.5 * 0.48
         bruise_col = np.array([0.33, 0.23, 0.26], dtype=np.float32)
         tex = tex * (1.0 - bruise_w[:, :, None]) + bruise_col[None, None, :] * bruise_w[:, :, None]
 
-        # Locate Crystal's actual pupils vertically inside tex (between v=0.38 and v=0.62)
         u_mid = size // 2
         eye_search_y0, eye_search_y1 = int(size * 0.36), int(size * 0.60)
         ex_l0, ex_l1 = u_mid - int(0.08 * size), u_mid - int(0.03 * size)
@@ -1181,7 +1508,6 @@ def generate_face_texture(
         lum_patch_l = tex[eye_search_y0:eye_search_y1, ex_l0:ex_l1].mean(axis=(1, 2))
         lum_patch_r = tex[eye_search_y0:eye_search_y1, ex_r0:ex_r1].mean(axis=(1, 2))
         eye_row = eye_search_y0 + int(np.argmin(lum_patch_l + lum_patch_r))
-        # Cheek / lower-lid skin reference just below the lower lashes (always clean skin, never fringe)
         cheek_row0 = min(size - 8, eye_row + int(0.022 * size))
         for side_s in (-1, 1):
             ec = u_mid + int(side_s * 0.056 * size)
@@ -1198,8 +1524,9 @@ def generate_face_texture(
             lash_col = np.array([0.28, 0.22, 0.18], dtype=np.float32)
             tex[y0:y1, x0:x1] = tex[y0:y1, x0:x1] * (1.0 - 0.55 * lash_curve) + lash_col[None, None, :] * (0.55 * lash_curve)
 
-    tex_u8 = (np.clip(tex, 0.0, 1.0) * 255.0).astype(np.uint8)
-    return Image.fromarray(tex_u8, "RGB"), hair_col
+    tex_f = np.clip(tex, 0.0, 1.0).astype(np.float32)
+    tex_u8 = (tex_f * 255.0).astype(np.uint8)
+    return Image.fromarray(tex_u8, "RGB"), hair_col, tex_f
 
 
 def face_u_to_theta(u: np.ndarray) -> np.ndarray:
@@ -1242,16 +1569,10 @@ def generate_body_atlas(
     prof_rgb: np.ndarray,
     prof_mask: np.ndarray,
     env: CharacterEnvelope,
+    detail: DetailSheet | None = None,
     size: int = 1024,
-) -> Image.Image:
-    """Bake a single clean UV-chart-packed body atlas (1024x1024):
-    Chart regions [u0, u1, v0, v1] where v=0 is PNG TOP and v=1 is PNG BOTTOM:
-      - Torso/Skirt/Pelvis : u [0.01..0.47], v [0.01..0.55]
-      - Arm Left  (-X)     : u [0.50..0.73], v [0.01..0.55]
-      - Arm Right (+X)     : u [0.76..0.99], v [0.01..0.55]
-      - Leg Left  (-X)     : u [0.01..0.48], v [0.58..0.99]
-      - Leg Right (+X)     : u [0.52..0.99], v [0.58..0.99]
-    """
+) -> tuple[Image.Image, np.ndarray, np.ndarray]:
+    """Bake a single clean UV-chart-packed body atlas (1024x1024) with true Back-view projection."""
     f_rgba = build_dilated_rgba(front_rgb, front_mask, passes=24)
     p_rgba = build_dilated_rgba(prof_rgb, prof_mask, passes=24)
     back_swatches = extract_back_cloth_row_swatches(f_rgba, p_rgba, env)
@@ -1279,51 +1600,71 @@ def generate_body_atlas(
     uu_t = np.linspace(0.0, 1.0, tw, dtype=np.float32)[None, :]
     vv_t = np.linspace(0.0, 1.0, th, dtype=np.float32)[:, None]
     hs_t = t_h_hi - vv_t * (t_h_hi - t_h_lo)
-    # theta: 0 at front (-Z), +pi/2 left (-X), -pi/2 right (+X), +-pi back (+Z)
     th_t = (uu_t - 0.5) * (2.0 * math.pi)
     ih_t = np.clip(np.round((hs_t[:, 0] / env.spec.height) * (N_SAMP - 1)).astype(np.int32), 0, N_SAMP - 1)
-    # Sample front torso strictly within front_torso_bounds (clamped 4% inside edge)
-    b0_t = env.front_torso_bounds[ih_t, 0]
-    b1_t = env.front_torso_bounds[ih_t, 1]
-    tmid = 0.5 * (b0_t + b1_t)
-    thalf = np.maximum(3.0, 0.5 * (b1_t - b0_t) * 0.90)
-    # In Front image, px > cx is left (-X, sin_t > 0) -> x_local = -sin(th_t) -> px = tmid + sin(th_t) * thalf
-    fpx_t = tmid[:, None] + np.sin(th_t) * thalf[:, None]
+
+    # Center torso projection strictly on anatomical spine + torso_rx/skirt_rx so single-side armpit
+    # splits never shift the centerline (fixing Victor's chest) and hanging arms never enter torso UVs.
+    rx_t = np.where(
+        (hs_t[:, 0] < env.y_crotch + 0.07) & env.spec.is_skirt,
+        env.skirt_rx[ih_t],
+        env.torso_rx[ih_t],
+    )
+    thalf = np.maximum(3.0, (rx_t / scale) * 0.86)
+    fpx_t = env.cx + np.sin(th_t) * thalf[:, None]
     fpy_t = env.y_bot - hs_t / scale
     cf_t = bilinear_sample(f_rgba, fpx_t, fpy_t)[..., :3]
+    cf_mid = bilinear_sample(f_rgba, np.full_like(fpx_t, env.cx), fpy_t)[..., :3]
+    front_arm_band = hs_t < (env.y_shoulder - 0.05 if env.spec.is_skirt else env.y_armpit - 0.01)
+    cf_skin_raw = (cf_t[..., 0] - cf_t[..., 2] > 0.09) & (cf_t[..., 0] > 0.30)
+    cf_mid_skin = (cf_mid[..., 0] - cf_mid[..., 2] > 0.09) & (cf_mid[..., 0] > 0.30)
+    cf_t = np.where((front_arm_band & cf_skin_raw & (~cf_mid_skin))[:, :, None], cf_mid, cf_t)
 
-    # Sample Profile torso strictly inside prof_z_bounds (avoiding mid-body hanging arms below armpit)
     pb0_t = env.prof_z_bounds[ih_t, 0]
     pb1_t = env.prof_z_bounds[ih_t, 1]
     pmid = 0.5 * (pb0_t + pb1_t)
-    phalf = np.maximum(3.0, 0.5 * (pb1_t - pb0_t) * 0.88)
-    # cos(th_t) = +1 front, -1 back. If faces right (sign_z=-1), front is max X (pmid + phalf)
+    phalf = np.maximum(3.0, 0.5 * (pb1_t - pb0_t) * 0.86)
     ppx_t = pmid[:, None] - sign_z * np.cos(th_t) * phalf[:, None]
     ppy_t = env.prof_bot - hs_t / p_scale
     cp_t = bilinear_sample(p_rgba, ppx_t, ppy_t)[..., :3]
 
-    # Clean back swatches
-    u_sw = np.linspace(0.0, 31.0, tw, dtype=np.float32)[None, :]
-    cb_t = np.zeros((th, tw, 3), dtype=np.float32)
-    for r_idx in range(th):
-        row_sw = back_swatches[ih_t[r_idx]]
-        sw_idx = np.clip(np.round(u_sw[0]).astype(np.int32), 0, 31)
-        cb_t[r_idx] = row_sw[sw_idx]
+    # True photographic Back view projection strictly inside torso_rx (never grabbing hanging hands!)
+    if detail is not None:
+        bhalf = np.maximum(3.0, (rx_t / detail.back_scale) * 0.86)
+        bpx_t = detail.back_cx - np.sin(th_t) * bhalf[:, None]
+        bpy_t = detail.back_bot - hs_t / detail.back_scale
+        cb_t = bilinear_sample(detail.back_rgba, bpx_t, bpy_t)[..., :3]
+        # Clean center-spine cloth swatch per row for any residual side-arm skin rejection
+        cb_mid = bilinear_sample(
+            detail.back_rgba,
+            np.full_like(bpx_t, detail.back_cx),
+            bpy_t,
+        )[..., :3]
+        below_armpit = (hs_t < env.y_armpit - 0.01)
+        cb_skin = (cb_t[..., 0] - cb_t[..., 2] > 0.095) & (cb_t[..., 0] > 0.30)
+        cb_mid_skin = (cb_mid[..., 0] - cb_mid[..., 2] > 0.095) & (cb_mid[..., 0] > 0.30)
+        cb_t = np.where((below_armpit & cb_skin & (~cb_mid_skin))[:, :, None], cb_mid, cb_t)
+    else:
+        u_sw = np.linspace(0.0, 31.0, tw, dtype=np.float32)[None, :]
+        cb_t = np.zeros((th, tw, 3), dtype=np.float32)
+        for r_idx in range(th):
+            row_sw = back_swatches[ih_t[r_idx]]
+            sw_idx = np.clip(np.round(u_sw[0]).astype(np.int32), 0, 31)
+            cb_t[r_idx] = row_sw[sw_idx]
 
-    # On lower torso/hip/pelvis sides below the armpit, the Profile panel's hanging arm/hand
-    # overlaps the mid-depth torso; replace side skin bleed with clean front/back hip fabric.
-    hip_arm_band = (hs_t < env.y_armpit - 0.02).astype(np.float32)
-    cp_skin = (cp_t[..., 0] - cp_t[..., 2] > 0.11) & (cp_t[..., 0] > 0.34)
-    cf_skin = (cf_t[..., 0] - cf_t[..., 2] > 0.11) & (cf_t[..., 0] > 0.34)
-    bleed_t = (hip_arm_band > 0.5) & cp_skin & (~cf_skin)
-    cp_t = np.where(bleed_t[:, :, None], cb_t, cp_t)
+    # Reject hanging-arm skin bleed on torso/dress sides in Profile (including Crystal's bare arms over cream dress!)
+    side_arm_band = (hs_t < (env.y_shoulder - 0.04 if env.spec.is_skirt else env.y_armpit - 0.02)).astype(np.float32)
+    cp_skin = (cp_t[..., 0] - cp_t[..., 2] > 0.095) & (cp_t[..., 0] > 0.32)
+    cf_skin = (cf_t[..., 0] - cf_t[..., 2] > 0.095) & (cf_t[..., 0] > 0.32)
+    bleed_t = (side_arm_band > 0.5) & cp_skin & (~cf_skin)
+    cp_t = np.where(bleed_t[:, :, None], 0.5 * cf_t + 0.5 * cb_t, cp_t)
 
     cos_t = np.cos(th_t)
     sin_t = np.sin(th_t)
-    wf = np.clip((cos_t - 0.08) / 0.92, 0.0, 1.0) ** 1.3
-    ws = np.clip(np.abs(sin_t) - 0.15, 0.0, 1.0) ** 1.2 * (1.0 - np.clip((-cos_t) / 0.85, 0.0, 1.0) * 0.45)
-    ws = ws * (1.0 - 0.65 * hip_arm_band)
-    wb = np.clip((-cos_t - 0.05) / 0.75, 0.0, 1.0) ** 1.25
+    wf = np.clip((cos_t + 0.05) / 1.05, 0.0, 1.0) ** 1.25
+    ws = np.clip(np.abs(sin_t) - 0.24, 0.0, 1.0) ** 1.35 * (1.0 - np.clip((-cos_t) / 0.75, 0.0, 1.0) * 0.65)
+    ws = ws * (1.0 - 0.80 * side_arm_band)
+    wb = np.clip((-cos_t + 0.04) / 1.04, 0.0, 1.0) ** 1.25
     w_sum = wf + ws + wb + 1e-6
     tex[ty0 : ty1 + 1, tx0 : tx1 + 1] = (
         cf_t * wf[:, :, None] + cp_t * ws[:, :, None] + cb_t * wb[:, :, None]
@@ -1333,58 +1674,51 @@ def generate_body_atlas(
     # ---- 2. ARMS L & R ----
     arm_hi = env.y_shoulder + 0.02
     arm_lo = max(0.28 * env.spec.height, env.y_crotch - 0.12)
-    for side_tag, (u0, u1), b_arr in (
-        ("l", (0.50, 0.73), env.front_arm_l_bounds),
-        ("r", (0.76, 0.99), env.front_arm_r_bounds),
+    for side_tag, (u0, u1), b_arr, back_b_arr in (
+        ("l", (0.50, 0.73), env.front_arm_l_bounds, detail.back_arm_l_bounds if detail is not None else None),
+        ("r", (0.76, 0.99), env.front_arm_r_bounds, detail.back_arm_r_bounds if detail is not None else None),
     ):
         ax0, ax1, ay0, ay1 = px_rect(u0, u1, 0.01, 0.55)
         aw, ah = ax1 - ax0 + 1, ay1 - ay0 + 1
         uu_a = np.linspace(0.0, 1.0, aw, dtype=np.float32)[None, :]
         vv_a = np.linspace(0.0, 1.0, ah, dtype=np.float32)[:, None]
         hs_a = arm_hi - vv_a * (arm_hi - arm_lo)
-        # Clamp sample vertical lookup below the trapezius/shoulder slope so upper arm UV caps stay on sleeve fabric
         hs_samp = np.minimum(hs_a, env.y_shoulder - 0.015)
         ih_a = np.clip(np.round((hs_samp[:, 0] / env.spec.height) * (N_SAMP - 1)).astype(np.int32), 0, N_SAMP - 1)
         th_a = (uu_a - 0.5) * (2.0 * math.pi)
         ab0 = b_arr[ih_a, 0]
         ab1 = b_arr[ih_a, 1]
         amid = 0.5 * (ab0 + ab1)
-        ahalf = np.maximum(2.0, 0.5 * (ab1 - ab0) * 0.78)
+        ahalf = np.maximum(2.0, 0.5 * (ab1 - ab0) * 0.62)
         fpx_a = amid[:, None] + np.sin(th_a) * ahalf[:, None]
         fpy_a = env.y_bot - hs_samp / scale
         cf_rgba = bilinear_sample(f_rgba, fpx_a, fpy_a)
-        # Clean inner sleeve/skin sample from center 30% of the arm column (prevents grey armpit/rib leak on back of arm!)
-        fpx_center = amid[:, None] + np.sin(th_a) * (ahalf[:, None] * 0.35)
+        fpx_center = amid[:, None] + np.sin(th_a) * (ahalf[:, None] * 0.25)
         cc_rgba = bilinear_sample(f_rgba, fpx_center, fpy_a)
-        # Safe interior torso/shoulder sleeve fallback in case of silhouette edge gap
         t_edge_x = env.cx + (1.0 if side_tag == "l" else -1.0) * (env.torso_rx[ih_a] * 0.85 / scale)
         cs_safe = bilinear_sample(f_rgba, t_edge_x[:, None], fpy_a)[..., :3]
-        cc_a = np.where(cc_rgba[..., 3:4] > 0.25, cc_rgba[..., :3], cs_safe) * 0.92
+        cc_a = np.where(cc_rgba[..., 3:4] > 0.25, cc_rgba[..., :3], cs_safe) * 0.95
         alpha_f = np.clip(cf_rgba[..., 3], 0.0, 1.0)
         cf_a = cf_rgba[..., :3] * alpha_f[:, :, None] + cc_a * (1.0 - alpha_f)[:, :, None]
-        # Outer profile match for forearm/bicep if visible on matching profile side
-        is_prof_arm = (side_tag == "r" and env.spec.profile_faces == "right") or (
-            side_tag == "l" and env.spec.profile_faces == "left"
-        )
-        if is_prof_arm:
-            pb0_a = env.prof_z_bounds[ih_a, 0]
-            pb1_a = env.prof_z_bounds[ih_a, 1]
-            pamid = 0.5 * (pb0_a + pb1_a)
-            ppx_a = pamid[:, None] - sign_z * np.cos(th_a) * np.maximum(3.0, (pb1_a - pb0_a) * 0.16)[:, None]
-            ppy_a = env.prof_bot - hs_samp / p_scale
-            cp_rgba = bilinear_sample(p_rgba, ppx_a, ppy_a)
-            alpha_p = np.clip(cp_rgba[..., 3], 0.0, 1.0)
-            cp_a = cp_rgba[..., :3] * alpha_p[:, :, None] + cc_a * (1.0 - alpha_p)[:, :, None]
-            w_out = np.clip((np.sin(th_a) * (-1.0 if side_tag == "r" else 1.0) - 0.1), 0.0, 1.0)
-            w_fr = np.clip((np.cos(th_a) + 0.35) / 1.35, 0.0, 1.0)
-            arm_col = (cf_a * w_fr[:, :, None] + cp_a * w_out[:, :, None] + cc_a * (1.0 - w_fr * 0.6)[:, :, None]) / (
-                w_fr + w_out + (1.0 - w_fr * 0.6) + 1e-6
-            )[:, :, None]
-        else:
-            w_fr = np.clip((np.cos(th_a) + 0.45) / 1.45, 0.0, 1.0)
-            arm_col = cf_a * w_fr[:, :, None] + cc_a * (1.0 - w_fr)[:, :, None]
 
-        # Crystal dependent postmortem lividity on lower forearms & hands (< 0.48*H)
+        # Rear arm strictly inside central 55% of Back arm column so belt/trouser edges never bleed onto forearms
+        if detail is not None and back_b_arr is not None:
+            bab0 = back_b_arr[ih_a, 0]
+            bab1 = back_b_arr[ih_a, 1]
+            bamid = 0.5 * (bab0 + bab1)
+            bahalf = np.maximum(2.0, 0.5 * (bab1 - bab0) * 0.52)
+            bpx_a = bamid[:, None] - np.sin(th_a) * bahalf[:, None]
+            bpy_a = detail.back_bot - hs_samp / detail.back_scale
+            cb_rgba = bilinear_sample(detail.back_rgba, bpx_a, bpy_a)
+            alpha_b = np.clip(cb_rgba[..., 3], 0.0, 1.0)
+            cb_a = cb_rgba[..., :3] * alpha_b[:, :, None] + cc_a * (1.0 - alpha_b)[:, :, None]
+        else:
+            cb_a = cc_a
+
+        w_fr = np.clip((np.cos(th_a) + 0.25) / 1.25, 0.0, 1.0) ** 1.15
+        w_bk = np.clip((-np.cos(th_a) + 0.20) / 1.20, 0.0, 1.0) ** 1.15
+        arm_col = (cf_a * w_fr[:, :, None] + cb_a * w_bk[:, :, None]) / (w_fr + w_bk + 1e-6)[:, :, None]
+
         if env.spec.has_crystal_fx:
             livid_w = np.clip((env.spec.height * 0.52 - hs_a) / 0.14, 0.0, 1.0) * 0.34
             livid_tint = np.array([0.46, 0.39, 0.43], dtype=np.float32)
@@ -1396,9 +1730,9 @@ def generate_body_atlas(
     # ---- 3. LEGS L & R (THIGH + SHIN + SHOE) ----
     leg_hi = env.y_crotch + 0.03
     leg_lo = 0.0
-    for side_tag, (u0, u1), b_arr in (
-        ("l", (0.01, 0.48), env.front_leg_l_bounds),
-        ("r", (0.52, 0.99), env.front_leg_r_bounds),
+    for side_tag, (u0, u1), b_arr, back_b_arr in (
+        ("l", (0.01, 0.48), env.front_leg_l_bounds, detail.back_leg_l_bounds if detail is not None else None),
+        ("r", (0.52, 0.99), env.front_leg_r_bounds, detail.back_leg_r_bounds if detail is not None else None),
     ):
         lx0, lx1, ly0, ly1 = px_rect(u0, u1, 0.58, 0.99)
         lw, lh = lx1 - lx0 + 1, ly1 - ly0 + 1
@@ -1415,7 +1749,6 @@ def generate_body_atlas(
         fpy_l = env.y_bot - hs_l / scale
         cf_l = bilinear_sample(f_rgba, fpx_l, fpy_l)[..., :3]
 
-        # Profile leg projection for outer sides & sneaker/boot sides
         pb0_l = env.prof_z_bounds[ih_l, 0]
         pb1_l = env.prof_z_bounds[ih_l, 1]
         plmid = 0.5 * (pb0_l + pb1_l)
@@ -1424,11 +1757,19 @@ def generate_body_atlas(
         ppy_l = env.prof_bot - hs_l / p_scale
         cp_l = bilinear_sample(p_rgba, ppx_l, ppy_l)[..., :3]
 
-        # Inner / rear trouser or bare calf swatch from center of that leg
-        fpx_l_mid = lmid[:, None] + np.sin(th_l) * (lhalf[:, None] * 0.35)
-        cb_l = bilinear_sample(f_rgba, fpx_l_mid, fpy_l)[..., :3] * 0.88
+        # True rear leg / heel from Back view when available
+        if detail is not None and back_b_arr is not None:
+            blb0 = back_b_arr[ih_l, 0]
+            blb1 = back_b_arr[ih_l, 1]
+            blmid = 0.5 * (blb0 + blb1)
+            blhalf = np.maximum(2.0, 0.5 * (blb1 - blb0) * 0.78)
+            bpx_l = blmid[:, None] - np.sin(th_l) * blhalf[:, None]
+            bpy_l = detail.back_bot - hs_l / detail.back_scale
+            cb_l = bilinear_sample(detail.back_rgba, bpx_l, bpy_l)[..., :3]
+        else:
+            fpx_l_mid = lmid[:, None] + np.sin(th_l) * (lhalf[:, None] * 0.35)
+            cb_l = bilinear_sample(f_rgba, fpx_l_mid, fpy_l)[..., :3] * 0.88
 
-        # Prevent hanging hands/fingertips in Profile from painting skin onto trouser upper thighs
         if not env.spec.is_skirt:
             trouser_zone = (hs_l > 0.14 * env.spec.height).astype(np.float32)
             cp_l_skin = (cp_l[..., 0] - cp_l[..., 2] > 0.10) & (cp_l[..., 0] > 0.34)
@@ -1437,17 +1778,127 @@ def generate_body_atlas(
             cp_l = np.where(bleed_l[:, :, None], cb_l, cp_l)
 
         w_f = np.clip((np.cos(th_l) + 0.15) / 1.15, 0.0, 1.0) ** 1.3
-        w_s = np.clip(np.abs(np.sin(th_l)) - 0.10, 0.0, 1.0) ** 1.1
-        w_b = np.clip((-np.cos(th_l) + 0.1) / 1.1, 0.0, 1.0) ** 1.2
+        w_s = np.clip(np.abs(np.sin(th_l)) - 0.12, 0.0, 1.0) ** 1.15
+        w_b = np.clip((-np.cos(th_l) + 0.12) / 1.12, 0.0, 1.0) ** 1.2
         w_sum_l = w_f + w_s + w_b + 1e-6
         leg_col = (cf_l * w_f[:, :, None] + cp_l * w_s[:, :, None] + cb_l * w_b[:, :, None]) / w_sum_l[:, :, None]
 
         tex[ly0 : ly1 + 1, lx0 : lx1 + 1] = leg_col
         mask_written[ly0 : ly1 + 1, lx0 : lx1 + 1] = True
 
-    tex = dilate_rgb_uv(tex, mask_written, passes=10)
-    tex_u8 = (np.clip(tex, 0.0, 1.0) * 255.0).astype(np.uint8)
-    return Image.fromarray(tex_u8, "RGB")
+    tex_f = np.clip(dilate_rgb_uv(tex, mask_written, passes=10), 0.0, 1.0).astype(np.float32)
+    tex_u8 = (tex_f * 255.0).astype(np.uint8)
+    return Image.fromarray(tex_u8, "RGB"), tex_f, mask_written
+
+
+def _box_blur_2d(img: np.ndarray, radius: int) -> np.ndarray:
+    """Fast separable box blur for float32 2D arrays."""
+    if radius <= 0:
+        return img.copy()
+    k = 2 * radius + 1
+    pad_y = np.pad(img, ((radius, radius), (0, 0)), mode="edge")
+    cs_y = np.cumsum(np.insert(pad_y, 0, 0.0, axis=0), axis=0)
+    tmp = (cs_y[k:] - cs_y[:-k]) / float(k)
+    pad_x = np.pad(tmp, ((0, 0), (radius, radius)), mode="edge")
+    cs_x = np.cumsum(np.insert(pad_x, 0, 0.0, axis=1), axis=1)
+    return ((cs_x[:, k:] - cs_x[:, :-k]) / float(k)).astype(np.float32)
+
+
+def generate_pbr_maps(
+    tex_f: np.ndarray,
+    mask_written: np.ndarray,
+    is_face: bool,
+    spec: CharacterSpec,
+) -> tuple[Image.Image, Image.Image]:
+    """Generate tangent-space Normal map (RGB) and packed ORM map (R=AO, G=Roughness, B=Metallic)."""
+    h, w, _ = tex_f.shape
+    r, g, b = tex_f[..., 0], tex_f[..., 1], tex_f[..., 2]
+    lum = (0.299 * r + 0.587 * g + 0.114 * b).astype(np.float32)
+
+    # Skin detection (warm peach/olive/ivory skin tones)
+    skin = (r > 0.28) & ((r - b) > 0.055) & (r >= g - 0.01) & (g >= b - 0.02)
+    # Dark leather / dark footwear / belt detection
+    dark_low_ch = (lum < 0.24) & ((np.maximum(np.maximum(r, g), b) - np.minimum(np.minimum(r, g), b)) < 0.08)
+
+    # Multi-scale high-pass height field (micro weave/pores + medium folds/creases, removing low-freq lighting)
+    blur_s = _box_blur_2d(lum, 2)
+    blur_m = _box_blur_2d(lum, 7)
+    blur_l = _box_blur_2d(lum, 24)
+    detail_h = (lum - blur_s) * 0.55 + (blur_s - blur_m) * 0.75 + (blur_m - blur_l) * 0.45
+
+    # Sobel gradients on high-pass detail
+    p = np.pad(detail_h, 1, mode="edge")
+    gx = (
+        (p[:-2, 2:] + 2.0 * p[1:-1, 2:] + p[2:, 2:])
+        - (p[:-2, :-2] + 2.0 * p[1:-1, :-2] + p[2:, :-2])
+    ) * 0.25
+    gy = (
+        (p[2:, :-2] + 2.0 * p[2:, 1:-1] + p[2:, 2:])
+        - (p[:-2, :-2] + 2.0 * p[:-2, 1:-1] + p[:-2, 2:])
+    ) * 0.25
+
+    # Calibrate normal strength per material class (gentle on facial skin so pores don't crunch)
+    if is_face:
+        strength = np.where(skin, 2.2, 4.2).astype(np.float32)
+    else:
+        strength = np.where(skin, 2.6, np.where(dark_low_ch, 5.2, 4.8)).astype(np.float32)
+
+    nx = -gx * strength
+    ny = -gy * strength
+    nz = np.ones_like(nx, dtype=np.float32)
+    inv_len = 1.0 / np.sqrt(nx * nx + ny * ny + nz * nz + 1e-8)
+    nx *= inv_len
+    ny *= inv_len
+    nz *= inv_len
+
+    norm_rgb = np.stack([nx * 0.5 + 0.5, ny * 0.5 + 0.5, nz * 0.5 + 0.5], axis=-1)
+    # Neutral [0.5, 0.5, 1.0] outside chart masks so mipmaps never tilt normals at seams
+    neutral = np.array([0.5, 0.5, 1.0], dtype=np.float32)
+    norm_rgb = np.where(mask_written[:, :, None], norm_rgb, neutral[None, None, :])
+    norm_img = Image.fromarray((np.clip(norm_rgb, 0.0, 1.0) * 255.0).astype(np.uint8), "RGB")
+
+    # Packed ORM map: R = Crevice AO, G = Per-pixel Roughness, B = Metallic
+    cavity = np.clip((blur_m - lum) * 2.2 + np.maximum(0.0, blur_l - blur_m) * 1.1, 0.0, 0.34)
+    ao = np.clip(1.0 - cavity, 0.68, 1.0).astype(np.float32)
+
+    yy = np.linspace(0.0, 1.0, h, dtype=np.float32)[:, None]
+    xx = np.linspace(0.0, 1.0, w, dtype=np.float32)[None, :]
+    if is_face:
+        # Satin skin sheen (~0.56, slightly smoother 0.49 on nose/forehead/lip T-zone), hair ~0.55, collar ~0.88
+        rough = np.where(skin, 0.56, 0.58).astype(np.float32)
+        t_zone = skin & (np.abs(xx - 0.50) < 0.09) & (yy > 0.25) & (yy < 0.72)
+        rough = np.where(t_zone, 0.50, rough)
+        collar_zone = (yy > 0.80) & (~skin)
+        rough = np.where(collar_zone, 0.88, rough)
+        metal = np.zeros((h, w), dtype=np.float32)
+    else:
+        # Matte fabric default 0.88, exposed skin 0.60, dark leather belts/shoes 0.39, Victor nylon jacket 0.54
+        rough = np.full((h, w), 0.88, dtype=np.float32)
+        rough = np.where(skin, 0.60, rough)
+        # Footwear zone (bottom of leg charts v > 0.90) & belt zone (torso v in 0.32..0.46)
+        shoe_zone = yy > 0.90
+        belt_zone = (xx < 0.48) & (yy > 0.31) & (yy < 0.46)
+        leather = (shoe_zone | belt_zone) & dark_low_ch
+        rough = np.where(leather, 0.39, rough)
+        # Brown leather dress shoes/belt on Sterling
+        brown_leather = (shoe_zone | belt_zone) & (r > 0.14) & (r < 0.48) & ((r - b) > 0.08) & (~skin)
+        rough = np.where(brown_leather, 0.42, rough)
+        if spec.name == "victor":
+            # Black nylon track jacket on torso + upper arms (v < 0.36)
+            nylon = (yy < 0.38) & dark_low_ch
+            rough = np.where(nylon, 0.54, rough)
+        # Metallic glint only on bright small belt buckles / gold watch
+        metal = np.zeros((h, w), dtype=np.float32)
+        buckle = belt_zone & (lum > 0.52) & (~skin)
+        metal = np.where(buckle, 0.65, metal)
+        rough = np.where(buckle, 0.32, rough)
+
+    # Subtle micro-roughness variation from high-pass detail so surfaces catch dusk light naturally
+    rough = np.clip(rough + (blur_s - lum) * 0.25, 0.24, 0.96)
+    orm_rgb = np.stack([ao, rough, metal], axis=-1)
+    orm_rgb = dilate_rgb_uv(orm_rgb, mask_written, passes=8)
+    orm_img = Image.fromarray((np.clip(orm_rgb, 0.0, 1.0) * 255.0).astype(np.uint8), "RGB")
+    return norm_img, orm_img
 
 
 # ---------------------------------------------------------------------------
@@ -1462,6 +1913,102 @@ class MeshData:
     uvs: np.ndarray        # (V, 2) float32
     indices: np.ndarray    # (F*3,) uint32 or uint16
     material_idx: int
+    joints: np.ndarray | None = None   # (V, 4) uint8 bone indices
+    weights: np.ndarray | None = None  # (V, 4) float32 bone weights summing to 1.0
+
+
+def quat_to_rot3(q: list[float] | None) -> np.ndarray:
+    """Convert xyzw unit quaternion to 3x3 rotation matrix."""
+    if q is None:
+        return np.eye(3, dtype=np.float64)
+    x, y, z, w = q
+    xx, yy, zz = x * x, y * y, z * z
+    xy, xz, yz = x * y, x * z, y * z
+    wx, wy, wz = w * x, w * y, w * z
+    return np.array(
+        [
+            [1.0 - 2.0 * (yy + zz), 2.0 * (xy - wz), 2.0 * (xz + wy)],
+            [2.0 * (xy + wz), 1.0 - 2.0 * (xx + zz), 2.0 * (yz - wx)],
+            [2.0 * (xz - wy), 2.0 * (yz + wx), 1.0 - 2.0 * (xx + yy)],
+        ],
+        dtype=np.float64,
+    )
+
+
+def mat4_from_tr(t: list[float] | None, q: list[float] | None) -> np.ndarray:
+    m = np.eye(4, dtype=np.float64)
+    m[:3, :3] = quat_to_rot3(q)
+    if t is not None:
+        m[:3, 3] = np.array(t, dtype=np.float64)
+    return m
+
+
+def bind_rigid_part(
+    part: MeshData,
+    bone_idx: int,
+    world_mat: np.ndarray,
+    blend_y_joint: tuple[int, float, float] | None = None,
+) -> MeshData:
+    """Transform a bone-local MeshData into bind world space and assign skinning weights."""
+    v = len(part.positions)
+    r3 = world_mat[:3, :3]
+    t3 = world_mat[:3, 3]
+    pos_w = (part.positions.astype(np.float64) @ r3.T + t3[None, :]).astype(np.float32)
+    nrm_w = (part.normals.astype(np.float64) @ r3.T).astype(np.float32)
+    mag = np.linalg.norm(nrm_w, axis=1, keepdims=True)
+    nrm_w /= np.maximum(mag, 1e-8)
+
+    if part.joints is not None and part.weights is not None:
+        j_arr = part.joints.copy()
+        w_arr = part.weights.copy()
+    else:
+        j_arr = np.zeros((v, 4), dtype=np.uint8)
+        w_arr = np.zeros((v, 4), dtype=np.float32)
+        j_arr[:, 0] = bone_idx
+        w_arr[:, 0] = 1.0
+        if blend_y_joint is not None:
+            other_j, y_full_other, y_full_self = blend_y_joint
+            ys = pos_w[:, 1]
+            t = np.clip((ys - y_full_other) / max(1e-4, y_full_self - y_full_other), 0.0, 1.0)
+            # Smoothstep blend
+            w_self = (t * t * (3.0 - 2.0 * t)).astype(np.float32)
+            j_arr[:, 1] = other_j
+            w_arr[:, 0] = w_self
+            w_arr[:, 1] = 1.0 - w_self
+
+    return MeshData(
+        positions=pos_w,
+        normals=nrm_w,
+        uvs=part.uvs.copy(),
+        indices=part.indices.copy(),
+        material_idx=part.material_idx,
+        joints=j_arr,
+        weights=w_arr,
+    )
+
+
+def merge_skinned_meshes(parts: list[MeshData], material_idx: int) -> MeshData:
+    """Merge multiple world-space skinned MeshData parts sharing a material into one primitive."""
+    pos_list, nrm_list, uv_list, idx_list, j_list, w_list = [], [], [], [], [], []
+    v_off = 0
+    for p in parts:
+        pos_list.append(p.positions.astype(np.float32))
+        nrm_list.append(p.normals.astype(np.float32))
+        uv_list.append(p.uvs.astype(np.float32))
+        idx_list.append(p.indices.astype(np.uint32) + v_off)
+        assert p.joints is not None and p.weights is not None
+        j_list.append(p.joints.astype(np.uint8))
+        w_list.append(p.weights.astype(np.float32))
+        v_off += len(p.positions)
+    return MeshData(
+        positions=np.concatenate(pos_list, axis=0),
+        normals=np.concatenate(nrm_list, axis=0),
+        uvs=np.concatenate(uv_list, axis=0),
+        indices=np.concatenate(idx_list, axis=0),
+        material_idx=material_idx,
+        joints=np.concatenate(j_list, axis=0),
+        weights=np.concatenate(w_list, axis=0),
+    )
 
 
 def compute_smooth_normals(pos: np.ndarray, tris: np.ndarray) -> np.ndarray:
@@ -1616,7 +2163,7 @@ def make_head_mesh(env: CharacterEnvelope, mat_idx: int) -> MeshData:
     """High-resolution sculpted head+neck mesh with nose, brow, cheek, and jaw relief."""
     spec = env.spec
     head_y = spec.head_height_ratio * spec.height
-    h_lo = max(env.y_shoulder, env.y_neck - 0.03)
+    h_lo = max(env.y_shoulder, env.y_neck - 0.015)
     h_hi = spec.height
     uv_lo = max(env.y_shoulder - 0.02, env.y_neck - 0.06)
 
@@ -1640,7 +2187,11 @@ def make_head_mesh(env: CharacterEnvelope, mat_idx: int) -> MeshData:
         zf = float(rzf[ir])
         zb = float(rzb[ir])
         cap_s = 1.0
-        if ir == n_rings:
+        if ir == 0:
+            cap_s = 0.80
+        elif ir == 1:
+            cap_s = 0.92
+        elif ir == n_rings:
             cap_s = 0.02
         elif ir == n_rings - 1:
             cap_s = 0.42
@@ -1662,26 +2213,28 @@ def make_head_mesh(env: CharacterEnvelope, mat_idx: int) -> MeshData:
             sn = st / max(1e-6, denom)
             cn = ct / max(1e-6, denom)
 
-            # Anatomical face sculpting in front hemisphere
+            # High-precision anatomical face sculpting (kept subtle so photo shading never double-darkens sockets)
             relief_z = 0.0
-            if 0.0 <= f_t <= 0.85 and ct > 0.3:
-                # Nose bridge & tip protrusion (f_t in [0.24..0.55], |th| < 0.25)
-                nose_v = math.exp(-(((f_t - 0.34) / 0.12) ** 2))
-                nose_h = math.exp(-((th / 0.14) ** 2))
-                nose_bump = 0.015 * nose_v * nose_h
-                # Orbital eye socket slight recess (f_t ~ 0.52, th ~ +/-0.34)
-                orbit_v = math.exp(-(((f_t - 0.52) / 0.07) ** 2))
-                orbit_h = math.exp(-(((abs(th) - 0.34) / 0.14) ** 2))
-                orbit_dip = -0.0045 * orbit_v * orbit_h
-                # Cheekbones & chin protrusion
-                cheek = 0.004 * math.exp(-(((f_t - 0.38) / 0.10) ** 2)) * math.exp(-(((abs(th) - 0.48) / 0.18) ** 2))
-                chin = 0.005 * math.exp(-(((f_t - 0.08) / 0.07) ** 2)) * math.exp(-((th / 0.28) ** 2))
-                relief_z = nose_bump + orbit_dip + cheek + chin
+            if 0.0 <= f_t <= 0.88 and ct > 0.25:
+                nose_bridge = 0.0085 * math.exp(-(((f_t - 0.43) / 0.11) ** 2)) * math.exp(-((th / 0.095) ** 2))
+                nose_tip = 0.0135 * math.exp(-(((f_t - 0.31) / 0.065) ** 2)) * math.exp(-((th / 0.115) ** 2))
+                nostrils = 0.0032 * math.exp(-(((f_t - 0.30) / 0.04) ** 2)) * math.exp(-(((abs(th) - 0.13) / 0.06) ** 2))
+                brow = 0.0032 * math.exp(-(((f_t - 0.59) / 0.048) ** 2)) * math.exp(-((th / 0.42) ** 2))
+                orbit_v = math.exp(-(((f_t - 0.515) / 0.062) ** 2))
+                orbit_h = math.exp(-(((abs(th) - 0.33) / 0.135) ** 2))
+                orbit_dip = -0.0032 * orbit_v * orbit_h
+                eyelid = 0.0018 * math.exp(-(((f_t - 0.51) / 0.025) ** 2)) * math.exp(-(((abs(th) - 0.33) / 0.09) ** 2))
+                lip_u = 0.0038 * math.exp(-(((f_t - 0.215) / 0.026) ** 2)) * math.exp(-((th / 0.21) ** 2))
+                lip_l = 0.0042 * math.exp(-(((f_t - 0.165) / 0.028) ** 2)) * math.exp(-((th / 0.19) ** 2))
+                lip_crease = -0.0018 * math.exp(-(((f_t - 0.19) / 0.013) ** 2)) * math.exp(-((th / 0.18) ** 2))
+                cheek = 0.0042 * math.exp(-(((f_t - 0.38) / 0.095) ** 2)) * math.exp(-(((abs(th) - 0.48) / 0.17) ** 2))
+                chin = 0.0048 * math.exp(-(((f_t - 0.065) / 0.06) ** 2)) * math.exp(-((th / 0.25) ** 2))
+                relief_z = nose_bridge + nose_tip + nostrils + brow + orbit_dip + eyelid + lip_u + lip_l + lip_crease + cheek + chin
 
-            # Subtle ear protrusion at sides (|sin(th)| > 0.9, f_t in 0.3..0.55)
+            # Sculpted ear protrusion at sides (|sin(th)| > 0.88, f_t in 0.28..0.58)
             ear_x = 0.0
-            if 0.28 <= f_t <= 0.56 and abs(st) > 0.90:
-                ear_x = 0.008 * math.exp(-(((f_t - 0.42) / 0.09) ** 2)) * ((abs(st) - 0.90) / 0.10)
+            if 0.28 <= f_t <= 0.58 and abs(st) > 0.88:
+                ear_x = 0.0085 * math.exp(-(((f_t - 0.43) / 0.09) ** 2)) * ((abs(st) - 0.88) / 0.12)
 
             x = -(rx * cap_s + ear_x) * sn
             z = -(rz * cap_s + relief_z) * cn
@@ -1956,6 +2509,35 @@ def make_limb_segment(
     )
 
 
+def _append_finger_tube(
+    verts: list[list[float]],
+    uvs: list[list[float]],
+    tris: list[list[int]],
+    pts: list[tuple[float, float, float, float, float]],  # (cx, cy, cz, rx, rz)
+    uv_center: tuple[float, float],
+    n_seg: int = 8,
+) -> None:
+    """Append a closed, smooth tapered finger/thumb tube along a 3D centerline."""
+    base = len(verts)
+    stride = n_seg + 1
+    n_rings = len(pts) - 1
+    for ir, (cx, cy, cz, rx, rz) in enumerate(pts):
+        for isg in range(n_seg + 1):
+            u_frac = isg / float(n_seg)
+            th = (u_frac - 0.5) * (2.0 * math.pi)
+            verts.append([cx - rx * math.sin(th), cy, cz - rz * math.cos(th)])
+            # Keep finger UVs cleanly inside palm skin zone (avoids grey background edge)
+            uvs.append([uv_center[0] + (u_frac - 0.5) * 0.02, uv_center[1] + (ir / float(max(1, n_rings))) * 0.02])
+    for ir in range(n_rings):
+        for isg in range(n_seg):
+            a = base + ir * stride + isg
+            b = a + 1
+            c = a + stride
+            d = c + 1
+            tris.append([a, c, b])
+            tris.append([b, c, d])
+
+
 def make_hand_mesh(
     env: CharacterEnvelope,
     mat_idx: int,
@@ -1965,21 +2547,31 @@ def make_hand_mesh(
     uv_h_lo: float,
     uv_h_hi: float,
     uv_v_range: tuple[float, float],
+    side: float = -1.0,
 ) -> MeshData:
-    n_rings = 8
-    n_seg = 16
-    length = max(0.11, h_wrist - h_tip)
-    hs = np.linspace(h_wrist, h_wrist - length, n_rings + 1)
+    """Sculpted 5-finger anatomical hand (palm + opposable thumb + 4 relaxed curved fingers).
+    side = -1.0 for character Left (-X), +1.0 for character Right (+X).
+    Palms face inward (-side * X), thumbs forward (-Z).
+    """
+    length = max(0.13, min(0.19, h_wrist - h_tip))
+    palm_len = length * 0.52
+    finger_scale = length / 0.165
     verts: list[list[float]] = []
     uvs: list[list[float]] = []
+    tris: list[list[int]] = []
+
+    # 1. Anatomical palm cushion (flattened in X, wider in Z along knuckles)
+    n_rings = 7
+    n_seg = 16
+    hs = np.linspace(h_wrist, h_wrist - palm_len, n_rings + 1)
     for ir, h_m in enumerate(hs):
         t = ir / float(n_rings)
-        # Palm widens softly then tapers to fingertips, flattened in Z
-        rx = 0.036 * (0.75 + 0.35 * math.sin(t * math.pi * 0.88)) * (1.0 - 0.65 * (t ** 3))
-        rz = 0.020 * (0.8 + 0.25 * math.sin(t * math.pi * 0.85)) * (1.0 - 0.7 * (t ** 3))
+        rx = (0.0175 + 0.005 * math.sin(t * math.pi * 0.8)) * (1.0 - 0.35 * (t ** 3)) * finger_scale
+        rz = (0.026 + 0.015 * math.sin(t * math.pi * 0.72)) * (1.0 - 0.18 * (t ** 4)) * finger_scale
         if ir == n_rings:
-            rx, rz = 0.004, 0.004
-        y_loc = -t * length
+            rx *= 0.45
+            rz *= 0.80
+        y_loc = -t * palm_len
         v_norm = (uv_h_hi - h_m) / max(1e-4, uv_h_hi - uv_h_lo)
         v_coord = uv_v_range[0] + float(np.clip(v_norm, 0.0, 1.0)) * (uv_v_range[1] - uv_v_range[0])
         for isg in range(n_seg + 1):
@@ -1987,7 +2579,258 @@ def make_hand_mesh(
             th = (u_frac - 0.5) * (2.0 * math.pi)
             verts.append([-rx * math.sin(th), y_loc, -rz * math.cos(th)])
             uvs.append([uv_x_range[0] + u_frac * (uv_x_range[1] - uv_x_range[0]), v_coord])
-    tris = []
+    stride = n_seg + 1
+    for ir in range(n_rings):
+        for isg in range(n_seg):
+            a = ir * stride + isg
+            b = a + 1
+            c = a + stride
+            d = c + 1
+            tris.append([a, c, b])
+            tris.append([b, c, d])
+
+    # Skin sample UV inside clean center of wrist/hand chart
+    v_palm_norm = (uv_h_hi - (h_wrist - palm_len * 0.45)) / max(1e-4, uv_h_hi - uv_h_lo)
+    uv_skin = (
+        0.5 * (uv_x_range[0] + uv_x_range[1]),
+        uv_v_range[0] + float(np.clip(v_palm_norm, 0.04, 0.94)) * (uv_v_range[1] - uv_v_range[0]),
+    )
+
+    # 2. Four relaxed, gently inward-curled fingers (index -> pinky along Z from front -Z to rear +Z)
+    inward = -side  # points toward thigh/palm interior
+    finger_specs = (
+        (-0.026, 0.072, 0.0080, 0.0076),  # index
+        (-0.009, 0.080, 0.0082, 0.0078),  # middle
+        (+0.009, 0.074, 0.0078, 0.0074),  # ring
+        (+0.025, 0.058, 0.0068, 0.0065),  # pinky
+    )
+    for z0, flen, r0x, r0z in finger_specs:
+        z_base = z0 * finger_scale
+        fl = flen * finger_scale
+        y_base = -palm_len * 0.92
+        f_pts = []
+        for k, frac in enumerate((0.0, 0.35, 0.68, 0.92, 1.0)):
+            curl_x = inward * (0.017 * (frac ** 1.65)) * finger_scale
+            taper = (1.0 - 0.30 * frac) if k < 4 else 0.18
+            f_pts.append((curl_x, y_base - frac * fl, z_base * (1.0 + 0.06 * frac), r0x * taper * finger_scale, r0z * taper * finger_scale))
+        _append_finger_tube(verts, uvs, tris, f_pts, uv_skin, n_seg=8)
+
+    # 3. Opposable thumb emerging at front (-Z) edge of palm and curving gently inward
+    th_len = 0.058 * finger_scale
+    th_pts = []
+    for k, frac in enumerate((0.0, 0.36, 0.70, 0.92, 1.0)):
+        tx = inward * (0.008 + 0.020 * (frac ** 1.25)) * finger_scale
+        ty = -palm_len * 0.42 - frac * th_len * 0.92
+        tz = (-0.028 - 0.018 * math.sin(frac * math.pi * 0.62)) * finger_scale
+        taper = (1.0 - 0.28 * frac) if k < 4 else 0.20
+        th_pts.append((tx, ty, tz, 0.0092 * taper * finger_scale, 0.0088 * taper * finger_scale))
+    _append_finger_tube(verts, uvs, tris, th_pts, uv_skin, n_seg=8)
+
+    p_arr = np.array(verts, dtype=np.float32)
+    t_arr = np.array(tris, dtype=np.int32)
+    return MeshData(
+        positions=p_arr,
+        normals=compute_smooth_normals(p_arr, t_arr),
+        uvs=np.array(uvs, dtype=np.float32),
+        indices=t_arr.ravel().astype(np.uint32),
+        material_idx=mat_idx,
+    )
+
+
+def make_sterling_hair_cards(
+    front_rgb: np.ndarray,
+    front_mask: np.ndarray,
+    env: CharacterEnvelope,
+    mat_idx: int,
+) -> tuple[MeshData, Image.Image]:
+    """Layered alpha-masked swept-back greying hair cards for Sterling's temples and nape."""
+    head_y = env.spec.head_height_ratio * env.spec.height
+    scale = env.scale_m_per_px
+    # Sample sandy-grey hair tones from Sterling's crown/temples
+    ys = np.arange(env.y_top + 2, min(front_rgb.shape[0], env.y_top + max(10, int(0.08 / scale))))
+    hsamp = front_rgb[ys]
+    hm = front_mask[ys]
+    valid = hsamp[hm].astype(np.float32) / 255.0 if hm.any() else np.array([[0.48, 0.43, 0.37]], dtype=np.float32)
+    base_col = np.median(valid, axis=0)
+    hi_col = np.clip(base_col * 1.28 + 0.06, 0.0, 1.0)
+    lo_col = np.clip(base_col * 0.62, 0.0, 1.0)
+
+    tw, th = 256, 256
+    atlas = np.zeros((th, tw, 4), dtype=np.float32)
+    rng = np.random.default_rng(1994)
+    for ci in range(3):
+        x0 = ci * (tw // 3)
+        x1 = (ci + 1) * (tw // 3)
+        cw = x1 - x0
+        uu = np.linspace(-1.0, 1.0, cw, dtype=np.float32)[None, :]
+        vv = np.linspace(0.0, 1.0, th, dtype=np.float32)[:, None]
+        wave = np.sin(vv * 5.2 + ci * 1.7) * 0.14
+        dist = np.abs(uu - wave) / np.maximum(0.28, 1.0 - 0.55 * (vv ** 1.6))
+        strand = 0.5 + 0.5 * np.sin((uu * 14.0 + ci * 2.1) * math.pi + np.sin(vv * 9.0) * 1.5)
+        alpha = np.clip(1.0 - (dist ** 1.9), 0.0, 1.0) * (0.58 + 0.42 * strand)
+        alpha *= np.clip(vv * 5.0, 0.0, 1.0) * np.clip((1.0 - vv) * 3.8, 0.0, 1.0)
+        col = lo_col[None, None, :] * (1.0 - strand[:, :, None]) + hi_col[None, None, :] * strand[:, :, None]
+        atlas[:, x0:x1, :3] = col
+        atlas[:, x0:x1, 3] = np.clip(alpha, 0.0, 1.0)
+
+    hair_img = Image.fromarray((np.clip(atlas, 0.0, 1.0) * 255.0).astype(np.uint8), "RGBA")
+    head_top_local = env.spec.height - head_y
+    verts: list[list[float]] = []
+    norms: list[list[float]] = []
+    uvs: list[list[float]] = []
+    tris: list[list[int]] = []
+
+    # Swept side-temple & nape feather cards (38 cards wrapping sides and back, leaving high forehead open)
+    for idx_card in range(38):
+        if idx_card < 22:
+            # Left & right swept temple wings (|ang| in 0.95..2.15 rad)
+            side_sign = -1.0 if (idx_card % 2 == 0) else 1.0
+            ang = side_sign * rng.uniform(0.95, 2.20)
+            y_start = head_top_local - rng.uniform(0.015, 0.055)
+            card_len = rng.uniform(0.075, 0.115)
+            rad = 0.095 + rng.uniform(0.002, 0.008)
+        else:
+            # Rear nape sweep (|ang| in 2.1..pi)
+            ang = rng.choice([-1.0, 1.0]) * rng.uniform(2.15, math.pi)
+            y_start = head_top_local - rng.uniform(0.04, 0.085)
+            card_len = rng.uniform(0.085, 0.125)
+            rad = 0.102 + rng.uniform(0.002, 0.009)
+
+        nx = -math.sin(ang)
+        nz = -math.cos(ang)
+        tx = math.cos(ang)
+        tz = -math.sin(ang)
+        card_w = rng.uniform(0.024, 0.036)
+        ci = int(rng.integers(0, 3))
+        u0, u1 = ci / 3.0 + 0.02, (ci + 1) / 3.0 - 0.02
+
+        nrm = np.array([nx, 0.12, nz], dtype=np.float32)
+        nrm /= np.linalg.norm(nrm)
+        pts = []
+        for frac in (0.0, 0.5, 1.0):
+            sweep_back = 0.016 * frac  # swept backward toward +Z
+            cx_c = nx * (rad + 0.006 * math.sin(frac * math.pi))
+            cy_c = y_start - frac * card_len
+            cz_c = nz * (rad + 0.006 * math.sin(frac * math.pi)) + sweep_back
+            pts.append((cx_c - tx * card_w * 0.5, cy_c, cz_c - tz * card_w * 0.5, 1.0 - frac))
+            pts.append((cx_c + tx * card_w * 0.5, cy_c, cz_c + tz * card_w * 0.5, 1.0 - frac))
+
+        base = len(verts)
+        for k, (vx, vy, vz, vuv) in enumerate(pts):
+            verts.append([vx, vy, vz])
+            norms.append([float(nrm[0]), float(nrm[1]), float(nrm[2])])
+            uvs.append([u0 if (k % 2 == 0) else u1, 1.0 - vuv])
+        tris.extend(
+            [
+                [base, base + 1, base + 2],
+                [base + 1, base + 3, base + 2],
+                [base + 2, base + 3, base + 4],
+                [base + 3, base + 5, base + 4],
+            ]
+        )
+
+    return (
+        MeshData(
+            positions=np.array(verts, dtype=np.float32),
+            normals=np.array(norms, dtype=np.float32),
+            uvs=np.array(uvs, dtype=np.float32),
+            indices=np.array(tris, dtype=np.uint32).ravel(),
+            material_idx=mat_idx,
+        ),
+        hair_img,
+    )
+
+
+def _smoothstep(edge0: float, edge1: float, x: float) -> float:
+    t = max(0.0, min(1.0, (x - edge0) / max(1e-6, edge1 - edge0)))
+    return t * t * (3.0 - 2.0 * t)
+
+
+def make_skinned_arm_mesh(
+    env: CharacterEnvelope,
+    mat_idx: int,
+    h_sh: float,
+    upper_arm_len: float,
+    forearm_len: float,
+    rx_arr: np.ndarray,
+    uv_x_range: tuple[float, float],
+    arm_lo: float,
+    arm_hi: float,
+    uv_v_range: tuple[float, float],
+    m_arm0: np.ndarray,
+    m_arm1: np.ndarray,
+    j_chest: int,
+    j_arm0: int,
+    j_arm1: int,
+    j_hand: int,
+    n_rings: int = 28,
+    n_seg: int = 22,
+) -> MeshData:
+    """Continuous watertight skinned arm loft (shoulder -> elbow -> wrist) with smooth joint blends."""
+    total_len = upper_arm_len + forearm_len
+    s_top = -0.014  # gently tucked above shoulder pivot
+    s_bot = total_len + 0.008
+    ss = np.linspace(s_top, s_bot, n_rings + 1)
+
+    verts: list[list[float]] = []
+    uvs: list[list[float]] = []
+    joints: list[list[int]] = []
+    weights: list[list[float]] = []
+
+    r0_mat, t0_vec = m_arm0[:3, :3], m_arm0[:3, 3]
+    r1_mat, t1_vec = m_arm1[:3, :3], m_arm1[:3, 3]
+
+    for ir, s in enumerate(ss):
+        h_m = h_sh - float(s)
+        rx = float(np.interp(h_m, env.heights, rx_arr))
+        rz = rx * 0.92
+        cap_s = 1.0
+        if ir == 0:
+            cap_s = 0.35
+        elif ir == 1:
+            cap_s = 0.80
+        elif ir == n_rings:
+            cap_s = 0.72
+
+        v_norm = (arm_hi - h_m) / max(1e-4, arm_hi - arm_lo)
+        v_coord = uv_v_range[0] + float(np.clip(v_norm, 0.0, 1.0)) * (uv_v_range[1] - uv_v_range[0])
+
+        # Compute smooth skinning weights across shoulder, elbow, and wrist bands
+        w_elb = _smoothstep(upper_arm_len - 0.045, upper_arm_len + 0.045, float(s))
+        w_wr = _smoothstep(total_len - 0.025, total_len + 0.006, float(s))
+        w_sh_chest = (1.0 - _smoothstep(-0.014, 0.042, float(s))) * 0.52
+
+        if w_wr > 0.001:
+            j_ring = [j_arm1, j_hand, 0, 0]
+            w_ring = [1.0 - w_wr, w_wr, 0.0, 0.0]
+        elif w_elb > 0.001 and w_elb < 0.999:
+            j_ring = [j_arm0, j_arm1, 0, 0]
+            w_ring = [1.0 - w_elb, w_elb, 0.0, 0.0]
+        elif w_elb >= 0.999:
+            j_ring = [j_arm1, 0, 0, 0]
+            w_ring = [1.0, 0.0, 0.0, 0.0]
+        elif w_sh_chest > 0.001:
+            j_ring = [j_chest, j_arm0, 0, 0]
+            w_ring = [w_sh_chest, 1.0 - w_sh_chest, 0.0, 0.0]
+        else:
+            j_ring = [j_arm0, 0, 0, 0]
+            w_ring = [1.0, 0.0, 0.0, 0.0]
+
+        for isg in range(n_seg + 1):
+            u_frac = isg / float(n_seg)
+            th = (u_frac - 0.5) * (2.0 * math.pi)
+            lx = -rx * cap_s * math.sin(th)
+            lz = -rz * cap_s * math.cos(th)
+            # Blend rest-pose positions seamlessly across elbow bind angle
+            p0 = r0_mat @ np.array([lx, -float(s), lz], dtype=np.float64) + t0_vec
+            p1 = r1_mat @ np.array([lx, -(float(s) - upper_arm_len), lz], dtype=np.float64) + t1_vec
+            pw = (1.0 - w_elb) * p0 + w_elb * p1
+            verts.append([float(pw[0]), float(pw[1]), float(pw[2])])
+            uvs.append([uv_x_range[0] + u_frac * (uv_x_range[1] - uv_x_range[0]), v_coord])
+            joints.append(j_ring)
+            weights.append(w_ring)
+
+    tris: list[list[int]] = []
     stride = n_seg + 1
     for ir in range(n_rings):
         for isg in range(n_seg):
@@ -2005,6 +2848,112 @@ def make_hand_mesh(
         uvs=np.array(uvs, dtype=np.float32),
         indices=t_arr.ravel().astype(np.uint32),
         material_idx=mat_idx,
+        joints=np.array(joints, dtype=np.uint8),
+        weights=np.array(weights, dtype=np.float32),
+    )
+
+
+def make_skinned_leg_mesh(
+    env: CharacterEnvelope,
+    mat_idx: int,
+    h_hip_start: float,
+    thigh_len: float,
+    h_ank: float,
+    rx_arr: np.ndarray,
+    uv_x_range: tuple[float, float],
+    leg_lo: float,
+    leg_hi: float,
+    uv_v_range: tuple[float, float],
+    m_leg0: np.ndarray,
+    m_leg1: np.ndarray,
+    j_hips: int,
+    j_leg0: int,
+    j_leg1: int,
+    j_foot: int,
+    n_rings: int = 30,
+    n_seg: int = 22,
+) -> MeshData:
+    """Continuous watertight skinned leg loft (hip -> knee -> ankle) with smooth knee/hip blends."""
+    shin_span = max(0.15, (h_hip_start - thigh_len) - h_ank)
+    total_len = thigh_len + shin_span
+    s_top = -0.030
+    s_bot = total_len + 0.004
+    ss = np.linspace(s_top, s_bot, n_rings + 1)
+
+    verts: list[list[float]] = []
+    uvs: list[list[float]] = []
+    joints: list[list[int]] = []
+    weights: list[list[float]] = []
+
+    r0_mat, t0_vec = m_leg0[:3, :3], m_leg0[:3, 3]
+    r1_mat, t1_vec = m_leg1[:3, :3], m_leg1[:3, 3]
+
+    for ir, s in enumerate(ss):
+        h_m = h_hip_start - float(s)
+        rx = float(np.interp(h_m, env.heights, rx_arr))
+        rz = rx * 1.04
+        cap_s = 1.0
+        if ir == 0:
+            cap_s = 0.55
+        elif ir == n_rings:
+            cap_s = 0.85
+
+        v_norm = (leg_hi - h_m) / max(1e-4, leg_hi - leg_lo)
+        v_coord = uv_v_range[0] + float(np.clip(v_norm, 0.0, 1.0)) * (uv_v_range[1] - uv_v_range[0])
+
+        w_knee = _smoothstep(thigh_len - 0.052, thigh_len + 0.052, float(s))
+        w_ank = _smoothstep(total_len - 0.028, total_len + 0.004, float(s))
+        w_hip = (1.0 - _smoothstep(-0.030, 0.055, float(s))) * 0.48
+
+        if w_ank > 0.001:
+            j_ring = [j_leg1, j_foot, 0, 0]
+            w_ring = [1.0 - w_ank, w_ank, 0.0, 0.0]
+        elif w_knee > 0.001 and w_knee < 0.999:
+            j_ring = [j_leg0, j_leg1, 0, 0]
+            w_ring = [1.0 - w_knee, w_knee, 0.0, 0.0]
+        elif w_knee >= 0.999:
+            j_ring = [j_leg1, 0, 0, 0]
+            w_ring = [1.0, 0.0, 0.0, 0.0]
+        elif w_hip > 0.001:
+            j_ring = [j_hips, j_leg0, 0, 0]
+            w_ring = [w_hip, 1.0 - w_hip, 0.0, 0.0]
+        else:
+            j_ring = [j_leg0, 0, 0, 0]
+            w_ring = [1.0, 0.0, 0.0, 0.0]
+
+        for isg in range(n_seg + 1):
+            u_frac = isg / float(n_seg)
+            th = (u_frac - 0.5) * (2.0 * math.pi)
+            lx = -rx * cap_s * math.sin(th)
+            lz = -rz * cap_s * math.cos(th)
+            p0 = r0_mat @ np.array([lx, -float(s), lz], dtype=np.float64) + t0_vec
+            p1 = r1_mat @ np.array([lx, -(float(s) - thigh_len), lz], dtype=np.float64) + t1_vec
+            pw = (1.0 - w_knee) * p0 + w_knee * p1
+            verts.append([float(pw[0]), float(pw[1]), float(pw[2])])
+            uvs.append([uv_x_range[0] + u_frac * (uv_x_range[1] - uv_x_range[0]), v_coord])
+            joints.append(j_ring)
+            weights.append(w_ring)
+
+    tris: list[list[int]] = []
+    stride = n_seg + 1
+    for ir in range(n_rings):
+        for isg in range(n_seg):
+            a = ir * stride + isg
+            b = a + 1
+            c = a + stride
+            d = c + 1
+            tris.append([a, c, b])
+            tris.append([b, c, d])
+    p_arr = np.array(verts, dtype=np.float32)
+    t_arr = np.array(tris, dtype=np.int32)
+    return MeshData(
+        positions=p_arr,
+        normals=compute_smooth_normals(p_arr, t_arr),
+        uvs=np.array(uvs, dtype=np.float32),
+        indices=t_arr.ravel().astype(np.uint32),
+        material_idx=mat_idx,
+        joints=np.array(joints, dtype=np.uint8),
+        weights=np.array(weights, dtype=np.float32),
     )
 
 
@@ -2148,6 +3097,7 @@ class GlbBuilder:
         self.materials: list[dict] = []
         self.meshes: list[dict] = []
         self.nodes: list[dict] = []
+        self.skins: list[dict] = []
 
     def add_bytes(self, data: bytes, target: int | None = None) -> int:
         pad = (-self.offset) % 4
@@ -2176,6 +3126,10 @@ class GlbBuilder:
         self,
         name: str,
         tex_idx: int | None = None,
+        normal_tex_idx: int | None = None,
+        orm_tex_idx: int | None = None,
+        normal_scale: float = 1.0,
+        ao_strength: float = 0.75,
         base_color: list[float] | None = None,
         roughness: float = 0.82,
         metallic: float = 0.0,
@@ -2188,7 +3142,13 @@ class GlbBuilder:
             pbr["baseColorFactor"] = base_color
         if tex_idx is not None:
             pbr["baseColorTexture"] = {"index": tex_idx}
+        if orm_tex_idx is not None:
+            pbr["metallicRoughnessTexture"] = {"index": orm_tex_idx, "texCoord": 0}
         mat: dict = {"name": name, "pbrMetallicRoughness": pbr, "doubleSided": double_sided}
+        if normal_tex_idx is not None:
+            mat["normalTexture"] = {"index": normal_tex_idx, "texCoord": 0, "scale": float(normal_scale)}
+        if orm_tex_idx is not None:
+            mat["occlusionTexture"] = {"index": orm_tex_idx, "texCoord": 0, "strength": float(ao_strength)}
         if alpha_mode != "OPAQUE":
             mat["alphaMode"] = alpha_mode
             if alpha_cutoff is not None:
@@ -2239,9 +3199,27 @@ class GlbBuilder:
             self.accessors.append(
                 {"bufferView": bv_idx, "componentType": idx_comp_type, "count": len(idx_arr), "type": "SCALAR"}
             )
+            attrs: dict = {"POSITION": acc_pos, "NORMAL": acc_nrm, "TEXCOORD_0": acc_uv}
+
+            if part.joints is not None and part.weights is not None:
+                j_u8 = np.ascontiguousarray(part.joints, dtype=np.uint8)
+                w_f32 = np.ascontiguousarray(part.weights, dtype=np.float32)
+                bv_j = self.add_bytes(j_u8.tobytes(), 34962)
+                bv_w = self.add_bytes(w_f32.tobytes(), 34962)
+                acc_j = len(self.accessors)
+                self.accessors.append(
+                    {"bufferView": bv_j, "componentType": 5121, "count": len(j_u8), "type": "VEC4"}
+                )
+                acc_w = len(self.accessors)
+                self.accessors.append(
+                    {"bufferView": bv_w, "componentType": 5126, "count": len(w_f32), "type": "VEC4"}
+                )
+                attrs["JOINTS_0"] = acc_j
+                attrs["WEIGHTS_0"] = acc_w
+
             prims.append(
                 {
-                    "attributes": {"POSITION": acc_pos, "NORMAL": acc_nrm, "TEXCOORD_0": acc_uv},
+                    "attributes": attrs,
                     "indices": acc_idx,
                     "material": part.material_idx,
                 }
@@ -2250,10 +3228,39 @@ class GlbBuilder:
         self.meshes.append({"name": name, "primitives": prims})
         return idx
 
+    def add_skin(
+        self,
+        name: str,
+        joint_nodes: list[int],
+        inverse_bind_matrices: list[np.ndarray],
+        skeleton_node: int | None = None,
+    ) -> int:
+        # Column-major 4x4 float32 matrices per glTF 2.0 spec
+        ibm = np.ascontiguousarray(
+            np.stack([m.T.astype(np.float32) for m in inverse_bind_matrices], axis=0),
+            dtype=np.float32,
+        )
+        bv_ibm = self.add_bytes(ibm.tobytes(), target=None)
+        acc_ibm = len(self.accessors)
+        self.accessors.append(
+            {"bufferView": bv_ibm, "componentType": 5126, "count": len(joint_nodes), "type": "MAT4"}
+        )
+        skin_def: dict = {
+            "name": name,
+            "inverseBindMatrices": acc_ibm,
+            "joints": list(joint_nodes),
+        }
+        if skeleton_node is not None:
+            skin_def["skeleton"] = skeleton_node
+        idx = len(self.skins)
+        self.skins.append(skin_def)
+        return idx
+
     def add_node(
         self,
         name: str,
         mesh: int | None = None,
+        skin: int | None = None,
         children: list[int] | None = None,
         translation: Iterable[float] | None = None,
         rotation: Iterable[float] | None = None,
@@ -2262,6 +3269,8 @@ class GlbBuilder:
         n: dict = {"name": name}
         if mesh is not None:
             n["mesh"] = mesh
+        if skin is not None:
+            n["skin"] = skin
         if children:
             n["children"] = list(children)
         if translation is not None:
@@ -2280,7 +3289,7 @@ class GlbBuilder:
             self.bin_parts.append(b"\x00" * pad)
             self.offset += pad
         bin_blob = b"".join(self.bin_parts)
-        gltf = {
+        gltf: dict = {
             "asset": {"version": "2.0", "generator": "paradiselodge-characters"},
             "scene": 0,
             "scenes": [{"nodes": [root_node]}],
@@ -2294,6 +3303,8 @@ class GlbBuilder:
             "bufferViews": self.buffer_views,
             "buffers": [{"byteLength": len(bin_blob)}],
         }
+        if self.skins:
+            gltf["skins"] = self.skins
         json_bytes = json.dumps(gltf, separators=(",", ":")).encode("utf-8")
         jpad = (-len(json_bytes)) % 4
         if jpad:
@@ -2321,7 +3332,7 @@ def euler_xyz_to_quat(rx: float, ry: float, rz: float) -> list[float]:
 
 
 # ---------------------------------------------------------------------------
-# 6. Assemble Character Rig & Export .glb
+# 6. Assemble Watertight Skinned Character Rig & Export .glb
 # ---------------------------------------------------------------------------
 
 
@@ -2333,16 +3344,53 @@ def build_character_glb(spec: CharacterSpec) -> dict:
     prof_rgb, prof_mask = prof_raw, segment_panel(prof_raw)[0]
 
     env = analyze_character(spec, front_rgb, front_mask, q3_rgb, q3_mask, prof_rgb, prof_mask)
-    face_img, _ = generate_face_texture(front_rgb, front_mask, prof_rgb, prof_mask, q3_rgb, q3_mask, env)
-    body_img = generate_body_atlas(front_rgb, front_mask, prof_rgb, prof_mask, env)
+    detail = load_detail_sheet(spec, front_rgb, front_mask, env)
+
+    face_img, _, face_f = generate_face_texture(
+        front_rgb, front_mask, prof_rgb, prof_mask, q3_rgb, q3_mask, env, detail=detail, size=1024
+    )
+    body_img, body_f, body_mask = generate_body_atlas(
+        front_rgb, front_mask, prof_rgb, prof_mask, env, detail=detail, size=1024
+    )
+
+    # Supersampled 512x512 tangent-space Normal + packed ORM (R=AO, G=Roughness, B=Metallic) maps
+    face_norm_hi, face_orm_hi = generate_pbr_maps(face_f, np.ones(face_f.shape[:2], dtype=bool), True, spec)
+    body_norm_hi, body_orm_hi = generate_pbr_maps(body_f, body_mask, False, spec)
+    face_norm = face_norm_hi.resize((512, 512), Image.Resampling.LANCZOS)
+    face_orm = face_orm_hi.resize((512, 512), Image.Resampling.LANCZOS)
+    body_norm = body_norm_hi.resize((512, 512), Image.Resampling.LANCZOS)
+    body_orm = body_orm_hi.resize((512, 512), Image.Resampling.LANCZOS)
 
     g = GlbBuilder()
-    tex_face = g.add_texture_image(face_img, "PNG")
+    tex_face = g.add_texture_image(face_img, "JPEG")
+    tex_face_norm = g.add_texture_image(face_norm, "PNG")
+    tex_face_orm = g.add_texture_image(face_orm, "PNG")
     tex_body = g.add_texture_image(body_img, "JPEG")
-    mat_face = g.add_material(f"{spec.name}_face", tex_idx=tex_face, roughness=0.72)
-    mat_body = g.add_material(f"{spec.name}_body", tex_idx=tex_body, roughness=0.84)
+    tex_body_norm = g.add_texture_image(body_norm, "PNG")
+    tex_body_orm = g.add_texture_image(body_orm, "PNG")
 
-    # Measurements matching existing character rigs closely
+    mat_face = g.add_material(
+        f"{spec.name}_face",
+        tex_idx=tex_face,
+        normal_tex_idx=tex_face_norm,
+        orm_tex_idx=tex_face_orm,
+        normal_scale=0.82,
+        ao_strength=0.65,
+        roughness=1.0,
+        metallic=1.0,
+    )
+    mat_body = g.add_material(
+        f"{spec.name}_body",
+        tex_idx=tex_body,
+        normal_tex_idx=tex_body_norm,
+        orm_tex_idx=tex_body_orm,
+        normal_scale=1.05,
+        ao_strength=0.78,
+        roughness=1.0,
+        metallic=1.0,
+    )
+
+    # Measurements matching existing runtime animation/pose controllers
     H = spec.height
     hip_y = env.y_hip_joint
     shoulder_y = spec.shoulder_height_ratio * H
@@ -2352,22 +3400,163 @@ def build_character_glb(spec: CharacterSpec) -> dict:
     upper_arm_len = spec.upper_arm_ratio * H
     forearm_len = spec.forearm_ratio * H
 
-    # Torso (child of chest)
-    torso_m = g.add_mesh("torso_m", [make_torso_mesh(env, mat_body)])
-    torso_n = g.add_node("torso", mesh=torso_m)
+    arm_hi = env.y_shoulder + 0.02
+    arm_lo = max(0.28 * H, env.y_crotch - 0.12)
+    h_sh = shoulder_y
+    h_elb = h_sh - upper_arm_len
+    h_wr = h_elb - forearm_len
+    h_tip = max(0.05, h_wr - 0.165)
 
-    # Head (+ ponytail + optional blonde hair cards)
-    head_children = [g.add_node("skull", mesh=g.add_mesh("skull_m", [make_head_mesh(env, mat_face)]))]
+    leg_hi = env.y_crotch + 0.03
+    leg_lo = 0.0
+    h_hip_start = hip_y - 0.02
+    h_knee = h_hip_start - thigh_len
+    h_ank = max(0.055, h_knee - shin_len)
+
+    # Precompute 15-bone rest transforms & world bind matrices (indices 0..14)
+    # 0:hips, 1:chest, 2:head, 3:arm_l_0, 4:arm_l_1, 5:hand_l, 6:arm_r_0, 7:arm_r_1, 8:hand_r,
+    # 9:leg_l_0, 10:leg_l_1, 11:foot_l, 12:leg_r_0, 13:leg_r_1, 14:foot_r
+    J_HIPS, J_CHEST, J_HEAD = 0, 1, 2
+    J_ARM_L0, J_ARM_L1, J_HAND_L = 3, 4, 5
+    J_ARM_R0, J_ARM_R1, J_HAND_R = 6, 7, 8
+    J_LEG_L0, J_LEG_L1, J_FOOT_L = 9, 10, 11
+    J_LEG_R0, J_LEG_R1, J_FOOT_R = 12, 13, 14
+
+    torso_half_sh = float(np.interp(h_sh, env.heights, env.torso_rx))
+    sh_in = 0.016 if torso_half_sh >= 0.12 else 0.0
+    sh_x_abs = max(0.088, torso_half_sh - sh_in)
+
+    q_arm_l0 = euler_xyz_to_quat(
+        math.radians(8.0) if spec.has_crystal_fx else math.radians(3.0),
+        0.0,
+        math.radians(-25.0) if spec.has_crystal_fx else math.radians(-8.0),
+    )
+    q_arm_l1 = euler_xyz_to_quat(math.radians(-26.0), 0.0, 0.0) if spec.has_crystal_fx else None
+    q_arm_r0 = euler_xyz_to_quat(
+        math.radians(3.0),
+        0.0,
+        math.radians(6.0) if spec.has_crystal_fx else math.radians(8.0),
+    )
+    q_arm_r1 = euler_xyz_to_quat(math.radians(-5.0), 0.0, 0.0) if spec.has_crystal_fx else None
+
+    leg_x_abs = 0.075 if spec.has_crystal_fx else 0.095
+    q_leg_l0 = euler_xyz_to_quat(0.0, 0.0, math.radians(-3.5)) if spec.has_crystal_fx else None
+    q_leg_r0 = euler_xyz_to_quat(0.0, 0.0, math.radians(3.5)) if spec.has_crystal_fx else None
+
+    m_hips = mat4_from_tr([0.0, hip_y, 0.0], None)
+    m_chest = m_hips @ mat4_from_tr([0.0, 0.0, 0.0], None)
+    m_head = m_chest @ mat4_from_tr([0.0, head_y - hip_y, 0.0], None)
+
+    m_arm_l0 = m_chest @ mat4_from_tr([-sh_x_abs, h_sh - hip_y, 0.0], q_arm_l0)
+    m_arm_l1 = m_arm_l0 @ mat4_from_tr([0.0, -upper_arm_len, 0.0], q_arm_l1)
+    m_hand_l = m_arm_l1 @ mat4_from_tr([0.0, -forearm_len, 0.0], None)
+
+    m_arm_r0 = m_chest @ mat4_from_tr([+sh_x_abs, h_sh - hip_y, 0.0], q_arm_r0)
+    m_arm_r1 = m_arm_r0 @ mat4_from_tr([0.0, -upper_arm_len, 0.0], q_arm_r1)
+    m_hand_r = m_arm_r1 @ mat4_from_tr([0.0, -forearm_len, 0.0], None)
+
+    m_leg_l0 = m_hips @ mat4_from_tr([-leg_x_abs, -0.02, 0.0], q_leg_l0)
+    m_leg_l1 = m_leg_l0 @ mat4_from_tr([0.0, -thigh_len, 0.0], None)
+    m_foot_l = m_leg_l1 @ mat4_from_tr([0.0, -(h_knee - h_ank), 0.0], None)
+
+    m_leg_r0 = m_hips @ mat4_from_tr([+leg_x_abs, -0.02, 0.0], q_leg_r0)
+    m_leg_r1 = m_leg_r0 @ mat4_from_tr([0.0, -thigh_len, 0.0], None)
+    m_foot_r = m_leg_r1 @ mat4_from_tr([0.0, -(h_knee - h_ank), 0.0], None)
+
+    world_mats = [
+        m_hips, m_chest, m_head,
+        m_arm_l0, m_arm_l1, m_hand_l,
+        m_arm_r0, m_arm_r1, m_hand_r,
+        m_leg_l0, m_leg_l1, m_foot_l,
+        m_leg_r0, m_leg_r1, m_foot_r,
+    ]
+    ibms = [np.linalg.inv(m) for m in world_mats]
+
+    # --- Build Skinned Face Parts (head + optional ponytail) ---
+    face_parts: list[MeshData] = [
+        bind_rigid_part(
+            make_head_mesh(env, mat_face),
+            J_HEAD,
+            m_head,
+            blend_y_joint=(J_CHEST, env.y_neck - 0.02, env.y_chin - 0.01),
+        )
+    ]
     if spec.has_ponytail:
-        pt_m = g.add_mesh("ponytail_m", [make_ponytail_mesh(env, mat_face)])
-        head_children.append(g.add_node("ponytail", mesh=pt_m))
+        face_parts.append(bind_rigid_part(make_ponytail_mesh(env, mat_face), J_HEAD, m_head))
+    skinned_face_prim = merge_skinned_meshes(face_parts, mat_face)
+
+    # --- Build Skinned Body Parts (torso + seamless arms + 5-finger hands + seamless legs + shoes + seat) ---
+    body_parts: list[MeshData] = [
+        bind_rigid_part(
+            make_torso_mesh(env, mat_body),
+            J_CHEST,
+            m_chest,
+            blend_y_joint=(J_HIPS, hip_y - 0.06, hip_y + 0.08),
+        )
+    ]
+
+    for side, u_range, rx_arr, m_a0, m_a1, m_hd, j_a0, j_a1, j_hd in (
+        (-1.0, (0.50, 0.73), env.arm_l_rx, m_arm_l0, m_arm_l1, m_hand_l, J_ARM_L0, J_ARM_L1, J_HAND_L),
+        (+1.0, (0.76, 0.99), env.arm_r_rx, m_arm_r0, m_arm_r1, m_hand_r, J_ARM_R0, J_ARM_R1, J_HAND_R),
+    ):
+        body_parts.append(
+            make_skinned_arm_mesh(
+                env, mat_body, h_sh, upper_arm_len, forearm_len, rx_arr,
+                u_range, arm_lo, arm_hi, (0.01, 0.55),
+                m_a0, m_a1, J_CHEST, j_a0, j_a1, j_hd,
+            )
+        )
+        hand_m = make_hand_mesh(env, mat_body, h_wr, h_tip, u_range, arm_lo, arm_hi, (0.01, 0.55), side=side)
+        body_parts.append(bind_rigid_part(hand_m, j_hd, m_hd))
+
+    for u_range, rx_arr, m_l0, m_l1, m_ft, j_l0, j_l1, j_ft in (
+        ((0.01, 0.48), env.leg_l_rx, m_leg_l0, m_leg_l1, m_foot_l, J_LEG_L0, J_LEG_L1, J_FOOT_L),
+        ((0.52, 0.99), env.leg_r_rx, m_leg_r0, m_leg_r1, m_foot_r, J_LEG_R0, J_LEG_R1, J_FOOT_R),
+    ):
+        body_parts.append(
+            make_skinned_leg_mesh(
+                env, mat_body, h_hip_start, thigh_len, h_ank, rx_arr,
+                u_range, leg_lo, leg_hi, (0.58, 0.99),
+                m_l0, m_l1, J_HIPS, j_l0, j_l1, j_ft,
+            )
+        )
+        shoe_m = make_shoe_mesh(env, mat_body, h_ank, u_range, leg_lo, leg_hi, (0.58, 0.99))
+        body_parts.append(bind_rigid_part(shoe_m, j_ft, m_ft))
+
+    # Tucked pelvis seat cap weighted to hips so seated poses have zero underside gap
+    seat_m = make_sphere_part(
+        0.0, -0.03, 0.0,
+        float(np.interp(hip_y, env.heights, env.torso_rx)) * 0.86,
+        0.088,
+        0.076,
+        (0.04, 0.47),
+        mat_body,
+    )
+    body_parts.append(bind_rigid_part(seat_m, J_HIPS, m_hips))
+    skinned_body_prim = merge_skinned_meshes(body_parts, mat_body)
+
+    # --- Build 15-Bone Hierarchy + Rigid Bone-Attached Accessories (Preserving All Node Names!) ---
+    head_children: list[int] = []
     if spec.has_crystal_fx:
         hc_mesh, hc_img = make_crystal_hair_cards(front_rgb, front_mask, env, 0)
         tex_hair = g.add_texture_image(hc_img, "PNG")
         mat_hair = g.add_material(
             "crystal_hair_cards",
             tex_idx=tex_hair,
-            roughness=0.82,
+            roughness=0.78,
+            alpha_mode="MASK",
+            alpha_cutoff=0.38,
+            double_sided=True,
+        )
+        hc_mesh = MeshData(hc_mesh.positions, hc_mesh.normals, hc_mesh.uvs, hc_mesh.indices, mat_hair)
+        head_children.append(g.add_node("hair_cards", mesh=g.add_mesh("hair_cards_m", [hc_mesh])))
+    elif spec.has_swept_hair:
+        hc_mesh, hc_img = make_sterling_hair_cards(front_rgb, front_mask, env, 0)
+        tex_hair = g.add_texture_image(hc_img, "PNG")
+        mat_hair = g.add_material(
+            "sterling_hair_cards",
+            tex_idx=tex_hair,
+            roughness=0.72,
             alpha_mode="MASK",
             alpha_cutoff=0.38,
             double_sided=True,
@@ -2377,150 +3566,66 @@ def build_character_glb(spec: CharacterSpec) -> dict:
 
     head_n = g.add_node("head", children=head_children, translation=[0.0, head_y - hip_y, 0.0])
 
-    # Arms L & R
-    arm_nodes: list[int] = []
-    arm_hi = env.y_shoulder + 0.02
-    arm_lo = max(0.28 * H, env.y_crotch - 0.12)
-    h_sh = shoulder_y
-    h_elb = h_sh - upper_arm_len
-    h_wr = h_elb - forearm_len
-    h_tip = max(0.05, h_wr - 0.16)
-
-    for side, tag, u_range, rx_arr, s_rot_z, e_rot_x in (
-        (-1.0, "l", (0.50, 0.73), env.arm_l_rx, math.radians(-25.0) if spec.has_crystal_fx else math.radians(-8.0), math.radians(-26.0) if spec.has_crystal_fx else 0.0),
-        (1.0, "r", (0.76, 0.99), env.arm_r_rx, math.radians(6.0) if spec.has_crystal_fx else math.radians(8.0), math.radians(-5.0) if spec.has_crystal_fx else 0.0),
-    ):
-        uarm_mesh = make_limb_segment(
-            env, mat_body, h_sh, h_elb - 0.01, 0.015, rx_arr, 0.92, u_range, arm_lo, arm_hi, (0.01, 0.55), n_rings=12
+    # Left Arm Bones (+ Crystal syringe on arm_l_1 & tourniquet sling on arm_l_0)
+    hand_l_n = g.add_node("hand_l", translation=[0.0, -forearm_len, 0.0])
+    arm_l1_children = [hand_l_n]
+    if spec.has_crystal_fx:
+        mat_glass = g.add_material("syringe_glass", base_color=[0.85, 0.88, 0.90, 1.0], roughness=0.25, metallic=0.1)
+        mat_steel = g.add_material("syringe_steel", base_color=[0.70, 0.72, 0.74, 1.0], roughness=0.22, metallic=0.8)
+        barrel = g.add_node("needle_barrel", mesh=g.add_mesh("needle_barrel_m", [make_prop_cylinder(0.008, 0.008, 0.0, 0.064, mat_glass)]))
+        plunger = g.add_node("needle_plunger", mesh=g.add_mesh("needle_plunger_m", [make_prop_cylinder(0.011, 0.011, 0.064, 0.078, mat_glass)]))
+        tip = g.add_node("needle_tip", mesh=g.add_mesh("needle_tip_m", [make_prop_cylinder(0.0035, 0.0009, -0.032, 0.0, mat_steel)]))
+        needle_n = g.add_node(
+            "needle",
+            children=[barrel, plunger, tip],
+            translation=[0.0, -0.030, -0.030],
+            rotation=euler_xyz_to_quat(math.radians(58.0), 0.0, math.radians(-24.0)),
         )
-        sh_rad = min(0.056, float(np.interp(h_sh, env.heights, rx_arr)))
-        deltoid_mesh = make_sphere_part(0.0, -sh_rad * 0.45, 0.0, sh_rad * 0.72, sh_rad * 0.52, sh_rad * 0.70, (u_range[0] + 0.115, 0.06), mat_body)
-        farm_mesh = make_limb_segment(
-            env, mat_body, h_elb + 0.012, h_wr - 0.008, 0.012, rx_arr, 0.90, u_range, arm_lo, arm_hi, (0.01, 0.55), n_rings=10
-        )
-        hand_mesh = make_hand_mesh(env, mat_body, h_wr, h_tip, u_range, arm_lo, arm_hi, (0.01, 0.55))
+        arm_l1_children.append(needle_n)
+    arm_l1_n = g.add_node("arm_l_1", children=arm_l1_children, translation=[0.0, -upper_arm_len, 0.0], rotation=q_arm_l1)
 
-        hand_children = [g.add_node(f"palm_{tag}", mesh=g.add_mesh(f"palm_{tag}_m", [hand_mesh]))]
-        if spec.has_crystal_fx and tag == "r":
-            mat_gold = g.add_material("crystal_gold", base_color=[0.74, 0.60, 0.31, 1.0], roughness=0.35, metallic=0.6)
-            brac = make_prop_cylinder(0.032, 0.032, 0.004, 0.018, mat_gold, hollow=True)
-            hand_children.append(g.add_node("bracelet", mesh=g.add_mesh("bracelet_m", [brac])))
-        hand_n = g.add_node(f"hand_{tag}", children=hand_children, translation=[0.0, -forearm_len, 0.0])
+    arm_l0_children = [arm_l1_n]
+    if spec.has_crystal_fx:
+        mat_rub = g.add_material("crystal_sling", base_color=[0.09, 0.08, 0.08, 1.0], roughness=0.58)
+        sling_band = make_prop_cylinder(0.048, 0.050, -0.015, 0.015, mat_rub, hollow=True)
+        arm_l0_children.append(g.add_node("sling", mesh=g.add_mesh("sling_m", [sling_band]), translation=[0.0, -0.150, 0.0]))
+    arm_l0_n = g.add_node("arm_l_0", children=arm_l0_children, translation=[-sh_x_abs, h_sh - hip_y, 0.0], rotation=q_arm_l0)
 
-        elbow_children = [
-            g.add_node(f"forearm_{tag}", mesh=g.add_mesh(f"forearm_{tag}_m", [farm_mesh])),
-            hand_n,
-        ]
-        # Crystal syringe seated in left elbow crook
-        if spec.has_crystal_fx and tag == "l":
-            mat_glass = g.add_material("syringe_glass", base_color=[0.85, 0.88, 0.90, 1.0], roughness=0.25, metallic=0.1)
-            mat_steel = g.add_material("syringe_steel", base_color=[0.70, 0.72, 0.74, 1.0], roughness=0.22, metallic=0.8)
-            barrel = g.add_node("needle_barrel", mesh=g.add_mesh("needle_barrel_m", [make_prop_cylinder(0.008, 0.008, 0.0, 0.064, mat_glass)]))
-            plunger = g.add_node("needle_plunger", mesh=g.add_mesh("needle_plunger_m", [make_prop_cylinder(0.011, 0.011, 0.064, 0.078, mat_glass)]))
-            tip = g.add_node("needle_tip", mesh=g.add_mesh("needle_tip_m", [make_prop_cylinder(0.0035, 0.0009, -0.032, 0.0, mat_steel)]))
-            needle_n = g.add_node(
-                "needle",
-                children=[barrel, plunger, tip],
-                translation=[0.0, -0.030, -0.030],
-                rotation=euler_xyz_to_quat(math.radians(58.0), 0.0, math.radians(-24.0)),
-            )
-            elbow_children.append(needle_n)
+    # Right Arm Bones (+ Crystal gold bracelet on hand_r)
+    hand_r_children: list[int] = []
+    if spec.has_crystal_fx:
+        mat_gold = g.add_material("crystal_gold", base_color=[0.74, 0.60, 0.31, 1.0], roughness=0.35, metallic=0.6)
+        brac = make_prop_cylinder(0.032, 0.032, 0.004, 0.018, mat_gold, hollow=True)
+        hand_r_children.append(g.add_node("bracelet", mesh=g.add_mesh("bracelet_m", [brac])))
+    hand_r_n = g.add_node("hand_r", children=hand_r_children, translation=[0.0, -forearm_len, 0.0])
+    arm_r1_n = g.add_node("arm_r_1", children=[hand_r_n], translation=[0.0, -upper_arm_len, 0.0], rotation=q_arm_r1)
+    arm_r0_n = g.add_node("arm_r_0", children=[arm_r1_n], translation=[+sh_x_abs, h_sh - hip_y, 0.0], rotation=q_arm_r0)
 
-        elbow_rot = euler_xyz_to_quat(e_rot_x, 0.0, 0.0) if abs(e_rot_x) > 1e-4 else None
-        elbow_n = g.add_node(f"arm_{tag}_1", children=elbow_children, translation=[0.0, -upper_arm_len, 0.0], rotation=elbow_rot)
+    chest_n = g.add_node("chest", children=[head_n, arm_l0_n, arm_r0_n])
 
-        shoulder_children = [
-            g.add_node(f"deltoid_{tag}", mesh=g.add_mesh(f"deltoid_{tag}_m", [deltoid_mesh])),
-            g.add_node(f"upperarm_{tag}", mesh=g.add_mesh(f"upperarm_{tag}_m", [uarm_mesh])),
-            elbow_n,
-        ]
-        # Crystal rubber tourniquet sling above left elbow
-        if spec.has_crystal_fx and tag == "l":
-            mat_rub = g.add_material("crystal_sling", base_color=[0.09, 0.08, 0.08, 1.0], roughness=0.58)
-            sling_band = make_prop_cylinder(0.048, 0.050, -0.015, 0.015, mat_rub, hollow=True)
-            shoulder_children.append(
-                g.add_node("sling", mesh=g.add_mesh("sling_m", [sling_band]), translation=[0.0, -0.150, 0.0])
-            )
+    # Leg Bones L & R
+    foot_l_n = g.add_node("foot_l", translation=[0.0, -(h_knee - h_ank), 0.0])
+    leg_l1_n = g.add_node("leg_l_1", children=[foot_l_n], translation=[0.0, -thigh_len, 0.0])
+    leg_l0_n = g.add_node("leg_l_0", children=[leg_l1_n], translation=[-leg_x_abs, -0.02, 0.0], rotation=q_leg_l0)
 
-        # Tuck shoulder joint gently inside the torso shoulder slope so sleeves join seamlessly
-        torso_half_sh = float(np.interp(h_sh, env.heights, env.torso_rx))
-        sh_in = 0.016 if torso_half_sh >= 0.12 else 0.0
-        sh_x = side * max(0.088, torso_half_sh - sh_in)
-        fwd_x = math.radians(8.0) if (spec.has_crystal_fx and tag == "l") else math.radians(3.0)
-        sh_n = g.add_node(
-            f"arm_{tag}_0",
-            children=shoulder_children,
-            translation=[sh_x, h_sh - hip_y, 0.0],
-            rotation=euler_xyz_to_quat(fwd_x, 0.0, s_rot_z),
-        )
-        arm_nodes.append(sh_n)
+    foot_r_n = g.add_node("foot_r", translation=[0.0, -(h_knee - h_ank), 0.0])
+    leg_r1_n = g.add_node("leg_r_1", children=[foot_r_n], translation=[0.0, -thigh_len, 0.0])
+    leg_r0_n = g.add_node("leg_r_0", children=[leg_r1_n], translation=[+leg_x_abs, -0.02, 0.0], rotation=q_leg_r0)
 
-    chest_n = g.add_node("chest", children=[torso_n, head_n, *arm_nodes])
+    hips_n = g.add_node("hips", children=[chest_n, leg_l0_n, leg_r0_n], translation=[0.0, hip_y, 0.0])
 
-    # Legs L & R
-    leg_nodes: list[int] = []
-    leg_hi = env.y_crotch + 0.03
-    leg_lo = 0.0
-    h_hip_start = hip_y - 0.02
-    h_knee = h_hip_start - thigh_len
-    h_ank = max(0.055, h_knee - shin_len)
+    joint_nodes = [
+        hips_n, chest_n, head_n,
+        arm_l0_n, arm_l1_n, hand_l_n,
+        arm_r0_n, arm_r1_n, hand_r_n,
+        leg_l0_n, leg_l1_n, foot_l_n,
+        leg_r0_n, leg_r1_n, foot_r_n,
+    ]
+    skin_idx = g.add_skin(f"{spec.name}_skin", joint_nodes, ibms, skeleton_node=hips_n)
+    body_mesh_idx = g.add_mesh(f"{spec.name}_mesh", [skinned_face_prim, skinned_body_prim])
+    body_skin_n = g.add_node(f"{spec.name}_skinned", mesh=body_mesh_idx, skin=skin_idx)
 
-    for side, tag, u_range, rx_arr, splay_z in (
-        (-1.0, "l", (0.01, 0.48), env.leg_l_rx, math.radians(-3.5) if spec.has_crystal_fx else 0.0),
-        (1.0, "r", (0.52, 0.99), env.leg_r_rx, math.radians(3.5) if spec.has_crystal_fx else 0.0),
-    ):
-        thigh_m = make_limb_segment(
-            env, mat_body, h_hip_start + 0.03, h_knee - 0.01, 0.03, rx_arr, 1.05, u_range, leg_lo, leg_hi, (0.58, 0.99), n_rings=14
-        )
-        shin_m = make_limb_segment(
-            env, mat_body, h_knee + 0.015, h_ank, 0.015, rx_arr, 1.02, u_range, leg_lo, leg_hi, (0.58, 0.99), n_rings=14
-        )
-        knee_cap = make_sphere_part(
-            0.0, 0.0, 0.0,
-            float(np.interp(h_knee, env.heights, rx_arr)),
-            float(np.interp(h_knee, env.heights, rx_arr)),
-            float(np.interp(h_knee, env.heights, rx_arr)) * 1.04,
-            (u_range[0] + 0.23, 0.77),
-            mat_body,
-        )
-        shoe_m = make_shoe_mesh(env, mat_body, h_ank, u_range, leg_lo, leg_hi, (0.58, 0.99))
-
-        foot_n = g.add_node(
-            f"foot_{tag}",
-            children=[g.add_node(f"shoe_{tag}", mesh=g.add_mesh(f"shoe_{tag}_m", [shoe_m]))],
-            translation=[0.0, -(h_knee - h_ank), 0.0],
-        )
-        shin_n = g.add_node(
-            f"leg_{tag}_1",
-            children=[g.add_node(f"shin_{tag}", mesh=g.add_mesh(f"shin_{tag}_m", [shin_m])), foot_n],
-            translation=[0.0, -thigh_len, 0.0],
-        )
-        leg_x = side * (0.075 if spec.has_crystal_fx else 0.095)
-        hip_rot = euler_xyz_to_quat(0.0, 0.0, splay_z) if abs(splay_z) > 1e-4 else None
-        leg_n = g.add_node(
-            f"leg_{tag}_0",
-            children=[
-                g.add_node(f"knee_{tag}", mesh=g.add_mesh(f"knee_{tag}_m", [knee_cap]), translation=[0.0, -thigh_len + 0.01, 0.0]),
-                g.add_node(f"thigh_{tag}", mesh=g.add_mesh(f"thigh_{tag}_m", [thigh_m])),
-                shin_n,
-            ],
-            translation=[leg_x, -0.02, 0.0],
-            rotation=hip_rot,
-        )
-        leg_nodes.append(leg_n)
-
-    # Pelvis seat cap so bent sitting thighs have no underside hole (kept tucked inside standing profile)
-    seat_m = make_sphere_part(
-        0.0, -0.03, 0.0,
-        float(np.interp(hip_y, env.heights, env.torso_rx)) * 0.88,
-        0.09,
-        0.078,
-        (0.04, 0.47),
-        mat_body,
-    )
-    seat_n = g.add_node("seat", mesh=g.add_mesh("seat_m", [seat_m]))
-    hips_n = g.add_node("hips", children=[chest_n, *leg_nodes, seat_n], translation=[0.0, hip_y, 0.0])
-    root_n = g.add_node(f"{spec.name}_root", children=[hips_n])
+    root_n = g.add_node(f"{spec.name}_root", children=[hips_n, body_skin_n])
 
     out_path = OUT_DIR / f"{spec.name}.glb"
     g.write(out_path, root_n)
