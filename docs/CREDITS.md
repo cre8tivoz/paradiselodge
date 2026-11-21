@@ -149,4 +149,4 @@ Live shipped mesh (`public/models/rosie-rigged.glb`; retired `public/models/rosi
 
 ## Cast GLBs (`tools/characters/build_characters.py`)
 
-`public/models/moretti.glb`, `public/models/crystal.glb`, `public/models/mark.glb`, `public/models/victor.glb`, and `public/models/sterling.glb` are project-authored meshes and texture atlases generated directly in-repo from the turnaround sheets in `images/characters/*-sheet.png` via `tools/characters/build_characters.py` and Three.js, with zero external Blender, Hunyuan3D, or Mixamo dependencies.
+`public/models/moretti.glb`, `public/models/crystal.glb`, `public/models/mark.glb`, `public/models/victor.glb`, and `public/models/sterling.glb` are project-authored watertight skinned glTF 2.0 meshes (`SkinnedMesh` + 15-bone skeleton, 5-finger hands, `1024×1024` 360° albedo atlases, and `512×512` normal/ORM PBR maps) generated directly in-repo from `images/characters/*-sheet.png` and their matched companion back/headshot sheets (`images/characters/*-detail-sheet.jpg`) via `tools/characters/build_characters.py` and Three.js, with zero external Blender, Hunyuan3D, or Mixamo dependencies.

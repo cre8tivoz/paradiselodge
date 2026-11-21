@@ -62,10 +62,12 @@ function tuneCharacterMaterial(
   if (!(mat instanceof MeshStandardMaterial)) return
 
   const matName = mat.name ?? ''
+  const lowerName = matName.toLowerCase()
   const isAccessory = ACCESSORY_MAT.test(matName)
+  const isFace = lowerName.includes('_face')
 
-  if (isHairCard || matName.toLowerCase().includes('hair_card')) {
-    mat.alphaTest = 0.45
+  if (isHairCard || lowerName.includes('hair_card')) {
+    mat.alphaTest = 0.42
     mat.transparent = false
     mat.side = DoubleSide
     mat.depthWrite = true
@@ -76,30 +78,67 @@ function tuneCharacterMaterial(
     mat.map.anisotropy = 8
     // Studio turnaround sheets are neutral high-key; calibrate gently toward
     // warm 1994 film exposure so faces hold detail under practicals and sky.
-    mat.color.copy(new Color(0.86, 0.83, 0.80))
+    mat.color.copy(new Color(0.88, 0.85, 0.82))
     mat.map.needsUpdate = true
   }
 
-  if (!isAccessory) {
-    mat.roughness = Math.max(mat.roughness, roughFloor)
-    mat.metalness = Math.min(mat.metalness, 0.04)
+  if (mat.normalMap !== null) {
+    mat.normalMap.anisotropy = 8
+    const nScale = isFace ? 0.42 : 0.92
+    mat.normalScale.set(nScale, nScale)
+    mat.normalMap.needsUpdate = true
   }
-  mat.envMapIntensity = isAccessory ? 0.85 : 0.55
 
-  if (!isAccessory && rimStrength > 0 && mat.userData.ldCharLookApplied !== true) {
+  if (mat.roughnessMap !== null) {
+    mat.roughnessMap.anisotropy = 8
+    mat.roughnessMap.needsUpdate = true
+  }
+
+  if (mat.aoMap !== null) {
+    mat.aoMapIntensity = isFace ? 0.35 : 0.68
+    mat.aoMap.needsUpdate = true
+  }
+
+  if (!isAccessory) {
+    // When a per-pixel roughnessMap is embedded, leave roughness at 1.0 so the
+    // green channel directly encodes skin (~0.55), leather (~0.38), nylon (~0.54),
+    // and matte wool/cotton (~0.88) without flattening contrast.
+    if (mat.roughnessMap !== null) {
+      mat.roughness = 1.0
+    } else {
+      mat.roughness = Math.max(mat.roughness, roughFloor)
+    }
+    if (mat.metalnessMap === null) {
+      mat.metalness = Math.min(mat.metalness, 0.04)
+    }
+  }
+  mat.envMapIntensity = isAccessory ? 0.85 : isFace ? 0.62 : 0.55
+
+  if (!isAccessory && (rimStrength > 0 || isFace) && mat.userData.ldCharLookApplied !== true) {
     mat.userData.ldCharLookApplied = true
-    const key = `ld_char_rim_${rimStrength.toFixed(3)}`
+    const skinWrap = isFace ? 0.14 : 0.0
+    const key = `ld_char_look_${rimStrength.toFixed(3)}_${skinWrap.toFixed(2)}`
     mat.onBeforeCompile = (shader) => {
       shader.uniforms.uLdCharRim = { value: rimStrength }
+      shader.uniforms.uLdSkinWrap = { value: skinWrap }
       shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', '#include <common>\nuniform float uLdCharRim;')
+        .replace(
+          '#include <common>',
+          '#include <common>\nuniform float uLdCharRim;\nuniform float uLdSkinWrap;',
+        )
         .replace(
           '#include <emissivemap_fragment>',
           `#include <emissivemap_fragment>
           vec3 ldCharV = normalize(vViewPosition);
-          float ldCharFres = pow(1.0 - max(dot(normal, ldCharV), 0.0), 3.0);
-          vec3 ldCharRimTint = mix(vec3(0.46, 0.56, 0.72), vec3(0.95, 0.74, 0.48), smoothstep(-0.25, 0.75, normal.y));
-          totalEmissiveRadiance += diffuseColor.rgb * ldCharRimTint * (ldCharFres * uLdCharRim);`,
+          float ldNdotV = max(dot(normal, ldCharV), 0.0);
+          float ldCharFres = pow(1.0 - ldNdotV, 3.0);
+          vec3 ldCharRimTint = mix(vec3(0.46, 0.56, 0.72), vec3(0.96, 0.76, 0.50), smoothstep(-0.25, 0.75, normal.y));
+          totalEmissiveRadiance += diffuseColor.rgb * ldCharRimTint * (ldCharFres * uLdCharRim);
+          if (uLdSkinWrap > 0.0) {
+            float ldSkinMask = smoothstep(0.05, 0.18, diffuseColor.r - diffuseColor.b) * smoothstep(0.18, 0.45, diffuseColor.r);
+            float ldWrapBand = pow(1.0 - ldNdotV, 1.35) * (0.45 + 0.55 * smoothstep(-0.35, 0.65, normal.y));
+            totalEmissiveRadiance += diffuseColor.rgb * vec3(1.05, 0.68, 0.46) * (ldSkinMask * ldWrapBand * uLdSkinWrap);
+          }`,
         )
     }
     mat.customProgramCacheKey = () => key
