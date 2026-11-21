@@ -10,6 +10,7 @@ import {
   DoubleSide,
   FogExp2,
   Group,
+  HemisphereLight,
   LineSegments,
   Mesh,
   MeshBasicMaterial,
@@ -56,21 +57,21 @@ export function skyDome(sunDir: Vector3): Mesh {
       void main(){
         vec3 d = normalize(vDir); float h = d.y;
         float s = max(dot(d, uSun), 0.0);
-        vec3 zenith = vec3(0.07, 0.065, 0.11);
-        vec3 mid = vec3(0.62, 0.32, 0.22);
-        vec3 horizon = vec3(2.1, 0.85, 0.3);
-        float az = pow(s, 3.0);
+        vec3 zenith = vec3(0.16, 0.20, 0.32);
+        vec3 mid = vec3(0.68, 0.52, 0.44);
+        vec3 horizon = vec3(1.9, 1.25, 0.72);
+        float az = pow(s, 2.6);
         vec3 col = mix(mid, zenith, smoothstep(0.0, 0.45, h));
-        col = mix(col, horizon, (1.0 - smoothstep(-0.02, 0.42, h)) * (0.3 + 0.7*az));
-        col += vec3(2.2, 1.0, 0.35) * pow(s, 60.0) * 1.5;
-        col += vec3(6.0, 3.4, 1.5) * smoothstep(0.9993, 0.9998, s);
+        col = mix(col, horizon, (1.0 - smoothstep(-0.02, 0.44, h)) * (0.35 + 0.65*az));
+        col += vec3(2.0, 1.25, 0.65) * pow(s, 48.0) * 1.4;
+        col += vec3(5.5, 3.8, 2.2) * smoothstep(0.9993, 0.9998, s);
         vec2 cp = d.xz / max(h + 0.12, 0.05);
         float c = ld_fbm(vec3(cp*0.55, 1.0));
         float c2 = ld_fbm(vec3(cp*1.7 + 4.0, 2.0));
         float cloud = smoothstep(0.42, 0.75, c*0.75 + c2*0.35) * smoothstep(-0.02, 0.12, h);
-        vec3 cloudCol = mix(vec3(0.03, 0.028, 0.035), vec3(0.9, 0.4, 0.16), pow(s, 6.0) * (1.0 - smoothstep(0.0, 0.3, h)));
-        col = mix(col, cloudCol, cloud * 0.92);
-        if (h < 0.0) col = mix(vec3(0.06, 0.04, 0.05), horizon*0.35*(0.3 + 0.7*az), exp(h*30.0));
+        vec3 cloudCol = mix(vec3(0.12, 0.14, 0.20), vec3(0.95, 0.62, 0.38), pow(s, 5.0) * (1.0 - smoothstep(0.0, 0.35, h)));
+        col = mix(col, cloudCol, cloud * 0.85);
+        if (h < 0.0) col = mix(vec3(0.14, 0.13, 0.16), horizon*0.42*(0.35 + 0.65*az), exp(h*24.0));
         gl_FragColor = vec4(col, 1.0);
       }`,
   })
@@ -96,20 +97,20 @@ export function nightSkyDome(moonDir: Vector3): Mesh {
       void main(){
         vec3 d = normalize(vDir); float h = d.y;
         float s = max(dot(d, uMoon), 0.0);
-        vec3 zenith = vec3(0.015, 0.022, 0.045);
-        vec3 mid = vec3(0.055, 0.07, 0.12);
-        vec3 horizon = vec3(0.16, 0.11, 0.08);
+        vec3 zenith = vec3(0.06, 0.09, 0.16);
+        vec3 mid = vec3(0.14, 0.18, 0.28);
+        vec3 horizon = vec3(0.28, 0.24, 0.22);
         vec3 col = mix(mid, zenith, smoothstep(0.0, 0.5, h));
-        col = mix(col, horizon, 1.0 - smoothstep(-0.02, 0.28, h));
-        col += vec3(0.28, 0.35, 0.48) * pow(s, 28.0) * 0.35;
-        col += vec3(0.95, 1.05, 1.2) * smoothstep(0.9992, 0.9997, s) * 0.9;
+        col = mix(col, horizon, 1.0 - smoothstep(-0.02, 0.30, h));
+        col += vec3(0.42, 0.52, 0.72) * pow(s, 24.0) * 0.55;
+        col += vec3(1.1, 1.2, 1.4) * smoothstep(0.9992, 0.9997, s) * 1.1;
         vec2 cp = d.xz / max(h + 0.16, 0.06);
         float c = ld_fbm(vec3(cp*0.55 + vec2(uTime*0.002, 0.0), 3.0));
         float c2 = ld_fbm(vec3(cp*1.7 + 4.0, 5.0));
         float cloud = smoothstep(0.42, 0.78, c*0.75 + c2*0.35) * smoothstep(-0.02, 0.14, h);
-        vec3 cloudCol = mix(vec3(0.02, 0.025, 0.042), vec3(0.11, 0.085, 0.075), 1.0 - smoothstep(0.0, 0.35, h));
-        col = mix(col, cloudCol, cloud * 0.85);
-        if (h < 0.0) col = mix(vec3(0.02, 0.022, 0.03), horizon*0.45, exp(h*24.0));
+        vec3 cloudCol = mix(vec3(0.07, 0.09, 0.15), vec3(0.22, 0.20, 0.19), 1.0 - smoothstep(0.0, 0.35, h));
+        col = mix(col, cloudCol, cloud * 0.78);
+        if (h < 0.0) col = mix(vec3(0.06, 0.07, 0.10), horizon*0.5, exp(h*20.0));
         gl_FragColor = vec4(col, 1.0);
       }`,
   })
@@ -133,6 +134,67 @@ export interface SkyEnvironment {
   dispose(): void
 }
 
+export interface InteriorEnvironment {
+  dispose(): void
+}
+
+/**
+ * Procedural directional PMREM environment probe for indoor Scenes 2, 4, and 5
+ * so metallic surfaces (chrome taps, steel desks, mirrors, kegs) and character
+ * PBR shaders reflect warm/cool room light instead of pitch black.
+ */
+export function installInteriorEnvironment(
+  renderer: WebGLRenderer,
+  scene: Scene,
+  options: {
+    readonly top: readonly [number, number, number]
+    readonly mid: readonly [number, number, number]
+    readonly bottom: readonly [number, number, number]
+    readonly intensity: number
+  },
+): InteriorEnvironment {
+  const probeScene = new Scene()
+  const mat = new ShaderMaterial({
+    side: BackSide,
+    depthWrite: false,
+    uniforms: {
+      uTop: { value: new Color(...options.top) },
+      uMid: { value: new Color(...options.mid) },
+      uBottom: { value: new Color(...options.bottom) },
+    },
+    vertexShader: 'varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+    fragmentShader: /* glsl */ `
+      uniform vec3 uTop, uMid, uBottom; varying vec3 vDir;
+      void main(){
+        vec3 d = normalize(vDir);
+        vec3 col = d.y >= 0.0
+          ? mix(uMid, uTop, smoothstep(0.0, 0.85, d.y))
+          : mix(uMid, uBottom, smoothstep(0.0, 0.85, -d.y));
+        // Subtle overhead fixture highlight strip for realistic specular catchlights
+        float overhead = smoothstep(0.75, 0.98, d.y);
+        col += uTop * overhead * 0.85;
+        gl_FragColor = vec4(col, 1.0);
+      }`,
+  })
+  const dome = new Mesh(new SphereGeometry(20, 24, 14), mat)
+  probeScene.add(dome)
+  const pmrem = new PMREMGenerator(renderer)
+  const target = pmrem.fromScene(probeScene, 0.04, 0.1, 40)
+  pmrem.dispose()
+  dome.geometry.dispose()
+  mat.dispose()
+  scene.environment = target.texture
+  scene.environmentIntensity = options.intensity
+  return {
+    dispose(): void {
+      if (scene.environment === target.texture) {
+        scene.environment = null
+      }
+      target.dispose()
+    },
+  }
+}
+
 export function installSkyEnvironment(renderer: WebGLRenderer, scene: Scene, sunDir: Vector3): SkyEnvironment {
   const sky = skyDome(sunDir)
   scene.add(sky)
@@ -145,9 +207,9 @@ export function installSkyEnvironment(renderer: WebGLRenderer, scene: Scene, sun
   probeSky.geometry.dispose()
   if (probeSky.material instanceof ShaderMaterial) probeSky.material.dispose()
   scene.environment = target.texture
-  scene.environmentIntensity = 0.5
+  scene.environmentIntensity = 0.85
   scene.background = null
-  scene.fog = new FogExp2(new Color(0.16, 0.1, 0.07), 0.012)
+  scene.fog = new FogExp2(new Color(0.20, 0.21, 0.26), 0.007)
   return {
     sky,
     dispose(): void {
@@ -174,9 +236,9 @@ export function installNightSkyEnvironment(renderer: WebGLRenderer, scene: Scene
   probeSky.geometry.dispose()
   if (probeSky.material instanceof ShaderMaterial) probeSky.material.dispose()
   scene.environment = target.texture
-  scene.environmentIntensity = 0.45
+  scene.environmentIntensity = 0.65
   scene.background = null
-  const fog = new FogExp2(0x0d0f17, 0.015)
+  const fog = new FogExp2(0x161c2a, 0.01)
   scene.fog = fog
   return {
     sky,
@@ -201,34 +263,57 @@ export function buildExteriorDressing(): ExteriorDusk {
   const lights: Light[] = []
   const fx: Object3D[] = []
 
-  const pinkWash = new RectAreaLight(NEON_PINK, 18, 6.2, 0.55)
+  // Directional Melbourne dusk sky-bounce fill (no AmbientLight)
+  const duskSkyBounce = new HemisphereLight(new Color(0x88a2c8), new Color(0x4a423a), 0.85)
+  root.add(duskSkyBounce)
+
+  const pinkWash = new RectAreaLight(NEON_PINK, 14, 6.2, 0.55)
   pinkWash.position.set(0, 6.4, -1.15)
   pinkWash.lookAt(0, 5.4, 0.2)
   root.add(pinkWash)
-  const pinkFill = new PointLight(NEON_PINK, 18, 14, 1.6)
+  const pinkFill = new PointLight(NEON_PINK, 12, 14, 1.6)
   pinkFill.position.set(0, 5.8, -2.2)
   root.add(pinkFill)
-  const cyanFill = new PointLight(NEON_CYAN, 4, 6.5, 1.8)
+  const cyanFill = new PointLight(NEON_CYAN, 6, 8, 1.6)
   cyanFill.position.set(-4.6, 1.7, -1.2)
   root.add(cyanFill)
-  const doorLight = new PointLight(new Color(1, 0.58, 0.28), 2.4, 7, 2)
-  doorLight.position.set(0, 1.5, -0.6)
+  const doorLight = new PointLight(new Color(1, 0.84, 0.62), 6.5, 10, 1.5)
+  doorLight.position.set(0, 1.65, -0.6)
   root.add(doorLight)
 
   // Verandah and Back Yard Practicals (1994 Victorian St Kilda boarding house)
-  const verandahLight = new PointLight(new Color(1.0, 0.78, 0.45), 3.2, 12, 1.8)
-  verandahLight.position.set(6.45, 4.8, 2.5)
+  const verandahLight = new PointLight(new Color(1.0, 0.86, 0.64), 11.5, 16, 1.4)
+  verandahLight.position.set(7.35, 5.05, 1.8)
   root.add(verandahLight)
 
-  const backStairLight = new PointLight(new Color(1.0, 0.70, 0.38), 8.5, 20, 1.6)
-  backStairLight.position.set(6.8, 3.4, 10.8)
+  const verandahSouthLight = new PointLight(new Color(1.0, 0.86, 0.66), 9.5, 15, 1.4)
+  verandahSouthLight.position.set(7.35, 5.05, 6.8)
+  root.add(verandahSouthLight)
+
+  const backStairLight = new PointLight(new Color(1.0, 0.84, 0.6), 14.0, 24, 1.4)
+  backStairLight.position.set(6.4, 3.6, 10.8)
   root.add(backStairLight)
 
-  const yardRimLight = new PointLight(new Color(0.45, 0.65, 0.9), 4.5, 25, 1.4)
-  yardRimLight.position.set(-2.0, 3.8, 18.5)
+  const yardShedLight = new PointLight(new Color(1.0, 0.88, 0.68), 10.5, 18, 1.4)
+  yardShedLight.position.set(-0.6, 2.7, 14.2)
+  root.add(yardShedLight)
+
+  const yardRimLight = new PointLight(new Color(0.62, 0.78, 1.0), 12.0, 30, 1.3)
+  yardRimLight.position.set(-2.0, 4.4, 18.5)
   root.add(yardRimLight)
 
-  lights.push(pinkWash, pinkFill, cyanFill, doorLight, verandahLight, backStairLight, yardRimLight)
+  lights.push(
+    duskSkyBounce,
+    pinkWash,
+    pinkFill,
+    cyanFill,
+    doorLight,
+    verandahLight,
+    verandahSouthLight,
+    backStairLight,
+    yardShedLight,
+    yardRimLight,
+  )
 
   const sl1 = streetlight(new Vector3(-9.5, PATH_Y, -5.4), -1, true)
   const sl2 = streetlight(new Vector3(8.2, PATH_Y, -5.6), -1, true)
@@ -240,7 +325,7 @@ export function buildExteriorDressing(): ExteriorDusk {
   root.add(palm(new Vector3(7, PATH_Y, -17), 12, -0.5, 5))
   root.add(palm(new Vector3(16, PATH_Y, -16.5), 10.5, 0.6, 9))
 
-  const terraceMat = renderMaterial([0.55, 0.46, 0.4])
+  const terraceMat = renderMaterial([0.64, 0.56, 0.50])
   root.add(terraceFront(-22, 12, 9.2, terraceMat, 3))
   root.add(terraceFront(14.5, 16, 10.5, terraceMat, 8))
 
@@ -255,7 +340,7 @@ export function buildExteriorDressing(): ExteriorDusk {
     neonFlicker: pinkFill,
     update(time: number): void {
       const drop = Math.sin(time * 50) > 0.97 ? 0.55 : 1
-      pinkFill.intensity = 18 * drop
+      pinkFill.intensity = 12 * drop
       const rainMat = rain.material
       if (rainMat instanceof ShaderMaterial) rainMat.uniforms.uTime.value = time
     },
@@ -263,7 +348,7 @@ export function buildExteriorDressing(): ExteriorDusk {
 }
 
 export function tuneExteriorMaterials(exterior: Object3D, lodge: Object3D, commodore: Object3D): void {
-  const render = renderMaterial([0.78, 0.66, 0.54])
+  const render = renderMaterial([0.84, 0.76, 0.68])
   const asphalt = asphaltMaterial()
   const visit = (root: Object3D): void => {
     root.traverse((object) => {
@@ -286,7 +371,7 @@ export function tuneExteriorMaterials(exterior: Object3D, lodge: Object3D, commo
       object.material = asphalt
       object.castShadow = false
     } else if (material.name === 'lodge_timber' && isStandard(material)) {
-      material.color.setRGB(0.28, 0.16, 0.09)
+      material.color.setRGB(0.36, 0.25, 0.17)
       material.roughness = 0.62
     } else if (material.name === 'lodge_glass' && material instanceof MeshBasicMaterial) {
       material.opacity = 0.05
@@ -299,8 +384,8 @@ export function tuneExteriorMaterials(exterior: Object3D, lodge: Object3D, commo
     object.receiveShadow = true
     if (object.material.name === 'commodore_fleet_beige') {
       object.material.roughness = 0.28
-      object.material.envMapIntensity = 1.15
-      object.material.color.multiply(new Color(0.92, 0.84, 0.7))
+      object.material.envMapIntensity = 1.25
+      object.material.color.multiply(new Color(0.96, 0.92, 0.84))
     }
   })
 }
@@ -311,24 +396,24 @@ function retint(material: Material, render: MeshStandardMaterial, asphalt: MeshS
   if (n === 'exterior_render_weathered' || n === 'exterior_render_damp' || n === 'exterior_runoff') return render
   if (n === 'exterior_wet_asphalt' || n.startsWith('exterior_puddle')) return asphalt
   if (n === 'exterior_side_brick') {
-    material.color.set(0x4a2a20)
-    material.roughness = 0.95
+    material.color.set(0x624034)
+    material.roughness = 0.92
   } else if (n === 'exterior_stone_trim') {
-    material.color.setRGB(0.62, 0.55, 0.46)
+    material.color.setRGB(0.7, 0.65, 0.58)
     material.roughness = 0.85
   } else if (n === 'exterior_window_dark') {
-    material.color.set(0x07090c)
+    material.color.set(0x0d1218)
     material.metalness = 0.1
     material.roughness = 0.08
     material.envMapIntensity = 1.3
   } else if (n === 'exterior_iron') {
-    material.color.set(0x0e0c0b)
+    material.color.set(0x181615)
     material.metalness = 0.7
     material.roughness = 0.4
   } else if (n === 'exterior_neon_pink') {
     material.color.set(0x000000)
     material.emissive.copy(NEON_PINK)
-    material.emissiveIntensity = 8
+    material.emissiveIntensity = 7.5
     material.toneMapped = false
   } else if (n === 'exterior_neon_cyan') {
     material.color.set(0x000000)
@@ -336,7 +421,7 @@ function retint(material: Material, render: MeshStandardMaterial, asphalt: MeshS
     material.emissiveIntensity = 6.5
     material.toneMapped = false
   } else if (n === 'timber_dark') {
-    material.color.setRGB(0.25, 0.16, 0.1)
+    material.color.setRGB(0.34, 0.24, 0.17)
   }
   return material
 }

@@ -113,7 +113,7 @@ export function wallMaterial(): MeshStandardMaterial {
   const paper = tex('/textures/wallpaper-floral.jpg')
   const plaster = tex('/textures/render-cream.jpg')
   const u: UniformMap = { tWall: { value: paper }, tPlaster: { value: plaster }, tDecay: { value: paper } }
-  const m = new MeshStandardMaterial({ color: 0xffffff, roughness: 0.88, name: 'ld_wall', envMapIntensity: 0.45 })
+  const m = new MeshStandardMaterial({ color: 0xffffff, roughness: 0.88, name: 'ld_wall', envMapIntensity: 0.65 })
   return worldShader(
     m,
     u,
@@ -124,13 +124,13 @@ export function wallMaterial(): MeshStandardMaterial {
     float ceilH = p.y >= 3.40 ? 3.0 : 3.2;
     vec3 paper = ld_tri(tWall, p, n, 1.0/0.62);
     float pl = dot(paper, vec3(0.333));
-    paper = mix(vec3(pl), paper, 1.3); paper = (paper - pl*0.55) * 1.6 + pl*0.55; paper = paper * vec3(1.25, 1.02, 0.62);
+    paper = mix(vec3(pl), paper, 1.15); paper = (paper - pl*0.55) * 1.35 + pl*0.55; paper = paper * vec3(1.12, 1.02, 0.84);
     vec3 decay = ld_tri2(tDecay, p, n, 1.0/1.7);
     float dl = dot(decay, vec3(0.333));
-    paper *= mix(0.78, 1.12, smoothstep(0.15, 0.55, dl));
+    paper *= mix(0.84, 1.12, smoothstep(0.15, 0.55, dl));
     vec3 plaster = ld_tri2(tPlaster, p, n, 1.0/2.3);
     float pll = dot(plaster, vec3(0.333));
-    plaster = vec3(0.86, 0.72, 0.44) * (0.75 + 0.45*pll);
+    plaster = vec3(0.88, 0.80, 0.64) * (0.78 + 0.38*pll);
     float rail = smoothstep(2.36, 2.40, yl);
     vec3 col = mix(paper, plaster, rail);
     float big = ld_fbm(p*vec3(0.9, 0.6, 0.9));
@@ -138,8 +138,8 @@ export function wallMaterial(): MeshStandardMaterial {
     float topStain = smoothstep(ceilH - 1.4, ceilH, yl);
     float lowStain = 1.0 - smoothstep(0.0, 0.5, yl);
     float stain = clamp(0.35*big + 0.25*drip + 0.55*topStain + 0.3*lowStain - 0.25, 0.0, 1.0);
-    col *= mix(vec3(1.0), vec3(0.62, 0.47, 0.26), stain);
-    col *= 0.85 + 0.3*ld_noise(p*23.0);
+    col *= mix(vec3(1.0), vec3(0.76, 0.66, 0.52), stain);
+    col *= 0.88 + 0.24*ld_noise(p*23.0);
     ldAlbedo = col;
     ldRough = 0.85 - 0.15*stain;
   `,
@@ -149,7 +149,7 @@ export function wallMaterial(): MeshStandardMaterial {
 
 export function ceilingMaterial(): MeshStandardMaterial {
   const u: UniformMap = { tPlaster: { value: tex('/textures/render-cream.jpg') } }
-  const m = new MeshStandardMaterial({ roughness: 0.92, name: 'ld_ceiling', envMapIntensity: 0.4 })
+  const m = new MeshStandardMaterial({ roughness: 0.92, name: 'ld_ceiling', envMapIntensity: 0.6 })
   return worldShader(
     m,
     u,
@@ -158,7 +158,7 @@ export function ceilingMaterial(): MeshStandardMaterial {
     vec3 p = vLdWPos; vec3 n = normalize(vLdWNrm);
     float l = dot(ld_tri2(tPlaster, p, n, 0.5), vec3(0.333));
     float st = ld_fbm(p*0.8);
-    ldAlbedo = vec3(0.74, 0.62, 0.40) * (0.8 + 0.35*l) * mix(1.0, 0.62, smoothstep(0.35, 0.8, st));
+    ldAlbedo = vec3(0.82, 0.76, 0.64) * (0.82 + 0.30*l) * mix(1.0, 0.74, smoothstep(0.35, 0.8, st));
   `,
     'ld_ceiling',
   )
@@ -166,7 +166,7 @@ export function ceilingMaterial(): MeshStandardMaterial {
 
 export function darkWoodMaterial(shine = 0.45): MeshStandardMaterial {
   const u: UniformMap = { tWood: { value: tex('/textures/timber-dark.jpg') } }
-  const m = new MeshStandardMaterial({ roughness: shine, name: 'ld_darkwood', envMapIntensity: 0.55 })
+  const m = new MeshStandardMaterial({ roughness: shine, name: 'ld_darkwood', envMapIntensity: 0.7 })
   return worldShader(
     m,
     u,
@@ -175,11 +175,11 @@ export function darkWoodMaterial(shine = 0.45): MeshStandardMaterial {
     vec3 p = vLdWPos; vec3 n = normalize(vLdWNrm);
     vec3 w = ld_tri(tWood, p, n, 0.9);
     float l = dot(w, vec3(0.333));
-    vec3 c = vec3(0.27, 0.13, 0.062) * (0.3 + 1.0*l);
+    vec3 c = vec3(0.34, 0.22, 0.14) * (0.45 + 0.9*l);
     float wear = ld_fbm(p*3.0);
-    c *= mix(0.8, 1.2, wear);
+    c *= mix(0.84, 1.18, wear);
     ldAlbedo = c;
-    ldRough = roughness + 0.25*(1.0 - wear);
+    ldRough = roughness + 0.22*(1.0 - wear);
   `,
     `ld_darkwood${shine}`,
   )
@@ -187,7 +187,7 @@ export function darkWoodMaterial(shine = 0.45): MeshStandardMaterial {
 
 export function floorMaterial(): MeshStandardMaterial {
   const u: UniformMap = { tFloor: { value: tex('/textures/floorboards-oak.jpg') } }
-  const m = new MeshStandardMaterial({ roughness: 0.55, name: 'ld_floor', envMapIntensity: 0.4 })
+  const m = new MeshStandardMaterial({ roughness: 0.55, name: 'ld_floor', envMapIntensity: 0.55 })
   return worldShader(
     m,
     u,
@@ -196,10 +196,10 @@ export function floorMaterial(): MeshStandardMaterial {
     vec3 p = vLdWPos;
     vec3 w = texture2D(tFloor, p.xz*0.42).rgb;
     float traffic = ld_fbm(p*vec3(0.7,0.0,0.7) + 3.0);
-    vec3 c = w * vec3(0.78, 0.55, 0.34);
-    c *= mix(1.0, 0.65, smoothstep(0.4, 0.75, traffic));
+    vec3 c = w * vec3(0.86, 0.74, 0.58);
+    c *= mix(1.0, 0.74, smoothstep(0.4, 0.75, traffic));
     ldAlbedo = c;
-    ldRough = 0.45 + 0.4*traffic;
+    ldRough = 0.45 + 0.35*traffic;
   `,
     'ld_floor',
   )
@@ -207,7 +207,7 @@ export function floorMaterial(): MeshStandardMaterial {
 
 export function upholsteryMaterial(): MeshStandardMaterial {
   const u: UniformMap = { tFab: { value: tex('/textures/bedspread-rose.jpg') } }
-  const m = new MeshStandardMaterial({ roughness: 0.95, name: 'ld_upholstery', envMapIntensity: 0.35 })
+  const m = new MeshStandardMaterial({ roughness: 0.95, name: 'ld_upholstery', envMapIntensity: 0.5 })
   return worldShader(
     m,
     u,
@@ -216,8 +216,8 @@ export function upholsteryMaterial(): MeshStandardMaterial {
     vec3 p = vLdWPos; vec3 n = normalize(vLdWNrm);
     vec3 f = ld_tri(tFab, p, n, 1.0/0.45);
     float l = dot(f, vec3(0.333));
-    f = mix(vec3(l), f, 0.6) * vec3(0.62, 0.46, 0.42);
-    f *= 0.8 + 0.35*ld_fbm(p*4.0);
+    f = mix(vec3(l), f, 0.65) * vec3(0.72, 0.60, 0.56);
+    f *= 0.85 + 0.30*ld_fbm(p*4.0);
     ldAlbedo = f;
   `,
     'ld_upholstery',
@@ -228,7 +228,7 @@ export function upholsteryMaterial(): MeshStandardMaterial {
 export function renderMaterial(tint: readonly [number, number, number]): MeshStandardMaterial {
   const cream = tex('/textures/render-cream.jpg')
   const u: UniformMap = { tR: { value: cream }, tW: { value: cream } }
-  const m = new MeshStandardMaterial({ roughness: 0.9, name: 'ld_render', envMapIntensity: 0.85 })
+  const m = new MeshStandardMaterial({ roughness: 0.9, name: 'ld_render', envMapIntensity: 0.95 })
   const tintLit = tint.join(',')
   return worldShader(
     m,
@@ -241,11 +241,11 @@ export function renderMaterial(tint: readonly [number, number, number]): MeshSta
     float wl = dot(w, vec3(0.333));
     vec3 c = r * vec3(${tintLit});
     float peel = smoothstep(0.55, 0.62, ld_fbm(p*0.9 + 11.0));
-    c = mix(c, c*vec3(0.55, 0.42, 0.34), peel);
-    c *= 0.7 + 0.5*wl;
+    c = mix(c, c*vec3(0.68, 0.58, 0.50), peel);
+    c *= 0.78 + 0.42*wl;
     float damp = 1.0 - smoothstep(-0.7, 1.4, p.y + 0.4*ld_fbm(p*1.3));
     float streak = ld_fbm(vec3(p.x*6.0, p.y*0.25, p.z*6.0));
-    c *= mix(1.0, 0.45, damp) * mix(1.0, 0.7, smoothstep(0.5, 0.8, streak));
+    c *= mix(1.0, 0.62, damp) * mix(1.0, 0.78, smoothstep(0.5, 0.8, streak));
     ldAlbedo = c;
     ldRough = 0.92 - 0.35*damp;
   `,
@@ -255,7 +255,7 @@ export function renderMaterial(tint: readonly [number, number, number]): MeshSta
 
 /** Wet bitumen with optional St Kilda 1994 neon streak reflections (Pink Lodge & Cyan Rooms to Let). */
 export function asphaltMaterial(showNeon = true): MeshStandardMaterial {
-  const m = new MeshStandardMaterial({ roughness: 0.4, name: 'ld_asphalt', envMapIntensity: 1.15 })
+  const m = new MeshStandardMaterial({ roughness: 0.4, name: 'ld_asphalt', envMapIntensity: 1.2 })
   const neonBlock = showNeon
     ? `
     // Wet road neon reflection streaks (St Kilda Neo-Noir 1994)
@@ -273,7 +273,7 @@ export function asphaltMaterial(showNeon = true): MeshStandardMaterial {
       float pinkWidth = 1.8 + 0.8 * uPink;
       float pinkStreak = exp(-(dxPink * dxPink) / (2.0 * pinkWidth * pinkWidth));
       float pinkFade = smoothstep(-0.8, -1.8, p.z) * smoothstep(cameraPosition.z, cameraPosition.z + 1.2, p.z);
-      vec3 pinkNeon = vec3(1.0, 0.15, 0.55) * (pinkStreak * 5.2 * glance * reflWet * pinkFade);
+      vec3 pinkNeon = vec3(1.0, 0.15, 0.55) * (pinkStreak * 4.5 * glance * reflWet * pinkFade);
 
       // 2. Cyan Neon: "ROOMS TO LET"
       float cyanSignZ = -1.2;
@@ -297,7 +297,7 @@ export function asphaltMaterial(showNeon = true): MeshStandardMaterial {
       float sl2Streak = exp(-(dxSl2 * dxSl2) / (2.0 * 1.2 * 1.2)) * smoothstep(-5.6, -6.8, p.z);
 
       float amberFade = smoothstep(-4.5, -6.5, p.z) * smoothstep(cameraPosition.z, cameraPosition.z + 2.5, p.z);
-      vec3 amberLight = vec3(1.0, 0.65, 0.22) * ((sl1Streak + sl2Streak) * 1.5 * glance * reflWet * amberFade);
+      vec3 amberLight = vec3(1.0, 0.72, 0.34) * ((sl1Streak + sl2Streak) * 1.6 * glance * reflWet * amberFade);
 
       totalEmissiveRadiance += pinkNeon + cyanNeon + amberLight;
     }`
@@ -314,8 +314,8 @@ export function asphaltMaterial(showNeon = true): MeshStandardMaterial {
     float puddle = smoothstep(0.48, 0.60, puddleMask);
     float damp = smoothstep(0.32, 0.52, puddleMask);
 
-    vec3 c = vec3(0.14, 0.135, 0.13) * (0.72 + 0.38 * n) * (0.86 + 0.2 * g);
-    c *= mix(1.0, 0.32, puddle);
+    vec3 c = vec3(0.22, 0.22, 0.23) * (0.76 + 0.34 * n) * (0.88 + 0.18 * g);
+    c *= mix(1.0, 0.42, puddle);
     ldAlbedo = c;
     ldRough = mix(0.52, 0.04, puddle);
     ${neonBlock}
@@ -340,7 +340,7 @@ export function ageClone(
   if (rough !== null) mat.roughness = rough
   mat.lightMap = null
   mat.lightMapIntensity = 0
-  mat.envMapIntensity = Math.min(mat.envMapIntensity, 0.55)
+  mat.envMapIntensity = Math.max(mat.envMapIntensity, 0.6)
   mat.needsUpdate = true
   aged.set(key, mat)
   return mat

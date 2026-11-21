@@ -3,6 +3,7 @@ import {
   BoxGeometry,
   Color,
   CylinderGeometry,
+  DoubleSide,
   Group,
   HemisphereLight,
   Mesh,
@@ -96,47 +97,47 @@ export async function buildMahoneysBar(): Promise<PubWorld> {
 
   // Materials
   const carpetMat = new MeshStandardMaterial({
-    color: new Color(0.35, 0.12, 0.14), // worn burgundy Axminster pub carpet
+    color: new Color(0.32, 0.12, 0.14), // worn burgundy Axminster pub carpet
     roughness: 0.95,
   })
   const timberLowerMat = new MeshStandardMaterial({
-    color: new Color(0.24, 0.15, 0.10), // dark varnished Victorian wainscoting
+    color: new Color(0.28, 0.18, 0.12), // varnished Victorian wainscoting
     roughness: 0.45,
   })
   const wallUpperMat = new MeshStandardMaterial({
-    color: new Color(0.68, 0.58, 0.42), // aged tobacco-stained amber plaster
+    color: new Color(0.72, 0.62, 0.46), // aged tobacco-warm plaster
     roughness: 0.85,
   })
   const ceilingMat = new MeshStandardMaterial({
-    color: new Color(0.30, 0.26, 0.22), // smoke-stained pressed metal ceiling
-    roughness: 0.9,
+    color: new Color(0.38, 0.32, 0.26), // pressed metal ceiling
+    roughness: 0.88,
   })
   const mahoganyMat = darkWoodMaterial(0.4)
   const chromeMat = new MeshStandardMaterial({
-    color: new Color(0.85, 0.85, 0.90),
+    color: new Color(0.88, 0.88, 0.92),
     metalness: 0.85,
     roughness: 0.2,
   })
   const brassMat = new MeshStandardMaterial({
-    color: new Color(0.88, 0.72, 0.32),
+    color: new Color(0.90, 0.76, 0.38),
     metalness: 0.75,
     roughness: 0.3,
   })
   const mirrorMat = new MeshStandardMaterial({
-    color: new Color(0.40, 0.45, 0.50),
-    metalness: 0.95,
-    roughness: 0.1,
+    color: new Color(0.50, 0.55, 0.60),
+    metalness: 0.92,
+    roughness: 0.12,
   })
   const greenBaizeMat = new MeshStandardMaterial({
-    color: new Color(0.08, 0.36, 0.18), // pool table cloth
-    roughness: 0.9,
+    color: new Color(0.12, 0.44, 0.22), // pool table cloth
+    roughness: 0.88,
   })
   const bluestoneMat = new MeshStandardMaterial({
-    color: new Color(0.24, 0.26, 0.29), // cellar damp bluestone
+    color: new Color(0.26, 0.29, 0.34), // cellar damp bluestone
     roughness: 0.8,
   })
   const safeSteelMat = new MeshStandardMaterial({
-    color: new Color(0.18, 0.20, 0.22),
+    color: new Color(0.24, 0.26, 0.30),
     metalness: 0.7,
     roughness: 0.4,
   })
@@ -248,8 +249,8 @@ export async function buildMahoneysBar(): Promise<PubWorld> {
 
   const poolLightCone = new Mesh(new CylinderGeometry(0.08, 0.45, 0.35, 16, 1, true), greenBaizeMat)
   poolLightCone.position.set(2.4, 2.3, -1.0)
-  const poolBulb = new PointLight(0xffdf88, 2.2, 7)
-  poolBulb.position.set(2.4, 2.15, -1.0)
+  const poolBulb = new PointLight(0xfff0cc, 14.0, 12, 1.4)
+  poolBulb.position.set(0, -0.14, 0)
   poolLightCone.add(poolBulb)
   poolTable.add(poolLightCone)
 
@@ -469,35 +470,63 @@ export async function buildMahoneysBar(): Promise<PubWorld> {
   // -------------------------------------------------------------------------
   // 7. Lighting
   // -------------------------------------------------------------------------
-  const pubFill = new HemisphereLight(new Color(0x9a7a5c), new Color(0x2a1814), 0.42)
+  const pubFill = new HemisphereLight(new Color(0xd6c6b2), new Color(0x4a3b34), 0.48)
   root.add(pubFill)
 
-  const barLight = new PointLight(0xffb866, 2.6, 10)
-  barLight.position.set(-3.5, 2.5, -1.0)
-  root.add(barLight)
+  // Overhead warm glass pendant domes along the mahogany bar (matches concept art)
+  const barShadeMat = new MeshStandardMaterial({
+    color: new Color(0xf4e4c4),
+    emissive: new Color(0xffdfa8),
+    emissiveIntensity: 1.6,
+    roughness: 0.4,
+    side: DoubleSide,
+  })
+  for (const bz of [-2.8, -0.8, 1.2]) {
+    const cord = new Mesh(new CylinderGeometry(0.008, 0.008, 1.1, 6), safeSteelMat)
+    cord.position.set(-3.25, 3.05, bz)
+    const dome = new Mesh(new CylinderGeometry(0.08, 0.28, 0.2, 16, 1, true), barShadeMat)
+    dome.position.set(-3.25, 2.45, bz)
+    root.add(cord, dome)
+  }
 
-  const opticsLight = new PointLight(0xffa044, 1.4, 6)
-  opticsLight.position.set(-5.4, 2.0, -1.0)
+  const barLightNorth = new PointLight(0xffddb0, 10.5, 12, 1.45)
+  barLightNorth.position.set(-3.25, 2.35, -2.5)
+  root.add(barLightNorth)
+
+  const barLightSouth = new PointLight(0xffddb0, 10.5, 12, 1.45)
+  barLightSouth.position.set(-3.25, 2.35, 0.6)
+  root.add(barLightSouth)
+
+  const opticsLight = new PointLight(0xffd6a6, 7.5, 9, 1.45)
+  opticsLight.position.set(-5.0, 2.1, -1.0)
   root.add(opticsLight)
 
-  const stairLight = new PointLight(0xffd28a, 1.8, 7)
-  stairLight.position.set(-3.35, 1.8, -7.8)
+  const floorFillLight = new PointLight(0xffe4be, 5.5, 12, 1.5)
+  floorFillLight.position.set(-0.2, 2.9, 2.4)
+  root.add(floorFillLight)
+
+  const stairLight = new PointLight(0xffe0b0, 6.5, 9, 1.45)
+  stairLight.position.set(-3.35, 1.85, -7.8)
   root.add(stairLight)
 
-  const cellarLight = new PointLight(0x99ddff, 2.6, 11)
-  cellarLight.position.set(-3.5, -0.1, -12.5)
+  const cellarLight = new PointLight(0xd4eaff, 9.5, 14, 1.4)
+  cellarLight.position.set(-3.5, -0.05, -12.0)
   root.add(cellarLight)
 
-  const neonLight = new PointLight(0xff6622, 1.1, 8)
-  neonLight.position.set(0, 2.2, 5.2)
-  root.add(neonLight)
+  const cellarRearLight = new PointLight(0xe0eeff, 5.0, 9, 1.45)
+  cellarRearLight.position.set(-3.5, -0.15, -14.1)
+  root.add(cellarRearLight)
 
-  const exitSignLight = new PointLight(0x33ff77, 1.2, 5.5)
-  exitSignLight.position.set(5.5, 2.35, -4.5)
+  const frontWindowGlow = new PointLight(0xffcf94, 6.0, 11, 1.4)
+  frontWindowGlow.position.set(0.0, 2.2, 5.1)
+  root.add(frontWindowGlow)
+
+  const exitSignLight = new PointLight(0x44ff88, 4.0, 7.0, 1.4)
+  exitSignLight.position.set(5.4, 2.35, -4.5)
   root.add(exitSignLight)
 
-  const exitCorridorLight = new PointLight(0xffc888, 1.4, 7.5)
-  exitCorridorLight.position.set(4.4, 2.9, -4.2)
+  const exitCorridorLight = new PointLight(0xffe4bc, 9.5, 11.0, 1.4)
+  exitCorridorLight.position.set(4.2, 2.9, -4.1)
   root.add(exitCorridorLight)
 
   // Spawn position: inside south entrance facing Sterling behind the bar
